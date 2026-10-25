@@ -339,6 +339,42 @@ def test_fallback_parsers_and_switch():
     assert "♻️" in msg and "🔴" in msg
 
 
+def test_history_windows_resume_and_known_at():
+    import pandas as pd
+    from datetime import date
+    from radar import history, schema, store
+    w = history.windows(date(2024, 1, 1), date(2024, 3, 31), 31)
+    assert w[0][0] == date(2024, 1, 1) and w[-1][1] == date(2024, 3, 31) and all(a <= b for a, b in w)
+    calls = []
+
+    def fake(src, a, b):
+        calls.append((src, a))
+        return schema.frame([schema.event(src, f"{src}-{a}", 5, a.isoformat(), "Energy grant award",
+                                          text="grid resilience grant", amount_usd=5e7, amount_type="obligation",
+                                          recipient="CITY OF PHOENIX")])
+    old = history._fetch
+    history._fetch = fake
+    try:
+        s1 = history.run(years=0.2, sources=["usaspending"])
+        n1 = len(calls)
+        s2 = history.run(years=0.2, sources=["usaspending"])      # ikinci çalışma: yeni pencere yok
+    finally:
+        history._fetch = old
+    assert s1["windows_done"] == n1 > 0 and s2["windows_done"] == 0 and len(calls) == n1
+    ev = store.read("events")
+    h = ev[ev["event_id"].str.startswith("usaspending:")]
+    assert (h["known_at"].astype(str).str[:10] == h["date"].astype(str).str[:10]).all()   # olay tarihinde bilinirdi
+
+
+def test_telegram_backtest_note():
+    from radar import telegram
+    base = {"status": "proven", "effect": 0.03, "n_clusters": 20, "title": "t", "url": "", "program": "x",
+            "program_name": "P", "kind_name": "K", "status_name": "Kanıtlandı", "role": "direct", "role_name": "R", "affected": "A",
+            "consistency": 0.7, "oos_hit": 0.6, "oos_n": 10, "q": 0.03, "amount_usd": None, "sector": ""}
+    assert "Canlı doğrulama sürüyor (0/10" in telegram.format_signal({**base, "live_n": 0, "live_hit": float("nan")})
+    assert "Canlı doğrulandı" in telegram.format_signal({**base, "live_n": 14, "live_hit": 0.64})
+
+
 if __name__ == "__main__":
     import inspect
     fails = 0

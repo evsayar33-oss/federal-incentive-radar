@@ -207,6 +207,15 @@ Birincil kaynak hata verirse veya alışılmadık biçimde boş dönerse yedek k
 
 GovInfo için `GOVINFO_API_KEY` secret'ını ekleyin (https://api.data.gov/signup/, ücretsiz). Yoksa `CONGRESS_API_KEY` kullanılır (aynı tür anahtar).
 
+### Geçmiş veriyle doldurma (backtest)
+
+Kanıt tablosunu hızla doldurmak için **Actions → Geçmiş veri (backtest) → Run workflow** çalıştırın. Varsayılan 5 yıldır. Yaklaşık 40–60 dakika sürer. Süre dolarsa durur; tekrar çalıştırınca kaldığı yerden devam eder. Bitince Telegram'a sağlık mesajı gelir.
+
+- **Kaynaklar:** Federal Register, USAspending, SEC EDGAR. Congress.gov (bugünün durumunu verir), Grants.gov (geçmiş ilan yok) ve GDELT (geçmiş haber yok) kullanılmaz.
+- **Sızıntı önlemi:** Her olay yalnızca kendi tarihinden önceki verilerle tahmin edilir (ileriye dönük test). Eşikler değiştirilmez.
+- **Telegram:** Geçmiş veriyle kanıtlanan türler hemen bildirilir. Mesajda "Geçmiş veriyle kanıtlandı. Canlı doğrulama sürüyor (0/10 sinyal)" yazar. 10 sinyal sonuçlanınca "Canlı doğrulandı" notu gelir. Canlıda tutmayan tür askıya alınır.
+- **Sınırlar:** Bugün işlem görmeyen şirketlerin (iflas, birleşme) fiyatı yoktur; bu olaylar ölçülemez ve etkiler hafif iyimser olabilir. Rapor: `history_report.json`. Geçmiş tek bir dönemi kapsar; yasa değişirse etki değişebilir.
+
 ## 4. Arayüz: basit ve uzman görünüm
 
 Sol menüden görünümü seçin.

@@ -44,19 +44,26 @@ def parse(results: list[dict]) -> list[dict]:
     return rows
 
 
-def fetch(since: date) -> pd.DataFrame:
+def fetch(since: date, until: date | None = None, max_pages: int = 1) -> pd.DataFrame:
+    """until verilirse [since, until] penceresi taranır (geçmiş veri). max_pages>1 sayfalama yapar."""
     cfg = sources()["federal_register"]
     rows: list[dict] = []
     for term in cfg["terms"]:
-        params = [("per_page", cfg["per_page"]), ("order", "newest"),
-                  ("conditions[publication_date][gte]", since.isoformat()),
-                  ("conditions[term]", term)]
-        params += [("conditions[type][]", t) for t in cfg["doc_types"]]
-        params += [("fields[]", f) for f in FIELDS]
-        try:
-            data = http.get_json(cfg["url"], params=params)
-        except Exception as exc:  # tek terim hatası tüm kaynağı durdurmasın
-            log.warning("FR terim '%s' hatası: %s", term, exc)
-            continue
-        rows.extend(parse(data.get("results") or []))
+        for page in range(1, max_pages + 1):
+            params = [("per_page", cfg["per_page"]), ("order", "newest"), ("page", page),
+                      ("conditions[publication_date][gte]", since.isoformat()),
+                      ("conditions[term]", term)]
+            if until:
+                params.append(("conditions[publication_date][lte]", until.isoformat()))
+            params += [("conditions[type][]", t) for t in cfg["doc_types"]]
+            params += [("fields[]", f) for f in FIELDS]
+            try:
+                data = http.get_json(cfg["url"], params=params)
+            except Exception as exc:  # tek terim hatası tüm kaynağı durdurmasın
+                log.warning("FR terim '%s' hatası: %s", term, exc)
+                break
+            res = data.get("results") or []
+            rows.extend(parse(res))
+            if len(res) < cfg["per_page"]:
+                break
     return schema.frame(rows)

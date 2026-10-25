@@ -52,12 +52,12 @@ def parse(hits: list[dict], phrase: str) -> list[dict]:
     return rows
 
 
-def fetch(since: date) -> pd.DataFrame:
+def fetch(since: date, until: date | None = None) -> pd.DataFrame:
     cfg = sources()["sec_edgar"]
     rows: list[dict] = []
     for phrase in cfg["phrases"]:
         params = {"q": phrase, "dateRange": "custom", "startdt": since.isoformat(),
-                  "enddt": date.today().isoformat(), "forms": cfg["forms"]}
+                  "enddt": (until or date.today()).isoformat(), "forms": cfg["forms"]}
         got = 0
         frm = 0
         while got < cfg["max_hits_per_phrase"]:
