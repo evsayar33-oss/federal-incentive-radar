@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths: ["src/**", "app/**", "config/**", "tests/**", "requirements*.txt"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-etl.txt
+      - run: pip install -r requirements-etl.txt pytest
+      - run: PYTHONPATH=src pytest -q tests

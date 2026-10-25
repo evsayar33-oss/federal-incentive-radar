@@ -1,0 +1,136 @@
+# Çalışma takvimi ve kaynak ayarları. Limitler değişirse yalnızca bu dosyayı güncelleyin.
+
+schedule:
+  timezone: "America/New_York"
+  # Hedef saat (ET). İş akışı her iki yaz/kış saati için iki kez tetiklenir.
+  # Kod yalnızca hedef saatten sonraki pencere içinde ve günde bir kez çalışır.
+  slots:
+    open:   {target: "09:45", window_minutes: 150}
+    midday: {target: "12:30", window_minutes: 150}
+    close:  {target: "16:15", window_minutes: 180}
+  first_run_lookback_days: 30
+  overlap_days: 1
+
+sector_etfs:
+  "Information Technology": XLK
+  "Energy": XLE
+  "Industrials": XLI
+  "Materials": XLB
+  "Utilities": XLU
+  "Health Care": XLV
+  "Financials": XLF
+  "Consumer Discretionary": XLY
+  "Consumer Staples": XLP
+  "Communication Services": XLC
+  "Real Estate": XLRE
+benchmark: SPY
+
+federal_register:
+  enabled: true
+  url: "https://www.federalregister.gov/api/v1/documents.json"
+  doc_types: ["RULE", "PRORULE", "NOTICE", "PRESDOCU"]
+  terms:
+    - "grant program"
+    - "tax credit"
+    - "loan guarantee"
+    - "funding opportunity"
+    - "financial assistance"
+    - "CHIPS"
+    - "Inflation Reduction Act"
+    - "Infrastructure Investment and Jobs Act"
+    - "Defense Production Act"
+    - "critical minerals"
+  per_page: 100
+
+congress:
+  enabled: true
+  url: "https://api.congress.gov/v3/bill"
+  limit: 250
+  max_pages: 4
+
+usaspending:
+  enabled: true
+  url: "https://api.usaspending.gov/api/v2/search/spending_by_award/"
+  min_award_usd: 10000000      # 10 milyon $ altı ödüller gürültü kabul edilir
+  grant_codes: ["02", "03", "04", "05"]
+  loan_codes: ["07", "08"]
+  max_pages: 3
+
+grants_gov:
+  enabled: true
+  search_url: "https://api.grants.gov/v1/api/search2"
+  fetch_url: "https://api.grants.gov/v1/api/fetchOpportunity"
+  keywords:
+    - "semiconductor"
+    - "clean energy"
+    - "hydrogen"
+    - "grid"
+    - "battery"
+    - "critical minerals"
+    - "broadband"
+    - "infrastructure"
+    - "manufacturing"
+    - "nuclear"
+  rows: 50
+  max_detail_fetch: 25
+
+sec_edgar:
+  enabled: true
+  url: "https://efts.sec.gov/LATEST/search-index"
+  forms: "8-K,10-Q,10-K"
+  # İfade → program eşlemesi (null = metinden/ajanstan tahmin et)
+  phrases:
+    '"CHIPS Act"': semiconductors
+    '"CHIPS Incentives"': semiconductors
+    '"Inflation Reduction Act"': clean_power
+    '"Section 45X"': clean_manufacturing
+    '"advanced manufacturing production credit"': clean_manufacturing
+    '"Loan Programs Office"': null
+    '"Defense Production Act"': critical_minerals
+    '"Department of Energy" grant': null
+    '"transferable tax credits"': clean_power
+    '"Infrastructure Investment and Jobs Act"': infrastructure
+    '"Section 45V"': hydrogen
+    '"Section 45Q"': carbon_management
+  max_hits_per_phrase: 100
+  tickers_url: "https://www.sec.gov/files/company_tickers.json"
+
+treasury_dts:
+  enabled: true
+  url: "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/dts/deposits_withdrawals_operating_cash"
+  history_days: 200
+
+fred:
+  enabled: true
+  # API anahtarı gerekmez: FRED grafik CSV uç noktası
+  csv_url: "https://fred.stlouisfed.org/graph/fredgraph.csv"
+  series: ["EPUFISCAL", "EPUTAXES", "EPUGOVTSPEND", "USEPUINDXD", "DGS10", "BAMLH0A0HYM2"]
+
+gdelt:
+  enabled: true
+  url: "https://api.gdeltproject.org/api/v2/doc/doc"
+  queries:
+    - '"CHIPS Act" (grant OR award OR incentive)'
+    - '("tax credit" OR "loan guarantee") ("Department of Energy" OR Treasury)'
+    - '"Inflation Reduction Act" (repeal OR credit OR guidance)'
+    - '"Defense Production Act" (award OR minerals)'
+    - '("federal grant" OR "federal funding") (manufacturing OR plant OR factory)'
+  max_records: 75
+  timespan: "1d"
+
+etf_holdings:
+  enabled: true
+  spdr_url: "https://www.ssga.com/us/en/intermediary/library-content/products/fund-data/etfs/us/holdings-daily-us-en-{ticker}.xlsx"
+  ishares:
+    IVV: "https://www.ishares.com/us/products/239726/ishares-core-sp-500-etf/1467271812596.ajax?fileType=csv&fileName=IVV_holdings&dataType=fund"
+    IWM: "https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/1467271812596.ajax?fileType=csv&fileName=IWM_holdings&dataType=fund"
+
+prices:
+  enabled: true
+  history_period: "3y"
+  max_extra_tickers: 150
+
+alerts:
+  min_award_usd: 100000000
+  sector_score_jump: 8
+  create_github_issue: true

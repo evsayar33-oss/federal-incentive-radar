@@ -1,0 +1,166 @@
+# Teşvik program taksonomisi (LLM yok: kural + öğrenen sınıflandırıcı bunu kullanır).
+# keywords: zayıf sinyal (1 puan). strong: güçlü sinyal (3 puan).
+# sectors: doğrudan etki payı (toplam 1.0). GICS-benzeri 11 sektör adları kullanılır.
+# incentive_type: grant | loan | tax_credit | contract | mixed  (zamanlama eğrisini seçer)
+
+generic_terms:
+  - grant
+  - grants
+  - tax credit
+  - loan guarantee
+  - direct loan
+  - funding opportunity
+  - notice of funding
+  - cooperative agreement
+  - incentive
+  - subsidy
+  - appropriation
+  - award
+  - financial assistance
+  - production credit
+  - investment credit
+  - rebate
+
+programs:
+  semiconductors:
+    name: "Yarı iletken (CHIPS)"
+    incentive_type: mixed
+    strong: ["chips act", "chips and science", "chips program office", "chips for america", "chips incentives", "chips incentive", "48d", "advanced manufacturing investment credit", "semiconductor manufacturing incentive", "commercial fabrication facilities"]
+    keywords: ["semiconductor", "semiconductors", "foundry", "wafer", "fab", "fabs", "microelectronics", "advanced packaging", "national semiconductor technology center", "natcast"]
+    sectors: {"Information Technology": 0.80, "Industrials": 0.12, "Materials": 0.08}
+
+  clean_power:
+    name: "Temiz enerji üretimi (IRA 45Y/48E/45)"
+    incentive_type: tax_credit
+    strong: ["45y", "48e", "clean electricity production credit", "clean electricity investment credit", "energy community", "prevailing wage and apprenticeship", "investment tax credit"]
+    keywords: ["solar", "wind", "renewable", "clean electricity", "offshore wind", "geothermal", "energy storage", "interconnection"]
+    sectors: {"Utilities": 0.45, "Industrials": 0.25, "Information Technology": 0.15, "Energy": 0.10, "Materials": 0.05}
+
+  clean_manufacturing:
+    name: "Temiz teknoloji imalatı (45X/48C)"
+    incentive_type: tax_credit
+    strong: ["45x", "advanced manufacturing production credit", "48c", "qualifying advanced energy project"]
+    keywords: ["battery cell", "battery module", "solar module", "inverter", "wind component", "critical mineral processing"]
+    sectors: {"Industrials": 0.40, "Information Technology": 0.25, "Materials": 0.20, "Consumer Discretionary": 0.15}
+
+  ev_auto:
+    name: "Elektrikli araç ve şarj (30D/NEVI)"
+    incentive_type: mixed
+    strong: ["30d", "clean vehicle credit", "45w", "nevi", "national electric vehicle infrastructure", "charging and fueling infrastructure"]
+    keywords: ["electric vehicle", "ev charging", "charging station", "zero-emission vehicle", "domestic manufacturing conversion"]
+    sectors: {"Consumer Discretionary": 0.55, "Industrials": 0.20, "Materials": 0.15, "Utilities": 0.10}
+
+  hydrogen:
+    name: "Hidrojen (45V / H2Hubs)"
+    incentive_type: mixed
+    strong: ["45v", "clean hydrogen production credit", "h2hubs", "hydrogen hub"]
+    keywords: ["hydrogen", "electrolyzer", "fuel cell"]
+    sectors: {"Industrials": 0.45, "Energy": 0.25, "Materials": 0.20, "Utilities": 0.10}
+
+  nuclear:
+    name: "Nükleer (45U, gelişmiş reaktör)"
+    incentive_type: mixed
+    strong: ["45u", "zero-emission nuclear power production credit", "advanced reactor", "haleu", "civil nuclear credit"]
+    keywords: ["nuclear", "small modular reactor", "uranium enrichment", "reactor demonstration"]
+    sectors: {"Utilities": 0.55, "Industrials": 0.30, "Energy": 0.15}
+
+  grid:
+    name: "Elektrik şebekesi (GRIP, iletim)"
+    incentive_type: grant
+    strong: ["grid resilience", "grip program", "transmission facilitation", "grid deployment office"]
+    keywords: ["transmission line", "grid modernization", "smart grid", "distribution grid", "wildfire mitigation"]
+    sectors: {"Utilities": 0.60, "Industrials": 0.30, "Information Technology": 0.10}
+
+  carbon_management:
+    name: "Karbon yakalama (45Q, DAC)"
+    incentive_type: mixed
+    strong: ["45q", "carbon oxide sequestration", "direct air capture", "dac hub"]
+    keywords: ["carbon capture", "sequestration", "class vi well", "co2 pipeline"]
+    sectors: {"Energy": 0.55, "Industrials": 0.30, "Materials": 0.15}
+
+  critical_minerals:
+    name: "Kritik mineraller ve DPA Title III"
+    incentive_type: mixed
+    strong: ["defense production act", "dpa title iii", "critical minerals", "industrial base analysis and sustainment"]
+    keywords: ["lithium", "graphite", "rare earth", "nickel", "cobalt", "magnet", "antimony", "gallium", "germanium"]
+    sectors: {"Materials": 0.65, "Industrials": 0.25, "Energy": 0.10}
+
+  infrastructure:
+    name: "Altyapı (IIJA: yol, köprü, transit)"
+    incentive_type: grant
+    strong: ["infrastructure investment and jobs act", "bipartisan infrastructure law", "raise grant", "build grant", "infra grant", "mega grant", "bridge investment program"]
+    keywords: ["highway", "bridge", "transit", "rail", "port infrastructure", "airport infrastructure", "surface transportation", "water infrastructure"]
+    sectors: {"Industrials": 0.55, "Materials": 0.35, "Utilities": 0.10}
+
+  broadband:
+    name: "Geniş bant (BEAD)"
+    incentive_type: grant
+    strong: ["bead", "broadband equity, access, and deployment", "middle mile", "digital equity act", "enabling middle mile"]
+    keywords: ["broadband", "fiber deployment", "high-speed internet", "unserved locations"]
+    sectors: {"Communication Services": 0.55, "Information Technology": 0.30, "Industrials": 0.15}
+
+  ai_quantum:
+    name: "Yapay zekâ, kuantum ve ileri hesaplama"
+    incentive_type: contract
+    strong: ["national ai research resource", "nairr", "national quantum initiative", "genesis mission", "ai action plan"]
+    keywords: ["artificial intelligence", "quantum computing", "supercomputer", "data center", "high performance computing"]
+    sectors: {"Information Technology": 0.70, "Utilities": 0.15, "Communication Services": 0.10, "Real Estate": 0.05}
+
+  defense_industrial:
+    name: "Savunma sanayi ve gemi inşası"
+    incentive_type: contract
+    strong: ["shipbuilding", "submarine industrial base", "munitions production", "office of strategic capital", "national defense authorization act"]
+    keywords: ["defense industrial base", "drone", "unmanned", "hypersonic", "solid rocket motor", "missile production"]
+    sectors: {"Industrials": 0.80, "Information Technology": 0.15, "Materials": 0.05}
+
+  health_bio:
+    name: "Sağlık, biyoteknoloji, ilaç üretimi"
+    incentive_type: grant
+    strong: ["barda", "arpa-h", "biomanufacturing", "strategic national stockpile", "onshoring pharmaceutical"]
+    keywords: ["vaccine", "drug manufacturing", "active pharmaceutical ingredient", "biotechnology", "medical countermeasure"]
+    sectors: {"Health Care": 0.90, "Materials": 0.05, "Industrials": 0.05}
+
+  agriculture:
+    name: "Tarım ve biyoyakıt (45Z, çiftçi yardımı)"
+    incentive_type: mixed
+    strong: ["45z", "clean fuel production credit", "sustainable aviation fuel", "commodity credit corporation", "farmer bridge"]
+    keywords: ["farm", "biofuel", "ethanol", "renewable diesel", "crop", "livestock", "rural development"]
+    sectors: {"Consumer Staples": 0.45, "Materials": 0.25, "Energy": 0.20, "Industrials": 0.10}
+
+  housing:
+    name: "Konut ve şehir yenileme"
+    incentive_type: mixed
+    strong: ["low-income housing tax credit", "lihtc", "45l", "179d", "opportunity zone"]
+    keywords: ["affordable housing", "home energy rebate", "weatherization", "housing supply"]
+    sectors: {"Real Estate": 0.55, "Consumer Discretionary": 0.25, "Materials": 0.10, "Financials": 0.10}
+
+# Ajans bazlı geri dönüş eşlemesi: metin hiçbir programa uymazsa ödül ajansına göre sektör atanır.
+agency_sectors:
+  "energy": {"Utilities": 0.40, "Industrials": 0.30, "Energy": 0.20, "Materials": 0.10}
+  "commerce": {"Information Technology": 0.50, "Industrials": 0.30, "Communication Services": 0.20}
+  "transportation": {"Industrials": 0.60, "Materials": 0.30, "Consumer Discretionary": 0.10}
+  "defense": {"Industrials": 0.80, "Information Technology": 0.20}
+  "health": {"Health Care": 1.0}
+  "agriculture": {"Consumer Staples": 0.60, "Materials": 0.20, "Energy": 0.20}
+  "housing": {"Real Estate": 0.70, "Financials": 0.30}
+  "environmental protection": {"Utilities": 0.50, "Industrials": 0.50}
+  "treasury": {"Financials": 0.40, "Industrials": 0.30, "Utilities": 0.30}
+  "interior": {"Energy": 0.40, "Materials": 0.40, "Utilities": 0.20}
+  "national science foundation": {"Information Technology": 0.70, "Health Care": 0.30}
+  "nasa": {"Industrials": 0.80, "Information Technology": 0.20}
+  "small business": {"Financials": 0.50, "Industrials": 0.50}
+
+# Treasury DTS günlük ödeme kategorileri → sektör (alt dize eşleşmesi, küçük harf).
+dts_category_sectors:
+  "energy": ["Utilities", "Energy", "Industrials"]
+  "highway": ["Industrials", "Materials"]
+  "transit": ["Industrials"]
+  "transportation": ["Industrials", "Materials"]
+  "commerce": ["Information Technology", "Industrials"]
+  "defense": ["Industrials"]
+  "agriculture": ["Consumer Staples"]
+  "commodity credit": ["Consumer Staples"]
+  "housing": ["Real Estate"]
+  "health": ["Health Care"]
+  "nih": ["Health Care"]
+  "environmental": ["Utilities", "Industrials"]

@@ -1,0 +1,65 @@
+name: Radar — günde 3 kontrol
+
+# Hedefler (New York saati): açılış 09:45, gün ortası 12:30, kapanış 16:15.
+# GitHub cron UTC çalışır ve yaz/kış saatini bilmez. Bu yüzden her slot için iki tetikleyici var.
+# Kod yalnızca doğru saat penceresinde ve günde bir kez çalışır; fazladan tetiklemeler saniyeler içinde biter.
+on:
+  schedule:
+    - cron: "47 13 * * 1-5"   # açılış (yaz saati)
+    - cron: "47 14 * * 1-5"   # açılış (kış saati)
+    - cron: "33 16 * * 1-5"   # gün ortası (yaz)
+    - cron: "33 17 * * 1-5"   # gün ortası (kış)
+    - cron: "19 20 * * 1-5"   # kapanış (yaz)
+    - cron: "19 21 * * 1-5"   # kapanış (kış)
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Çalışma modu"
+        type: choice
+        default: auto
+        options: [auto, open, midday, close, bootstrap, demo]
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: radar-data
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      PYTHONPATH: src
+      RADAR_STORE: store
+      CONGRESS_API_KEY: ${{ secrets.CONGRESS_API_KEY }}
+      SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RUN_LABEL: ${{ github.event.inputs.mode || 'auto' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-etl.txt
+      - name: Bağımlılıklar
+        run: pip install -r requirements-etl.txt
+      - name: Veri dalını bağla
+        run: bash .github/scripts/data_branch.sh setup
+      - name: Çalıştır
+        run: |
+          MODE="${{ github.event.inputs.mode || 'auto' }}"
+          case "$MODE" in
+            auto)      python -m radar.run slot --slot auto ;;
+            bootstrap) python -m radar.run weekly && python -m radar.run slot --slot open --force && python -m radar.run slot --slot close --force ;;
+            demo)      python -m radar.run demo --days 420 ;;
+            *)         python -m radar.run slot --slot "$MODE" --force ;;
+          esac
+      - name: Veriyi yayımla
+        if: always()
+        run: bash .github/scripts/data_branch.sh publish
