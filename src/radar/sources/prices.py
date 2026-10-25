@@ -30,7 +30,7 @@ def _yfinance(tickers: list[str], period: str) -> pd.DataFrame:
 
 def _stooq(ticker: str) -> pd.DataFrame:
     sym = ticker.lower().replace(".", "-") + ".us"
-    r = http.request("GET", "https://stooq.com/q/d/l/", params={"s": sym, "i": "d"}, browser=True, retries=1)
+    r = http.request("GET", "https://stooq.com/q/d/l/", params={"s": sym, "i": "d"}, browser=True, retries=0, timeout=10)
     df = pd.read_csv(io.StringIO(r.text))
     if "Close" not in df.columns:
         return pd.DataFrame(columns=["date", "ticker", "close"])
@@ -49,7 +49,7 @@ def fetch(tickers: list[str], period: str = "3y") -> pd.DataFrame:
         log.warning("yfinance başarısız (%s), Stooq yedeğine geçiliyor", exc)
         df, missing = pd.DataFrame(columns=["date", "ticker", "close"]), set(tickers)
     extra = []
-    for t in sorted(missing)[:40]:
+    for t in sorted(missing)[:15]:
         try:
             extra.append(_stooq(t))
         except Exception:

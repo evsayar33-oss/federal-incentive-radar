@@ -178,16 +178,22 @@ def train(events: pd.DataFrame, labels: pd.DataFrame) -> dict:
         rows += list(zip(m["_text"], m["label"]))
         weights += [1.0] * len(m)
         n_user = len(m)
-    if "confidence" in ev.columns:
-        pseudo = ev[(ev["confidence"] >= 0.9) & (ev["method"] == "rule") & (ev["program"] != "other")]
-        pseudo = pseudo.sample(min(len(pseudo), 3000), random_state=0) if len(pseudo) else pseudo
-        rows += list(zip(pseudo["_text"], pseudo["program"]))
-        weights += [0.3] * len(pseudo)
-        rp = pd.to_numeric(ev.get("relevance_prob", 1 - ev["confidence"]), errors="coerce")
-        weak_neg = ev[(rp <= 0.08) & (ev["method"] == "rule") & (ev["source"].isin(["congress", "gdelt", "federal_register"]))]
-        weak_neg = weak_neg.sample(min(len(weak_neg), 1500), random_state=0) if len(weak_neg) else weak_neg
-        rows += [(t, IRRELEVANT) for t in weak_neg["_text"]]
-        weights += [0.3] * len(weak_neg)
+    # Self-training örnekleri her seferinde SAF KURALLA yeniden hesaplanır
+    # (modelin kendi çıktısıyla eğitilmesi döngüyü kilitler ve hatayı büyütür).
+    base_cols = [c for c in ["event_id", "source", "stage", "date", "title", "text", "agency", "amount_type",
+                             "extra", "url", "amount_usd", "recipient", "tickers", "known_at"] if c in ev.columns]
+    rule = Classifier(load_model=False).classify(ev[base_cols].reset_index(drop=True))
+    rule["_text"] = ev["_text"].to_numpy()
+    rule["method"] = rule["method"].astype(str)
+    pseudo = rule[(rule["confidence"] >= 0.6) & (rule["method"] == "rule") & (rule["program"] != "other")
+                  & rule["relevant"].astype(bool)]
+    pseudo = pseudo.sample(min(len(pseudo), 3000), random_state=0) if len(pseudo) else pseudo
+    rows += list(zip(pseudo["_text"], pseudo["program"]))
+    weights += [0.3] * len(pseudo)
+    weak_neg = rule[(rule["relevance_prob"] <= 0.08) & (rule["source"].isin(["congress", "gdelt", "federal_register"]))]
+    weak_neg = weak_neg.sample(min(len(weak_neg), 1500), random_state=0) if len(weak_neg) else weak_neg
+    rows += [(t, IRRELEVANT) for t in weak_neg["_text"]]
+    weights += [0.3] * len(weak_neg)
     if len(rows) < 30 or len({r[1] for r in rows}) < 2:
         return {"trained": False, "reason": "yetersiz örnek", "n": len(rows)}
     X, y = [r[0] for r in rows], [r[1] for r in rows]
