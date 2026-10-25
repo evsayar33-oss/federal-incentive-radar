@@ -54,16 +54,23 @@ def fetch_universe() -> pd.DataFrame:
         except Exception as exc:
             log.warning("SPDR %s alınamadı: %s", etf, exc)
     uni = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame(columns=["ticker", "name", "sector", "sector_weight"])
-    for etf, col in (("IVV", "sp500_weight"), ("IWM", "r2000_weight")):
-        try:
-            r = http.request("GET", cfg["ishares"][etf], browser=True)
-            d = parse_ishares_csv(r.text)[["ticker", "name", "weight", "gics_sector_ishares"]].rename(columns={"weight": col})
-            uni = uni.merge(d, on="ticker", how="outer", suffixes=("", f"_{etf}"))
-            uni["name"] = uni["name"].fillna(uni.pop(f"name_{etf}"))
-            if f"gics_sector_ishares_{etf}" in uni.columns:
-                uni["gics_sector_ishares"] = uni.get("gics_sector_ishares").fillna(uni.pop(f"gics_sector_ishares_{etf}"))
-        except Exception as exc:
-            log.warning("iShares %s alınamadı: %s", etf, exc)
+    # S&P 500 ağırlığı: SPDR SPY (sektör dosyalarıyla aynı, çalıştığı doğrulanmış biçim).
+    try:
+        r = http.request("GET", cfg["spdr_url"].format(ticker="spy"), browser=True)
+        spy = parse_spdr_xlsx(r.content).rename(columns={"weight": "sp500_weight", "name": "name_spy"})
+        uni = uni.merge(spy, on="ticker", how="outer")
+        uni["name"] = uni["name"].fillna(uni.pop("name_spy"))
+    except Exception as exc:
+        log.warning("SPDR SPY alınamadı: %s", exc)
+    # Russell 2000 ağırlığı: iShares IWM (GitHub IP'lerinden engellenebilir; olmazsa boş kalır).
+    try:
+        r = http.request("GET", cfg["ishares"]["IWM"], browser=True, retries=1)
+        d = parse_ishares_csv(r.text)[["ticker", "name", "weight", "gics_sector_ishares"]].rename(
+            columns={"weight": "r2000_weight", "name": "name_iwm"})
+        uni = uni.merge(d, on="ticker", how="outer")
+        uni["name"] = uni["name"].fillna(uni.pop("name_iwm"))
+    except Exception as exc:
+        log.warning("iShares IWM alınamadı: %s", str(exc)[:200])
     if "gics_sector_ishares" in uni.columns:
         uni["sector"] = uni["sector"].fillna(uni["gics_sector_ishares"])
         uni = uni.drop(columns=["gics_sector_ishares"])
