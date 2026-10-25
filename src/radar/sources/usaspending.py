@@ -43,12 +43,13 @@ def parse(results: list[dict], kind: str) -> list[dict]:
     return rows
 
 
-def _search(codes: list[str], fields: list[str], sort: str, since: date, kind: str, cfg: dict) -> list[dict]:
+def _search(codes: list[str], fields: list[str], sort: str, since: date, kind: str, cfg: dict,
+            until: date | None = None, max_pages: int | None = None) -> list[dict]:
     rows = []
-    for page in range(1, cfg["max_pages"] + 1):
+    for page in range(1, (max_pages or cfg["max_pages"]) + 1):
         body = {
             "filters": {
-                "time_period": [{"start_date": since.isoformat(), "end_date": date.today().isoformat(),
+                "time_period": [{"start_date": since.isoformat(), "end_date": (until or date.today()).isoformat(),
                                  "date_type": "action_date"}],
                 "award_type_codes": codes,
             },
@@ -66,16 +67,16 @@ def _search(codes: list[str], fields: list[str], sort: str, since: date, kind: s
     return rows
 
 
-def fetch(since: date) -> pd.DataFrame:
+def fetch(since: date, until: date | None = None, max_pages: int | None = None) -> pd.DataFrame:
     cfg = sources()["usaspending"]
-    rows = _search(cfg["grant_codes"], GRANT_FIELDS, "Award Amount", since, "grant", cfg)
+    rows = _search(cfg["grant_codes"], GRANT_FIELDS, "Award Amount", since, "grant", cfg, until, max_pages)
     try:
-        rows += _search(cfg["loan_codes"], LOAN_FIELDS, "Loan Value", since, "loan", cfg)
+        rows += _search(cfg["loan_codes"], LOAN_FIELDS, "Loan Value", since, "loan", cfg, until, max_pages)
     except Exception as exc:
         log.warning("Kredi araması başarısız: %s", exc)
     if cfg.get("contracts_enabled", True):
         try:  # Federal sözleşmeler: şirketlere giden en büyük doğrudan federal para akışı
-            rows += _search(cfg["contract_codes"], GRANT_FIELDS, "Award Amount", since, "contract", cfg)
+            rows += _search(cfg["contract_codes"], GRANT_FIELDS, "Award Amount", since, "contract", cfg, until, max_pages)
         except Exception as exc:
             log.warning("Sözleşme araması başarısız: %s", exc)
     return schema.frame(rows)

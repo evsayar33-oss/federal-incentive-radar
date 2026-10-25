@@ -78,6 +78,12 @@ def format_signal(r: dict) -> str:
     if np.isfinite(r.get("q", np.nan)):
         det.append(f"q={r['q']:.2f}")
     lines.append("🔬 " + " · ".join(det))
+    need = cfg().get("live_confirm_n", E.cfg()["live_min_n"])
+    ln = int(r.get("live_n") or 0) if np.isfinite(r.get("live_n", 0) or 0) else 0
+    if ln < need:
+        lines.append(f"📜 <i>Geçmiş veriyle kanıtlandı. Canlı doğrulama sürüyor ({ln}/{need} sinyal).</i>")
+    elif np.isfinite(r.get("live_hit", np.nan)):
+        lines.append(f"✅ <i>Canlı doğrulandı: son {ln} sinyalde isabet %{r['live_hit'] * 100:.0f}.</i>")
     amt = pd.to_numeric(r.get("amount_usd"), errors="coerce")
     if pd.notna(amt) and amt > 0:
         lines.append(f"💵 Tutar: {amt / 1e6:,.0f} M$")

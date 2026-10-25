@@ -628,6 +628,7 @@ def annotate(events: pd.DataFrame, ev: pd.DataFrame, days: int | None = None) ->
             "explain": plain_text(b) if link_ok else
             "⚠️ Şirketin sektörü bu teşvik programıyla uyumsuz. Büyük olasılıkla rapordaki kalıp bir ifade; sinyal üretilmedi.",
             "rank": STATUS_RANK[b["status"]], "sector": sector, "link_ok": link_ok,
+            "live_n": _int(b.get("live_n")), "live_hit": b.get("live_hit", np.nan),
         })
     out = pd.DataFrame(rows)
     out["detail"] = [detail_text(r, r["status"]) for r in out.to_dict("records")]

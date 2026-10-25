@@ -4,6 +4,7 @@
   python -m radar.run weekly
   python -m radar.run demo            # internet olmadan sahte veriyle uçtan uca çalıştırma
   python -m radar.run telegram-test   # Telegram botunu dener, chat id'yi bulur
+  python -m radar.run history --years 5   # geçmiş veriyle kanıt tablosunu doldurur (backtest)
 """
 from __future__ import annotations
 
@@ -452,6 +453,36 @@ def weekly_learning(status: dict) -> None:
     status["metrics_rows"] = 0 if metrics is None else len(metrics)
 
 
+def cmd_history(args) -> None:
+    """Geçmiş veriyle kanıt tablosunu doldurur (backtest). Adımlar: olaylar → SIC → fiyatlar → kanıt."""
+    from . import history
+    from .sources import prices
+    status: dict = {}
+    try:
+        status["history"] = history.run(years=args.years, budget_minutes=args.budget)
+    except Exception as exc:
+        log.error(traceback.format_exc())
+        status["history"] = {"ok": False, "error": str(exc)[:300]}
+    try:
+        update_company_sic(status, limit=1500)
+    except Exception as exc:
+        status["company_sic"] = {"ok": False, "error": str(exc)[:300]}
+    try:
+        update_prices(prices, period=f"{int(args.years) + 2}y")
+        status["prices"] = {"ok": True}
+    except Exception as exc:
+        status["prices"] = {"ok": False, "error": str(exc)[:300]}
+    ev = evidence.refresh()
+    status["evidence"] = {} if ev.empty else ev[ev["level"] == "program_kind"]["status"].value_counts().to_dict()
+    if not ev.empty:
+        sig = evidence.annotate(store.read("events"), ev)
+        if not sig.empty:
+            store.write("event_signals", sig)
+    history.report(status)
+    diagnostics.write("history", status)
+    telegram.health("geçmiş veri yüklemesi (history)", status, True)
+
+
 def cmd_demo(args) -> None:
     from . import demo
     demo.build(days=args.days)
@@ -465,11 +496,14 @@ def main() -> None:
     s.add_argument("--force", action="store_true")
     sub.add_parser("weekly")
     sub.add_parser("telegram-test")
+    h = sub.add_parser("history")
+    h.add_argument("--years", type=float, default=5.0)
+    h.add_argument("--budget", type=float, default=100.0, help="dakika; dolarsa durur, sonra devam eder")
     d = sub.add_parser("demo")
     d.add_argument("--days", type=int, default=420)
     args = ap.parse_args()
     {"slot": cmd_slot, "weekly": cmd_weekly, "demo": cmd_demo,
-     "telegram-test": lambda _a: telegram.test()}[args.cmd](args)
+     "telegram-test": lambda _a: telegram.test(), "history": cmd_history}[args.cmd](args)
 
 
 if __name__ == "__main__":
