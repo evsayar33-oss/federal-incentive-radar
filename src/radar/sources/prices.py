@@ -49,8 +49,18 @@ def fetch(tickers: list[str], period: str = "3y") -> pd.DataFrame:
         log.warning("yfinance başarısız (%s), Stooq yedeğine geçiliyor", exc)
         df, missing = pd.DataFrame(columns=["date", "ticker", "close"]), set(tickers)
     extra = []
-    for t in sorted(missing)[:15]:
+    from .fallbacks import yahoo_chart
+    rng = period if period in ("1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max") else (
+        "5d" if period.endswith("d") else "5y")
+    for t in sorted(missing)[:60]:          # 1. yedek: Yahoo chart API (yfinance kütüphanesinden bağımsız)
         try:
+            got = yahoo_chart(t, rng)
+            if not got.empty:
+                extra.append(got)
+                continue
+        except Exception:
+            pass
+        try:                                 # 2. yedek: Stooq
             extra.append(_stooq(t))
         except Exception:
             pass

@@ -291,9 +291,52 @@ def test_basket_quality_filter():
     import pandas as pd
     from radar.evidence import BasketBook
     p = pd.DataFrame({"program": ["critical_minerals"] * 4, "kind": ["sec_10k", "sec_8k", "sec_10k", "award_grant"],
-                      "d": pd.to_datetime(["2026-01-01"] * 4), "tick_list": [["BXP"], ["MP"], ["ALB"], ["CAT"]]})
+                      "d": pd.to_datetime(["2026-01-01"] * 4), "tick_list": [["BXP"], ["MP"], ["ALB"], ["CAT"]],
+                      "strong": [False, True, False, True]})
     b = BasketBook(p, {"BXP": "Real Estate", "MP": "Materials", "CAT": "Industrials"})
     assert set(b.basket("critical_minerals", pd.Timestamp("2026-02-01"), 10)) == {"MP", "CAT"}
+
+
+def test_permanent_link_checks():
+    from radar.evidence import link_plausible, strong_link
+    from radar.sources.sec_edgar import sic_sector
+    assert sic_sector(6798) == "Real Estate" and sic_sector(3674) == "Information Technology"
+    assert sic_sector(2834) == "Health Care" and sic_sector(1311) == "Energy" and sic_sector(6770) == "Financials"
+    assert link_plausible("Real Estate", "critical_minerals") is False      # BRX gibi
+    assert link_plausible("Materials", "critical_minerals") is True
+    assert link_plausible(None, "critical_minerals") is None
+    assert strong_link("sec_8k", {"items": ["1.01", "9.01"]})                # önemli sözleşme
+    assert not strong_link("sec_8k", {"items": ["2.02", "9.01"]})            # rutin finansal sonuç
+    assert not strong_link("sec_8k", {"items": ["8.01"], "context_unverified": True})
+    assert not strong_link("sec_10k", {}) and strong_link("award_grant", {})
+
+
+def test_fallback_parsers_and_switch():
+    import pandas as pd
+    from radar import run, schema
+    from radar.sources import fallbacks as F
+    assert F.parse_bill_package("BILLS-119hr10879ih") == (119, "HR", "10879", "introduced")
+    assert F.parse_bill_package("BILLS-119s25es") == (119, "S", "25", "passed_chamber")
+    assert F.parse_bill_package("BILLS-119hjres7rh")[3] == "reported"
+    # Birincil çökerse yedek devreye girer ve durum "yedek" olarak raporlanır.
+    class Broken:
+        @staticmethod
+        def fetch(since):
+            raise RuntimeError("API kapalı")
+    old = F.REGISTRY["grants_gov"]
+    F.REGISTRY["grants_gov"] = lambda since: schema.frame([schema.event("grants_gov", "1", 4, "2026-10-01", "NOFO")])
+    import radar.sources as S
+    real = S.grants_gov
+    S.grants_gov = Broken
+    st = {}
+    try:
+        df = run.ingest("midday", {}, st, only=["grants_gov"])
+    finally:
+        F.REGISTRY["grants_gov"], S.grants_gov = old, real
+    assert st["grants_gov"]["via"] == "yedek" and st["grants_gov"]["ok"] and len(df) == 1
+    from radar import telegram
+    msg = telegram.health_message("r", st, True)
+    assert "♻️" in msg and "🔴" in msg
 
 
 if __name__ == "__main__":

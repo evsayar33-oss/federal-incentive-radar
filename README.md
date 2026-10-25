@@ -67,6 +67,7 @@ Bu değerler `config/priors.json` dosyasındadır. Siz değiştirebilirsiniz.
 | `CONGRESS_API_KEY` | Önerilir | Ücretsiz anahtar | https://api.congress.gov/sign-up/ |
 | `BEA_API_KEY` | Önerilir | Ücretsiz 36 karakterlik anahtar | https://apps.bea.gov/api/signup/ (girdi-çıktı yayılması için) |
 | `FRED_API_KEY` | İsteğe bağlı | Ücretsiz anahtar | https://fred.stlouisfed.org/docs/api/api_key.html (anahtarsız yol çalışmazsa yedek) |
+| `GOVINFO_API_KEY` | Önerilir | Ücretsiz api.data.gov anahtarı | https://api.data.gov/signup/ (yedek kaynaklar için) |
 | `TELEGRAM_BOT_TOKEN` | İsteğe bağlı | Bot token | Telegram → @BotFather → `/newbot` |
 | `TELEGRAM_CHAT_ID` | İsteğe bağlı | Sohbet numarası | Aşağıdaki Adım 6 |
 
@@ -179,6 +180,32 @@ Sistem hatalı kayıtları kendisi bulur ve düzeltir. Kod: `src/radar/autolabel
 | Sepet kalitesi | 10-K'daki kalıp ifadeyle sepete giren ilgisiz şirket | Sepete yalnızca güçlü bağ (ödül, 8-K) veya uygun sektör + ≥2 bildirim ile alır |
 
 Kararlar `labels/auto_labels.jsonl` ve `quality_issues` tablosuna gerekçeyle yazılır. Sizin etiketiniz her zaman otomatik etiketten önce gelir. Model otomatik etiketlerden daha düşük ağırlıkla öğrenir. Veri sorunları (bayat fiyat, sürekli boş kaynak, büyük inceleme kuyruğu) sağlık mesajına eklenir.
+
+### Kalıcı bağ denetimi (genel kural)
+
+Bir şirket ile bir teşvik programı arasındaki bağ iki testten geçer. Testler her olayda ve her zaman çalışır.
+
+1. **Sektör uyumu:** Şirketin sektörü programın sektörlerinden biri olmalıdır. Sektör önce ETF evreninden, yoksa SEC SIC kodundan (`company_sic` tablosu, haftalık güncellenir) alınır. Örnek: BRX bir gayrimenkul fonudur (SIC 6798). Kritik mineral programına bağlanamaz. Biyoteknoloji şirketlerindeki "Inflation Reduction Act" ifadeleri (ilaç fiyatı yasası) temiz enerjiye bağlanmaz.
+2. **Bağın gücü:** Federal ödül her zaman güçlü bağdır. 8-K yalnızca önemli olay maddesi (1.01, 1.02, 2.01, 7.01, 8.01) içeriyorsa güçlüdür. Rutin 8-K (2.02 finansal sonuç), 10-K ve 10-Q güçlü bağ sayılmaz.
+
+Uyumsuz bağ kanıt hesabına girmez, sepete giremez ve Telegram sinyali üretmez. Arayüzde ⚠️ ile gösterilir. Her durum `quality_issues` tablosuna yazılır.
+
+### Yedek kaynaklar
+
+Birincil kaynak hata verirse veya alışılmadık biçimde boş dönerse yedek kaynak otomatik çalışır. Yedekler aynı olay kimliğini üretir, bu yüzden kayıtlar çiftlenmez. Yedek kullanılınca Telegram sağlık mesajı ♻️ ile bildirir.
+
+| Birincil | Yedek |
+|---|---|
+| Federal Register API | GovInfo FR paketleri |
+| Congress.gov API | GovInfo BILLS koleksiyonu |
+| USAspending (ödül araması) | USAspending (işlem araması) |
+| Grants.gov search2 | Grants.gov eski REST uç noktası |
+| SEC tam metin arama | data.sec.gov: bilinen şirketlerin yeni 8-K'ları |
+| yfinance | Yahoo chart API (2 sunucu) → Stooq |
+| FRED CSV | FRED API (mevcut) |
+| GDELT | Google News RSS (mevcut) |
+
+GovInfo için `GOVINFO_API_KEY` secret'ını ekleyin (https://api.data.gov/signup/, ücretsiz). Yoksa `CONGRESS_API_KEY` kullanılır (aynı tür anahtar).
 
 ## 4. Arayüz: basit ve uzman görünüm
 

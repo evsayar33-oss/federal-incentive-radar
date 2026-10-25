@@ -133,6 +133,7 @@ def prepare(events: pd.DataFrame) -> pd.DataFrame:
         return e
     e["kind"] = [event_kind(r) for r in e.to_dict("records")]
     e["tick_list"] = e["tickers"].map(_tickers)
+    e["strong"] = [strong_link(k, _extra(r)) for k, r in zip(e["kind"], e.to_dict("records"))]
     e["d"] = pd.to_datetime(e["date"], errors="coerce")
     e["program"] = e["program"].fillna("other").astype(str)
     return e.dropna(subset=["d"])
@@ -141,10 +142,8 @@ def prepare(events: pd.DataFrame) -> pd.DataFrame:
 class BasketBook:
     """Program → geçmişte doğrudan olayı olan şirketler. Yalnızca olay tarihinden önceki bilgi kullanılır."""
 
-    STRONG_KINDS = {"award_grant", "award_loan", "award_contract", "sec_8k"}
-
     def __init__(self, prepared: pd.DataFrame, sectors: dict[str, str] | None = None):
-        x = prepared[prepared["tick_list"].map(len) > 0][["program", "kind", "d", "tick_list"]].explode("tick_list")
+        x = prepared[prepared["tick_list"].map(len) > 0][["program", "kind", "d", "tick_list", "strong"]].explode("tick_list")
         self.x = x.rename(columns={"tick_list": "ticker"}).sort_values("d")
         self.sectors = sectors or {}
         self.prog_sectors = {pid: set(p["sectors"]) for pid, p in programs()["programs"].items()}
@@ -160,7 +159,7 @@ class BasketBook:
             g = g[g["ticker"].isin(allowed)]
         if g.empty:
             return []
-        st = g.groupby("ticker").agg(n=("kind", "size"), strong=("kind", lambda k: bool(set(k) & self.STRONG_KINDS)))
+        st = g.groupby("ticker").agg(n=("kind", "size"), strong=("strong", "any"))
         ok_sec = self.prog_sectors.get(program) or set()
         sec = st.index.map(lambda t: self.sectors.get(t))
         known = sec.map(lambda v: isinstance(v, str))
@@ -172,11 +171,40 @@ class BasketBook:
 
 
 def universe_sectors() -> dict[str, str]:
+    """Şirket sektörü: önce ETF evreni (GICS), yoksa SEC SIC kodundan türetilen sektör."""
+    out: dict[str, str] = {}
+    s = store.read("company_sic")
+    if not s.empty:
+        s = s[s["sector"].fillna("").astype(str) != ""]
+        out.update(dict(zip(s["ticker"].astype(str), s["sector"].astype(str))))
     u = store.read("universe")
-    if u.empty or "sector" not in u.columns:
-        return {}
-    u = u.dropna(subset=["sector"])
-    return dict(zip(u["ticker"].astype(str), u["sector"].astype(str)))
+    if not u.empty and "sector" in u.columns:
+        u = u.dropna(subset=["sector"])
+        out.update(dict(zip(u["ticker"].astype(str), u["sector"].astype(str))))
+    return out
+
+
+MATERIAL_8K_ITEMS = {"1.01", "1.02", "2.01", "7.01", "8.01"}
+
+
+def strong_link(kind: str, extra: dict) -> bool:
+    """Şirket–program bağı güçlü mü? Ödül her zaman güçlüdür. 8-K yalnızca önemli olay maddesi
+    (sözleşme, varlık edinimi, duyuru, diğer olay) içeriyorsa güçlüdür; finansal sonuç (2.02) gibi
+    rutin 8-K'lardaki kalıp ifadeler güçlü bağ sayılmaz. 10-K/10-Q hiçbir zaman güçlü değildir."""
+    if kind.startswith("award_"):
+        return True
+    if kind == "sec_8k":
+        items = {str(i).strip() for i in (extra.get("items") or [])}
+        return bool(items & MATERIAL_8K_ITEMS) and not extra.get("context_unverified")
+    return False
+
+
+def link_plausible(sector: str | None, program: str) -> bool | None:
+    """Kalıcı genel denetim: şirketin sektörü programın sektörlerinden biri mi? Sektör bilinmiyorsa None."""
+    if not isinstance(sector, str) or not sector:
+        return None
+    ps = programs()["programs"].get(program, {}).get("sectors")
+    return True if not ps else sector in ps
 
 
 def targets(prepared: pd.DataFrame, allowed: set[str] | None = None,
@@ -189,6 +217,8 @@ def targets(prepared: pd.DataFrame, allowed: set[str] | None = None,
         base = {"event_id": r["event_id"], "date": r["d"], "program": r["program"], "kind": r["kind"]}
         if r["tick_list"]:
             for t in r["tick_list"]:
+                if link_plausible((sectors or {}).get(t), r["program"]) is False:
+                    continue   # sektörü programla uyumsuz şirket kanıtı kirletmez
                 rows.append({**base, "role": "direct", "target": t, "members": t})
             continue
         b = book.basket(r["program"], r["d"], c["basket_max"], allowed)
@@ -482,7 +512,8 @@ def lookup(index: dict, program: str, kind: str, role: str) -> dict | None:
     Genel seviyeye yalnızca özel anahtarda veri yetersizse inilir. Böylece bir programın kanıtı
     (ör. CHIPS 8-K) başka bir programın aynı tür haberine yanlışlıkla taşınmaz."""
     fallback = None
-    for _level, key in candidate_keys(program, kind, role):
+    # "role" seviyesi (ör. tüm sepet olayları) bir haber TÜRÜ değildir; tek başına sinyal üretmez.
+    for _level, key in candidate_keys(program, kind, role)[:3]:
         r = index.get(key)
         if r is None:
             continue
@@ -551,14 +582,18 @@ def annotate(events: pd.DataFrame, ev: pd.DataFrame, days: int | None = None) ->
     if recent.empty:
         return pd.DataFrame()
     # Sepet için TÜM geçmiş olaylar kullanılır; hedefler yalnızca son olaylar için üretilir.
-    book = BasketBook(p, universe_sectors())
+    csec = universe_sectors()
+    book = BasketBook(p, csec)
     etfs = sector_etfs()
     index = {r["key"]: r for r in ev.to_dict("records")} if ev is not None and not ev.empty else {}
     rows = []
     for r in recent.to_dict("records"):
-        roles = []
+        roles, link_ok, comp_sec = [], True, ""
         if r["tick_list"]:
-            roles.append(("direct", ",".join(r["tick_list"])))
+            ok = [t for t in r["tick_list"] if link_plausible(csec.get(t), r["program"]) is not False]
+            link_ok = bool(ok)
+            comp_sec = csec.get((ok or r["tick_list"])[0], "")
+            roles.append(("direct", ",".join(ok or r["tick_list"])))
         else:
             b = book.basket(r["program"], r["d"] + pd.Timedelta(days=1), c["basket_show"])
             if len(b) >= c["basket_min"]:
@@ -575,7 +610,11 @@ def annotate(events: pd.DataFrame, ev: pd.DataFrame, days: int | None = None) ->
             best_role, best_tick = roles[0]
         b = best or {"status": "collecting", "n_clusters": 0}
         sec = _dominant_sector(r.get("sector_weights"))
+        if comp_sec in etfs:          # doğrudan şirket haberi: şirketin kendi sektörü
+            sec = comp_sec
         sector = f"{SECTOR_TR.get(sec, sec)} ({etfs[sec]})" if sec in etfs else ""
+        if not link_ok:               # şirket ile program uyumsuz → sinyal üretilmez
+            b = {**b, "status": "unclear"} if b.get("status") in ("proven", "promising") else b
         rows.append({
             "event_id": r["event_id"], "date": r["d"].date().isoformat(), "title": r["title"], "url": r.get("url", ""),
             "source": r["source"], "program": r["program"], "program_name": r.get("program_name", ""),
@@ -586,7 +625,9 @@ def annotate(events: pd.DataFrame, ev: pd.DataFrame, days: int | None = None) ->
             "direction": b.get("direction", ""), "effect": b.get("post_mean", np.nan),
             "n_clusters": _int(b.get("n_clusters")), "consistency": b.get("consistency", np.nan),
             "oos_hit": b.get("oos_hit", np.nan), "oos_n": _int(b.get("oos_n")), "q": b.get("q", np.nan),
-            "explain": plain_text(b), "rank": STATUS_RANK[b["status"]], "sector": sector,
+            "explain": plain_text(b) if link_ok else
+            "⚠️ Şirketin sektörü bu teşvik programıyla uyumsuz. Büyük olasılıkla rapordaki kalıp bir ifade; sinyal üretilmedi.",
+            "rank": STATUS_RANK[b["status"]], "sector": sector, "link_ok": link_ok,
         })
     out = pd.DataFrame(rows)
     out["detail"] = [detail_text(r, r["status"]) for r in out.to_dict("records")]

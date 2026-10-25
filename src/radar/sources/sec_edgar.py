@@ -83,3 +83,48 @@ def company_tickers() -> pd.DataFrame:
     df = df.rename(columns={"cik_str": "cik", "title": "name"})
     df["ticker"] = df["ticker"].str.upper()
     return df[["ticker", "name", "cik"]]
+
+
+# ---------------------------------------------------------------- şirket sektörü (SIC) — kalıcı bağ denetimi için
+
+SIC_RANGES = [  # (başlangıç, bitiş, sektör) — ilk eşleşen kazanır
+    (1300, 1399, "Energy"), (2900, 2999, "Energy"), (1000, 1499, "Materials"), (1500, 1799, "Industrials"),
+    (2000, 2199, "Consumer Staples"), (2200, 2399, "Consumer Discretionary"), (2400, 2699, "Materials"),
+    (2700, 2799, "Communication Services"), (2830, 2836, "Health Care"), (2800, 2899, "Materials"),
+    (3000, 3399, "Materials"), (3570, 3579, "Information Technology"), (3711, 3716, "Consumer Discretionary"),
+    (3840, 3851, "Health Care"), (3600, 3699, "Information Technology"), (3800, 3899, "Information Technology"),
+    (3400, 3799, "Industrials"), (3900, 3999, "Consumer Discretionary"), (4800, 4899, "Communication Services"),
+    (4900, 4999, "Utilities"), (4000, 4799, "Industrials"), (5000, 5199, "Industrials"),
+    (5400, 5499, "Consumer Staples"), (5200, 5999, "Consumer Discretionary"), (6500, 6799, "Real Estate"),
+    (6000, 6499, "Financials"), (7370, 7379, "Information Technology"), (8000, 8099, "Health Care"),
+    (7000, 8999, "Industrials"),
+]
+
+
+def sic_sector(sic) -> str | None:
+    try:
+        s = int(sic)
+    except (TypeError, ValueError):
+        return None
+    if s == 6798:   # REIT
+        return "Real Estate"
+    if s == 6770:   # boş çek şirketi (SPAC)
+        return "Financials"
+    for lo, hi, sec in SIC_RANGES:
+        if lo <= s <= hi:
+            return sec
+    return None
+
+
+def company_sic(ciks: list[str]) -> pd.DataFrame:
+    """data.sec.gov submissions → SIC kodu ve sektör. Sonuç 'company_sic' tablosunda önbelleklenir."""
+    rows = []
+    for cik in ciks:
+        try:
+            d = http.get_json(f"https://data.sec.gov/submissions/CIK{int(cik):010d}.json", retries=1)
+        except Exception:
+            continue
+        for t in d.get("tickers") or [""]:
+            rows.append({"cik": str(int(cik)), "ticker": str(t).upper(), "sic": str(d.get("sic") or ""),
+                         "sic_desc": d.get("sicDescription") or "", "sector": sic_sector(d.get("sic")) or ""})
+    return pd.DataFrame(rows)

@@ -97,6 +97,8 @@ def notify(signals: pd.DataFrame, new_ids: set[str], run_id: str) -> int:
     fresh = (date.today() - timedelta(days=c.get("max_event_age_days", 3))).isoformat()
     s = signals[signals["event_id"].astype(str).isin(new_ids) & signals["status"].isin(allowed)
                 & (signals["date"].astype(str) >= fresh)]
+    if "link_ok" in s.columns:
+        s = s[s["link_ok"].astype(str).str.lower() != "false"]
     if c.get("min_abs_effect"):
         s = s[pd.to_numeric(s["effect"], errors="coerce").abs() >= c["min_abs_effect"]]
     old = store.read("notifications")
@@ -180,7 +182,10 @@ def health_message(title: str, status: dict, ok: bool) -> str:
     probs, good = [], []
     for k, v in status.items():
         if isinstance(v, dict) and "ok" in v:
-            if v["ok"]:
+            if v["ok"] and v.get("via") == "yedek":
+                probs.append(f"♻️ <b>{e(k)}</b>: birincil kaynak çalışmadı ({e(str(v.get('primary_error'))[:120])}); "
+                             f"yedek kaynaktan {v.get('rows', 0)} kayıt alındı")
+            elif v["ok"]:
                 good.append(f"{k}" + (f" ({v['rows']})" if "rows" in v else ""))
             else:
                 probs.append(f"❌ <b>{e(k)}</b>: {e(str(v.get('error') or v.get('reason') or 'hata'))[:160]}")
@@ -209,7 +214,7 @@ def health(title: str, status: dict, ok: bool) -> bool:
     if not enabled() or not c.get("health_messages", True):
         return False
     bad = (not ok) or bool(status.get("fatal")) or bool(status.get("quality")) or any(
-        isinstance(v, dict) and v.get("ok") is False for v in status.values())
+        isinstance(v, dict) and (v.get("ok") is False or v.get("via") == "yedek") for v in status.values())
     if not bad and not any(s in title for s in c.get("health_ok_slots", ["close", "weekly"])):
         return False
     return send(health_message(title, status, ok))
