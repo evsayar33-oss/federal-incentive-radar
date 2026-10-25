@@ -109,7 +109,13 @@ def score_matrix(scores: pd.DataFrame) -> pd.DataFrame:
 def relative_performance(prices: pd.DataFrame, etf: str, bench: str = "SPY", days: int = 252) -> pd.DataFrame:
     if prices.empty:
         return pd.DataFrame()
-    p = prices[prices["ticker"].isin([etf, bench])].pivot_table(index="date", columns="ticker", values="close").sort_index().tail(days)
+    q = prices[prices["ticker"].isin([etf, bench])].copy()
+    q["close"] = pd.to_numeric(q["close"], errors="coerce")
+    q["date"] = pd.to_datetime(q["date"], errors="coerce")
+    q = q.dropna(subset=["close", "date"])
+    if q.empty:
+        return pd.DataFrame()
+    p = q.pivot_table(index="date", columns="ticker", values="close", aggfunc="last").sort_index().tail(days)
     if etf not in p.columns or bench not in p.columns or p.empty:
         return pd.DataFrame()
     rel = (p[etf] / p[etf].iloc[0]) / (p[bench] / p[bench].iloc[0]) - 1

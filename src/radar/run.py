@@ -144,6 +144,9 @@ def price_tickers(extra_limit: int | None = None) -> list[str]:
 def update_prices(prices_mod, period: str) -> None:
     df = prices_mod.fetch(price_tickers(), period=period)
     if not df.empty:
+        df = df.copy()
+        df["close"] = pd.to_numeric(df["close"], errors="coerce")
+        df = df.dropna(subset=["close"])
         store.upsert("prices", df, ["date", "ticker"])
 
 
