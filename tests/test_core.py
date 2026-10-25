@@ -45,6 +45,14 @@ def test_grants_amount_search():
     assert find_number({"data": {"synopsis": {"awardCeiling": "", "estimatedFunding": "25,000,000"}}}) == 25_000_000
 
 
+def test_google_news_rss():
+    from radar.sources.gdelt import parse_rss
+    xml = ('<rss><channel><item><title>DOE awards $1B for grid</title><link>https://x/a</link>'
+           '<pubDate>Fri, 23 Oct 2026 14:00:00 GMT</pubDate><source url="https://r">Reuters</source></item></channel></rss>')
+    rows = parse_rss(xml, "q")
+    assert rows[0]["date"] == "2026-10-23" and rows[0]["agency"] == "Reuters" and rows[0]["stage"] == 0
+
+
 def test_fred_csv():
     from radar.sources.fred_csv import parse_csv
     df = parse_csv("observation_date,EPUFISCAL\n2026-01-01,120.5\n2026-02-01,.\n", "EPUFISCAL")

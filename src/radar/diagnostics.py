@@ -47,6 +47,8 @@ def _table_summary() -> dict:
     uni = store.read("universe")
     if not uni.empty and "sector" in uni.columns:
         out["universe_by_sector"] = uni["sector"].fillna("(yok)").value_counts().to_dict()
+        for c in ("sp500_weight", "r2000_weight", "sector_weight"):
+            out[f"universe_{c}_n"] = int(pd.to_numeric(uni[c], errors="coerce").gt(0).sum()) if c in uni.columns else 0
     pr = store.read("prices")
     if not pr.empty:
         out["prices"] = {"tickers": int(pr["ticker"].nunique()), "first": str(pr["date"].min()),
