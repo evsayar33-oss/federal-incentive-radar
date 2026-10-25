@@ -77,6 +77,20 @@ def entity_overrides(labels: pd.DataFrame) -> pd.DataFrame:
 
 # ---------------------------------------------------------------- toplama
 
+def apply_company_sector(ev: pd.DataFrame, uni: pd.DataFrame) -> pd.DataFrame:
+    """Eşleşen şirketin sektörü biliniyorsa, programı belirsiz ödüllerde o sektörü kullan."""
+    if ev.empty or uni.empty or "sector" not in uni.columns:
+        return ev
+    sec = dict(zip(uni["ticker"].astype(str), uni["sector"]))
+    ev = ev.copy()
+    for i in ev.index:
+        t = str(ev.at[i, "tickers"] or "").split(",")[0].strip()
+        s = sec.get(t)
+        if t and isinstance(s, str) and s and ev.at[i, "source"] == "usaspending" and ev.at[i, "program"] == "other":
+            ev.at[i, "sector_weights"] = json.dumps({s: 1.0})
+    return ev
+
+
 def ingest(slot: str, state: dict, run_status: dict) -> pd.DataFrame:
     from .sources import (congress, federal_register, fred_csv, gdelt, grants_gov, prices,
                           sec_edgar, treasury_dts, usaspending)
@@ -147,6 +161,7 @@ def process(raw: pd.DataFrame, run_id: str, asof: date, slot: str, run_status: d
         uni = store.read("universe")
         if not uni.empty:
             cls, review = Matcher(uni, entity_overrides(labels)).apply(cls)
+            cls = apply_company_sector(cls, uni)
             if not review.empty:
                 store.upsert("review_queue", review, "recipient_norm")
         else:
@@ -175,7 +190,11 @@ def score_and_report(events: pd.DataFrame, new_events: pd.DataFrame, run_id: str
     regime_mult, regime_info = scoring.regime_multiplier(store.read("fred"))
     dts_mult, mom = scoring.dts_sector_momentum(store.read("outlays"))
     prev = store.read("scores_latest")
-    scores, prog, ev_params = scoring.simulate(rel, asof, state, regime_mult, dts_mult)
+    from .settings import priors as _pri
+    from .sources import bea_io
+    sp = _pri().get("spillover", {})
+    io_T = bea_io.transform(store.read("io_matrix"), float(sp.get("weight", 0.5))) if sp.get("enabled", True) else None
+    scores, prog, ev_params = scoring.simulate(rel, asof, state, regime_mult, dts_mult, io_T=io_T)
     if not scores.empty:
         scores.insert(0, "asof", asof.isoformat())
         scores.insert(0, "run_id", run_id)
@@ -196,6 +215,7 @@ def score_and_report(events: pd.DataFrame, new_events: pd.DataFrame, run_id: str
         learn.write_ledger(store.read("scores_history"), asof.isoformat(), state, __version__)
     store.save_json("context", {"run_id": run_id, "asof": asof.isoformat(), "regime": regime_info,
                                 "dts_multipliers": dts_mult, "version": __version__,
+                                "spillover": "açık (BEA I-O)" if io_T is not None else "kapalı (yalnızca doğrudan etki)",
                                 "drift": learn.program_psi(events, asof)})
 
 
@@ -251,6 +271,17 @@ def cmd_weekly(args) -> None:
         update_prices(prices, period=sources()["prices"]["history_period"])
     except Exception as exc:
         status["prices_error"] = str(exc)[:300]
+    try:
+        from .sources import bea_io
+        io = bea_io.fetch()
+        if not io.empty:
+            store.write("io_matrix", io)
+            status["bea_io"] = {"ok": True, "year": str(io["bea_year"].iloc[0])}
+        else:
+            status["bea_io"] = {"ok": False, "reason": "BEA_API_KEY yok"}
+    except Exception as exc:
+        log.warning("BEA girdi-çıktı alınamadı: %s", exc)
+        status["bea_io"] = {"ok": False, "error": str(exc)[:300]}
     weekly_learning(status)
     store.append("runs", pd.DataFrame([{"run_id": datetime.now().strftime("%Y-%m-%dT%H:%M") + "_weekly",
                                         "slot": "weekly", "ok": True, "seconds": 0,
@@ -278,6 +309,7 @@ def weekly_learning(status: dict) -> None:
         uni = store.read("universe")
         if not uni.empty:
             recl, review = Matcher(uni, entity_overrides(labels)).apply(recl)
+            recl = apply_company_sector(recl, uni)
             store.write("review_queue", review)
         store.write("events", recl)
     state["history"] = (state.get("history", []) + [{"date": date.today().isoformat(),

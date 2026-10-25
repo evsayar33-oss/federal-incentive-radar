@@ -108,6 +108,8 @@ def event_parameters(ev: pd.DataFrame, asof: date, state: dict) -> pd.DataFrame:
     e["_rank"] = e.groupby(["program", "stage", "amount_known"]).cumcount() + 1
     e["dup_factor"] = np.where(e["amount_known"], 1.0, 1.0 / np.sqrt(e["_rank"]))
     e["prog_eff"] = e["program"].map(lambda p: float(eff_prog.get(p, 1.0)))
+    atw = pr.get("amount_type_weight", {})
+    e["prog_eff"] = e["prog_eff"] * e["amount_type"].fillna("").astype(str).map(lambda t: float(atw.get(t, 1.0)))
     for j, h in enumerate(pr["horizons_days"]):
         base = e["incentive_type"].map(lambda t: pr["timing_share"].get(t, pr["timing_share"]["mixed"])[j])
         boost = st.map(lambda s: pr["stage_timing_boost"][s])
@@ -119,7 +121,7 @@ def event_parameters(ev: pd.DataFrame, asof: date, state: dict) -> pd.DataFrame:
 # ---------------------------------------------------------------- Monte Carlo
 
 def simulate(ev: pd.DataFrame, asof: date, state: dict, regime_mult: float,
-             dts_mult: dict[str, float], seed: int = 7) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+             dts_mult: dict[str, float], seed: int = 7, io_T: np.ndarray | None = None) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     pr = priors()
     H = pr["horizons_days"]
     N = int(pr["mc_samples"])
@@ -136,6 +138,9 @@ def simulate(ev: pd.DataFrame, asof: date, state: dict, regime_mult: float,
         for s, w in d.items():
             if s in SECTORS:
                 W[i, SECTORS.index(s)] = w / tot
+    W_direct = W.copy()
+    if io_T is not None:  # BEA girdi-çıktı: tedarik zinciri üzerinden dolaylı sektör etkisi
+        W = W @ io_T
     det = (e["amount_base"] * e["decay"] * e["dup_factor"] * e["prog_eff"]).to_numpy()
     sig = e["sigma"].to_numpy()
     p = e["p_stage"].clip(0.01, 0.999).to_numpy()
@@ -159,6 +164,9 @@ def simulate(ev: pd.DataFrame, asof: date, state: dict, regime_mult: float,
             flows[j] += (W[a:b] * t[:, None]).T @ r
     flows *= (sect_mult[:, None] * sect_noise)[None, :, :]
 
+    # Dolaylı (tedarik zinciri) payı: ortalama akış üzerinden.
+    mean_w = (det * p * e[f"t_{H[1]}"].to_numpy())
+    tot_s, dir_s = mean_w @ W, mean_w @ W_direct
     lo, hi = pr["score_log10_floor"], pr["score_log10_cap"]
     rows = []
     for j, h in enumerate(H):
@@ -167,7 +175,8 @@ def simulate(ev: pd.DataFrame, asof: date, state: dict, regime_mult: float,
             score = 100 * np.clip((math.log10(max(q50, 1.0)) - lo) / (hi - lo), 0, 1)
             rows.append({"sector": s, "horizon_days": h, "p10": q10, "p50": q50, "p90": q90,
                          "score": round(float(score), 1), "n_events": int((W[:, k] > 0).sum()),
-                         "sector_mult": round(float(sect_mult[k]), 3)})
+                         "sector_mult": round(float(sect_mult[k]), 3),
+                         "indirect_share": round(float(1 - dir_s[k] / tot_s[k]), 3) if tot_s[k] > 0 else 0.0})
     scores = pd.DataFrame(rows)
 
     # Program × sektör beklenen katkı (1 yıl ufku, ortalama).

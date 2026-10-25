@@ -1,0 +1,37 @@
+name: Canlı tutma (60 gün koruması)
+
+# GitHub, public depolarda 60 gün etkinlik olmazsa zamanlanmış işleri kapatır.
+# Bu iş iki katmanlı koruma sağlar:
+#  1. Radar iş akışlarını API ile "etkin" duruma getirir (kapanmışsa yeniden açar).
+#  2. Ayda bir main dalına küçük bir zaman damgası commit'i atar (depo etkinliği).
+on:
+  schedule:
+    - cron: "41 6 1,15 * *"   # her ayın 1'i ve 15'i
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: İş akışlarını etkin tut
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for wf in radar.yml weekly.yml keepalive.yml; do
+            gh api -X PUT "repos/${{ github.repository }}/actions/workflows/$wf/enable" && echo "$wf etkin" || echo "$wf: uyarı"
+          done
+      - name: Ayda bir etkinlik commit'i
+        run: |
+          if [ "$(date -u +%d)" = "01" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            date -u +%Y-%m-%dT%H:%MZ > .github/keepalive.txt
+            git config user.name "radar-bot"
+            git config user.email "radar-bot@users.noreply.github.com"
+            git add .github/keepalive.txt
+            git commit -m "keepalive: $(date -u +%Y-%m-%d)" && git push || echo "değişiklik yok"
+          fi

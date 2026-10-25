@@ -53,6 +53,39 @@ def test_google_news_rss():
     assert rows[0]["date"] == "2026-10-23" and rows[0]["agency"] == "Reuters" and rows[0]["stage"] == 0
 
 
+def test_bea_spillover():
+    import numpy as np
+    from radar.settings import SECTORS
+    from radar.sources import bea_io
+    codes = ["11", "21", "22", "23", "31G", "42", "44RT", "48TW", "51", "FIRE", "PROF", "6", "7", "81"]
+    rows = []
+    for r in codes:
+        for c in codes:
+            v = 1.2 if r == c else 0.02
+            if r == "21" and c == "31G":
+                v = 0.15        # imalat talebi madenciliği çeker
+            rows.append({"RowCode": r, "RowDescr": r, "ColCode": c, "ColDescr": c, "DataValue": f"{v}", "Year": "2023"})
+            rows.append({"RowCode": r, "RowDescr": r, "ColCode": c, "ColDescr": c, "DataValue": "9", "Year": "2019"})
+    S, year = bea_io.to_sector_matrix(bea_io.parse(rows))
+    assert year == "2023" and S.shape == (11, 11)
+    # Bilgi teknolojisine şok → Enerji/Malzemeye dolaylı etki doğmalı
+    assert S.loc["Energy", "Information Technology"] > 0.01
+    T = bea_io.transform(S.reset_index(names="sector"), 0.5)
+    w = np.zeros(11); w[SECTORS.index("Information Technology")] = 1.0
+    tot = w @ T
+    assert tot[SECTORS.index("Energy")] > 0 and tot.sum() > 1.0
+
+
+def test_contract_type():
+    from radar import schema
+    from radar.classify import Classifier
+    df = schema.frame([schema.event("usaspending", "k", 5, "2026-10-01", "Navy: HUNTINGTON INGALLS",
+                                    text="submarine construction", amount_usd=9e8,
+                                    amount_type="contract_obligation", agency="Department of Defense")])
+    out = Classifier(load_model=False).classify(df)
+    assert out.loc[0, "incentive_type"] == "contract" and bool(out.loc[0, "relevant"])
+
+
 def test_fred_csv():
     from radar.sources.fred_csv import parse_csv
     df = parse_csv("observation_date,EPUFISCAL\n2026-01-01,120.5\n2026-02-01,.\n", "EPUFISCAL")

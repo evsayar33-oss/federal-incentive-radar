@@ -29,7 +29,7 @@ def parse(results: list[dict], kind: str) -> list[dict]:
             amount = r.get("Award Amount")
             face = amount
             d = r.get("Start Date")
-            atype = "obligation"
+            atype = "contract_obligation" if kind == "contract" else "obligation"
         gid = r.get("generated_internal_id") or r.get("Award ID")
         rows.append(schema.event(
             "usaspending", f"{kind}-{r.get('Award ID')}", 5, d or "",
@@ -56,6 +56,8 @@ def _search(codes: list[str], fields: list[str], sort: str, since: date, kind: s
         }
         if kind == "grant":
             body["filters"]["award_amounts"] = [{"lower_bound": cfg["min_award_usd"]}]
+        elif kind == "contract":
+            body["filters"]["award_amounts"] = [{"lower_bound": cfg["contract_min_usd"]}]
         data = http.post_json(cfg["url"], json=body)
         res = data.get("results") or []
         rows.extend(parse(res, kind))
@@ -71,4 +73,9 @@ def fetch(since: date) -> pd.DataFrame:
         rows += _search(cfg["loan_codes"], LOAN_FIELDS, "Loan Value", since, "loan", cfg)
     except Exception as exc:
         log.warning("Kredi araması başarısız: %s", exc)
+    if cfg.get("contracts_enabled", True):
+        try:  # Federal sözleşmeler: şirketlere giden en büyük doğrudan federal para akışı
+            rows += _search(cfg["contract_codes"], GRANT_FIELDS, "Award Amount", since, "contract", cfg)
+        except Exception as exc:
+            log.warning("Sözleşme araması başarısız: %s", exc)
     return schema.frame(rows)

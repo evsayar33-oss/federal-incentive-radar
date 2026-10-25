@@ -81,7 +81,8 @@ class Classifier:
     @staticmethod
     def default_incentive_type(row) -> str:
         if row.get("source") == "usaspending":
-            return "loan" if "loan" in str(row.get("amount_type", "")) else "grant"
+            at = str(row.get("amount_type", ""))
+            return "loan" if "loan" in at else ("contract" if "contract" in at else "grant")
         if row.get("source") == "grants_gov":
             return "grant"
         return "mixed"

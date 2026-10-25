@@ -1,0 +1,35 @@
+# BEA sektör düzeyi girdi-çıktı kodları → GICS-benzeri 11 sektör (paylar toplamı 1).
+# Kaynak tablo: BEA InputOutput TableID 56 (Industry-by-Commodity Total Requirements, Sector Level).
+# Kod tanınmazsa açıklama (RowDescr/ColDescr) içindeki anahtar kelimeyle eşlenir.
+table_id: 56
+codes:
+  "11":   {"Consumer Staples": 1.0}                                   # Tarım, ormancılık, balıkçılık
+  "21":   {"Energy": 0.6, "Materials": 0.4}                           # Madencilik
+  "22":   {"Utilities": 1.0}                                          # Kamu hizmetleri
+  "23":   {"Industrials": 0.7, "Real Estate": 0.3}                    # İnşaat
+  "31G":  {"Information Technology": 0.25, "Industrials": 0.30, "Materials": 0.20,
+           "Health Care": 0.10, "Consumer Discretionary": 0.10, "Consumer Staples": 0.05}   # İmalat
+  "42":   {"Industrials": 1.0}                                        # Toptan ticaret
+  "44RT": {"Consumer Discretionary": 0.6, "Consumer Staples": 0.4}    # Perakende
+  "48TW": {"Industrials": 1.0}                                        # Ulaştırma ve depolama
+  "51":   {"Communication Services": 0.6, "Information Technology": 0.4}   # Bilgi
+  "FIRE": {"Financials": 0.6, "Real Estate": 0.4}                     # Finans, sigorta, gayrimenkul
+  "PROF": {"Information Technology": 0.4, "Industrials": 0.6}         # Profesyonel ve iş hizmetleri
+  "6":    {"Health Care": 1.0}                                        # Eğitim ve sağlık hizmetleri
+  "7":    {"Consumer Discretionary": 1.0}                             # Sanat, eğlence, konaklama
+  "81":   {"Consumer Discretionary": 1.0}                             # Diğer hizmetler
+keywords:
+  agriculture: "11"
+  mining: "21"
+  utilities: "22"
+  construction: "23"
+  manufacturing: "31G"
+  wholesale: "42"
+  retail: "44RT"
+  transportation: "48TW"
+  information: "51"
+  finance: "FIRE"
+  professional: "PROF"
+  educational: "6"
+  arts: "7"
+  other services: "81"

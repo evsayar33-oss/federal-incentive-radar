@@ -61,6 +61,8 @@ Bu değerler `config/priors.json` dosyasındadır. Siz değiştirebilirsiniz.
 |---|---|---|---|
 | `SEC_USER_AGENT` | Evet | `AdınızSoyadınız eposta@ornek.com` | SEC, ad ve e-posta ister. Anahtar gerekmez. |
 | `CONGRESS_API_KEY` | Önerilir | Ücretsiz anahtar | https://api.congress.gov/sign-up/ |
+| `BEA_API_KEY` | Önerilir | Ücretsiz 36 karakterlik anahtar | https://apps.bea.gov/api/signup/ (girdi-çıktı yayılması için) |
+| `FRED_API_KEY` | İsteğe bağlı | Ücretsiz anahtar | https://fred.stlouisfed.org/docs/api/api_key.html (anahtarsız yol çalışmazsa yedek) |
 
 Diğer tüm kaynaklar anahtar istemez.
 
@@ -102,6 +104,15 @@ Token yoksa da etiket verebilirsiniz. Arayüz bir dosya indirir. Siz onu `data` 
 Önemli olaylarda sistem bir GitHub Issue açar. GitHub mobil uygulamasını kurun ve depoyu "Watch" yapın. Bildirimler telefonunuza gelir. Kapatmak için `config/sources.yaml` içinde `create_github_issue: false` yazın.
 
 ---
+
+### Federal sözleşmeler ve tedarik zinciri etkisi
+
+- **Sözleşmeler:** USAspending'den 50 milyon $ üstü federal sözleşmeler toplanır. Sözleşme bir teşvik değil, satın almadır. Bu yüzden tutarın %35'i sayılır (`config/priors.json` → `amount_type_weight`).
+- **BEA girdi-çıktı yayılması:** Haftalık iş, BEA'nın sektör düzeyi "Total Requirements" tablosunu (TableID 56) indirir. Bir sektöre gelen teşvik, tedarik zinciri üzerinden diğer sektörlere dolaylı etki taşır. Dolaylı etkinin skora katılma oranı `spillover.weight` ile ayarlanır (varsayılan 0,5). `BEA_API_KEY` yoksa yalnızca doğrudan etki hesaplanır.
+
+### Canlı tutma
+
+`keepalive.yml` ayın 1'inde ve 15'inde çalışır. Radar iş akışlarını etkin tutar ve ayda bir küçük bir commit atar. Bu sayede GitHub'ın 60 gün kuralı zamanlanmış işleri kapatmaz.
 
 ## 3. Saatler neden iki kez tetikleniyor?
 

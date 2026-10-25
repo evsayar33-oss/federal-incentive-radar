@@ -37,6 +37,7 @@ jobs:
       CONGRESS_API_KEY: ${{ secrets.CONGRESS_API_KEY }}
       SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
       FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+      BEA_API_KEY: ${{ secrets.BEA_API_KEY }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       RUN_LABEL: ${{ github.event.inputs.mode || 'auto' }}
     steps:

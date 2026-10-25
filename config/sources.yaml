@@ -54,6 +54,9 @@ usaspending:
   min_award_usd: 10000000      # 10 milyon $ altı ödüller gürültü kabul edilir
   grant_codes: ["02", "03", "04", "05"]
   loan_codes: ["07", "08"]
+  contracts_enabled: true
+  contract_codes: ["A", "B", "C", "D"]   # tanımlı teslim, satın alma siparişi, sözleşme, teslimat siparişi
+  contract_min_usd: 50000000             # 50 milyon $ ve üstü sözleşmeler
   max_pages: 3
 
 grants_gov:

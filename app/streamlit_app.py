@@ -60,7 +60,8 @@ scores = T("scores_latest")
 st.title("📡 ABD Federal Teşvik Radarı v2")
 c1, c2, c3 = st.columns([2, 1, 1])
 c1.caption(f"Son çalışma: **{ctx.get('run_id', '-')}** · sürüm {ctx.get('version', '-')} · "
-           "Kaynaklar: Federal Register, Congress.gov, USAspending, Grants.gov, SEC EDGAR, Treasury DTS, FRED, GDELT")
+           "Kaynaklar: Federal Register, Congress.gov, USAspending (hibe, kredi, sözleşme), Grants.gov, SEC EDGAR, "
+           f"Treasury DTS, FRED, BEA, GDELT/Google News · Yayılma: {ctx.get('spillover', '-')}")
 if ctx.get("demo"):
     st.warning("DEMO VERİSİ gösteriliyor. Bu sayılar gerçek değildir. GitHub Actions ilk gerçek çalışmayı yapınca otomatik değişir.")
 if c3.button("🔄 Veriyi yenile"):
@@ -146,6 +147,13 @@ with tabs[1]:
 # ---------------------------------------------------------------- 3. SEKTÖRLER
 with tabs[2]:
     sector = st.selectbox("Sektör", list(SECTOR_TR), format_func=lambda s: f"{SECTOR_TR[s]} ({ETF[s]})")
+    if not scores.empty and "indirect_share" in scores.columns:
+        row = scores[(scores["sector"] == sector) & (scores["horizon_days"].astype(int) == 252)]
+        if len(row):
+            m1, m2 = st.columns(2)
+            m1.metric("1 yıllık skor", f"{float(row['score'].iloc[0]):.0f}")
+            m2.metric("Dolaylı (tedarik zinciri) payı", f"%{100 * float(row['indirect_share'].iloc[0]):.0f}",
+                      help="BEA girdi-çıktı tablosuyla hesaplanır. Kapalıysa 0 görünür (BEA_API_KEY gerekir).")
     a, b = st.columns(2)
     prog = T("program_impacts")
     if not prog.empty:
