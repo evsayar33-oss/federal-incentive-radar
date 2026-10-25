@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import json
 import time
 import traceback
@@ -47,6 +48,9 @@ def resolve_slot(requested: str, force: bool, state: dict, now_utc: datetime | N
 
 def _since(state: dict, source: str) -> date:
     cfg = sources()["schedule"]
+    bf = os.environ.get("RADAR_BACKFILL_DAYS")
+    if bf:  # geçmişi yeniden tara (yeni kaynak veya kaçırılan dönem için)
+        return date.today() - timedelta(days=int(bf))
     last = state.get("last_success", {}).get(source)
     if not last:
         return date.today() - timedelta(days=cfg["first_run_lookback_days"])

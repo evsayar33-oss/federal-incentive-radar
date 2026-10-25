@@ -17,7 +17,7 @@ on:
         description: "Çalışma modu"
         type: choice
         default: auto
-        options: [auto, open, midday, close, bootstrap, demo]
+        options: [auto, open, midday, close, bootstrap, backfill, demo]
 
 permissions:
   contents: write
@@ -59,6 +59,7 @@ jobs:
           case "$MODE" in
             auto)      python -m radar.run slot --slot auto ;;
             bootstrap) python -m radar.run weekly && python -m radar.run slot --slot open --force && python -m radar.run slot --slot close --force ;;
+            backfill)  RADAR_BACKFILL_DAYS=60 python -m radar.run slot --slot midday --force ;;
             demo)      python -m radar.run demo --days 420 ;;
             *)         python -m radar.run slot --slot "$MODE" --force ;;
           esac
