@@ -29,8 +29,13 @@ def _card(r: dict) -> None:
         b.markdown(f"**[{title}]({r['url']})**" if r.get("url") else f"**{title}**")
         b.caption(f"{r['date']} · {r.get('program_name') or r['program']} · {r['kind_name']} · {r['status_name']}")
         if r.get("affected"):
-            b.markdown(f"🎯 **Etkilenen:** `{r['affected']}` — {r['role_name']}")
+            b.markdown(f"🎯 **Etkilenebilecek hisseler:** `{r['affected']}` — {r['role_name']}")
+        if r.get("sector"):
+            b.markdown(f"🏭 **Sektör:** {r['sector']}")
         b.markdown(r["explain"])
+        if r.get("detail"):
+            with b.expander("Bu ne demek? (basit anlatım)"):
+                st.markdown(r["detail"])
 
 
 def _today(T, sig: pd.DataFrame) -> None:

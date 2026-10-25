@@ -149,3 +149,5 @@ telegram:
   max_event_age_days: 3      # eski olaylar (geri doldurma) bildirilmez
   max_per_run: 8             # fazlası tek özet mesajda gelir
   weekly_summary: true       # cumartesi kanıt raporu ve bot karnesi
+  health_messages: true      # ayrı sistem sağlığı mesajı
+  health_ok_slots: ["close", "weekly"]   # sorun yoksa yalnız bu çalışmalarda; sorun varsa HER çalışmada

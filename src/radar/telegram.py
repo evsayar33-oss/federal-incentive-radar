@@ -64,7 +64,9 @@ def format_signal(r: dict) -> str:
              f"<b>{e(str(r.get('program_name') or r['program']))}</b> · {e(r['kind_name'])}",
              e(str(r["title"])[:300]),
              "",
-             f"🎯 <b>Etkilenen:</b> {e(r['affected'])} <i>({e(r['role_name'])})</i>"]
+             f"🎯 <b>Etkilenebilecek hisseler:</b> {e(r['affected'])} <i>({e(r['role_name'])})</i>"]
+    if r.get("sector"):
+        lines.append(f"🏭 <b>Sektör:</b> {e(str(r['sector']))}")
     if eff is not None and np.isfinite(eff):
         lines.append(f"📊 <b>Geçmiş:</b> {w} işlem gününde SPY'a göre ortalama {_pct(eff)} "
                      f"{'artış' if eff > 0 else 'düşüş'}")
@@ -90,7 +92,8 @@ def notify(signals: pd.DataFrame, new_ids: set[str], run_id: str) -> int:
     c = cfg()
     if signals is None or signals.empty or not new_ids:
         return 0
-    allowed = set(c.get("notify_statuses", ["proven"]))
+    # Etkisiz, belirsiz veya askıdaki türler asla gönderilmez; yalnızca etki yaratabilecek haberler.
+    allowed = set(c.get("notify_statuses", ["proven"])) & {"proven", "promising"}
     fresh = (date.today() - timedelta(days=c.get("max_event_age_days", 3))).isoformat()
     s = signals[signals["event_id"].astype(str).isin(new_ids) & signals["status"].isin(allowed)
                 & (signals["date"].astype(str) >= fresh)]
@@ -129,11 +132,11 @@ def weekly_summary(ev: pd.DataFrame) -> bool:
     """Haftalık özet: hangi türler kanıtlandı, bot ne kadar isabetli."""
     if not enabled() or not cfg().get("weekly_summary", True):
         return False
-    lines = ["<b>📡 Haftalık kanıt raporu</b>"]
+    lines = ["<b>📡 Haftalık rapor: etki yaratan haber türleri</b>"]
     if ev is not None and not ev.empty:
-        vc = ev[ev["level"].isin(["program_kind", "kind"])]["status"].value_counts()
-        lines.append(" · ".join(f"{E.STATUS_ICON[k]} {E.STATUS_NAMES[k]}: {int(v)}" for k, v in vc.items()))
-        top = ev[ev["status"].isin(["proven", "promising"])].head(8)
+        top = ev[ev["status"].isin(["proven", "promising"]) & ev["level"].isin(["program_kind", "kind"])].head(8)
+        if top.empty:
+            lines.append("Bu hafta etkisi kanıtlanan haber türü yok. Sistem veri topluyor.")
         for r in top.to_dict("records"):
             lines.append(f"{E.STATUS_ICON[r['status']]} {html.escape(_key_label(r))}: "
                          f"{'+' if r['post_mean'] > 0 else '−'}{_pct(r['post_mean'])} ({r['n_clusters']} olay)")
@@ -169,3 +172,39 @@ def test() -> None:
         return
     ok = send("✅ <b>Federal Teşvik Radarı</b> bağlandı.\nYalnızca etkisi kanıtlanmış haber türleri bildirilecek.")
     print("Deneme mesajı gönderildi." if ok else "Gönderilemedi. Token ve chat id'yi kontrol edin.")
+
+
+def health_message(title: str, status: dict, ok: bool) -> str:
+    """Sistem sağlığı: her kaynak çalıştı mı, sorun var mı? Ayrı bir mesaj olarak gönderilir."""
+    e = html.escape
+    probs, good = [], []
+    for k, v in status.items():
+        if isinstance(v, dict) and "ok" in v:
+            if v["ok"]:
+                good.append(f"{k}" + (f" ({v['rows']})" if "rows" in v else ""))
+            else:
+                probs.append(f"❌ <b>{e(k)}</b>: {e(str(v.get('error') or v.get('reason') or 'hata'))[:160]}")
+    if status.get("fatal"):
+        probs.append("❌ <b>Çalışma çöktü:</b> " + e(str(status["fatal"]).strip().splitlines()[-1])[:200])
+    head = "🟢 <b>Sistem sağlıklı</b>" if ok and not probs else "🔴 <b>Sistemde sorun var</b>"
+    lines = [f"🩺 {head} — {e(title)}"]
+    if "events_new" in status:
+        lines.append(f"📰 Yeni olay: {status['events_new']} · toplam: {status.get('events_total', '-')}")
+    if good:
+        lines.append("✅ Çalışan: " + e(", ".join(good)))
+    lines += probs
+    if probs:
+        lines.append("<i>Ayrıntı: GitHub → Actions kaydı veya data dalındaki last_run.json</i>")
+    return "\n".join(lines)
+
+
+def health(title: str, status: dict, ok: bool) -> bool:
+    """Sorun varsa her zaman; sorun yoksa yalnızca config'teki slotlarda (varsayılan: kapanış ve haftalık)."""
+    c = cfg()
+    if not enabled() or not c.get("health_messages", True):
+        return False
+    bad = (not ok) or bool(status.get("fatal")) or any(
+        isinstance(v, dict) and v.get("ok") is False for v in status.values())
+    if not bad and not any(s in title for s in c.get("health_ok_slots", ["close", "weekly"])):
+        return False
+    return send(health_message(title, status, ok))

@@ -239,6 +239,20 @@ def test_telegram_gate_and_format():
         telegram.send, telegram.credentials = old_send, old_cred
     nt = store.read("notifications")
     assert list(nt["event_id"]) == ["a"] and nt["direction"].iloc[0] == "+"
+    sig2 = sig.assign(status="no_effect", event_id=["x", "y", "z"])
+    telegram.send, telegram.credentials = (lambda t: True), (lambda: ("tok", "chat"))
+    try:
+        assert telegram.notify(sig2, {"x", "y", "z"}, "run3") == 0          # etkisiz haber asla gönderilmez
+    finally:
+        telegram.send, telegram.credentials = old_send, old_cred
+
+
+def test_health_message():
+    from radar import telegram
+    bad = telegram.health_message("run", {"sec_edgar": {"ok": False, "error": "429 <x>"},
+                                          "congress": {"ok": True, "rows": 5}, "events_new": 3}, True)
+    assert "🔴" in bad and "sec_edgar" in bad and "&lt;x&gt;" in bad and "congress (5)" in bad
+    assert "🟢" in telegram.health_message("run", {"congress": {"ok": True}}, True)
 
 
 if __name__ == "__main__":

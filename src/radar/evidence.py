@@ -58,6 +58,10 @@ STATUS_NAMES = {"proven": "Kanıtlandı", "promising": "Umut verici", "no_effect
                 "unclear": "Belirsiz", "collecting": "Veri birikiyor", "suspended": "Askıda (canlıda başarısız)"}
 STATUS_ICON = {"proven": "🟢", "promising": "🟡", "no_effect": "⚫", "unclear": "⚪", "collecting": "⚪",
                "suspended": "🟠"}
+SECTOR_TR = {"Information Technology": "Bilgi Teknolojisi", "Energy": "Enerji", "Industrials": "Sanayi",
+             "Materials": "Hammadde", "Utilities": "Kamu Hizmetleri", "Health Care": "Sağlık",
+             "Financials": "Finans", "Consumer Discretionary": "İsteğe Bağlı Tüketim",
+             "Consumer Staples": "Temel Tüketim", "Communication Services": "İletişim", "Real Estate": "Gayrimenkul"}
 STATUS_RANK = {"proven": 5, "promising": 4, "suspended": 3, "no_effect": 2, "unclear": 1, "collecting": 0}
 DEFINITE = {"proven", "promising", "no_effect", "suspended"}
 
@@ -484,6 +488,32 @@ def plain_text(r: dict) -> str:
     return f"Henüz yeterli örnek yok ({n}). Sistem veri topluyor."
 
 
+def detail_text(r: dict, status: str) -> str:
+    """Basit ama ayrıntılı açıklama: ne oldu, kimi etkiler, ne kadar güvenilir?"""
+    w = cfg()["windows"][cfg()["primary_window"]][1]
+    parts = []
+    if r.get("sector"):
+        parts.append(f"Bu haber en çok **{r['sector']}** sektörünü ilgilendiriyor.")
+    if r.get("affected"):
+        who = {"direct": "Haber doğrudan şu şirketle ilgili", "basket": "Bu programdan daha önce fayda görmüş şirketler",
+               "sector": "Etki sektör fonu üzerinden izleniyor"}.get(r.get("role"), "Etkilenebilecek hisseler")
+        parts.append(f"{who}: **{r['affected']}**.")
+    eff, n = r.get("effect"), _int(r.get("n_clusters"))
+    if status in ("proven", "promising") and eff is not None and np.isfinite(eff):
+        yon = "yükseldi" if eff > 0 else "düştü"
+        parts.append(f"Geçmişte bu tür {n} haberden sonra bu hisseler {w} işlem günü içinde piyasadan ortalama "
+                     + f"%{abs(eff) * 100:.1f}".replace(".", ",") + f" daha fazla {yon}.")
+        c = r.get("consistency")
+        if c is not None and np.isfinite(c):
+            parts.append(f"Her 10 örneğin yaklaşık {round(c * 10)} tanesinde hareket aynı yöndeydi.")
+        if r.get("oos_n"):
+            parts.append(f"Sistem bunu önceden tahmin etmeyi denedi: {r['oos_n']} denemede isabet "
+                         f"%{r['oos_hit'] * 100:.0f}.")
+        parts.append("🟢 Bu yüzden güvenilir sayılıyor." if status == "proven" else
+                     "🟡 Etki görülüyor ama kesin kanıt için daha çok örnek gerekiyor.")
+    return " ".join(parts)
+
+
 def annotate(events: pd.DataFrame, ev: pd.DataFrame, days: int | None = None) -> pd.DataFrame:
     """Son olaylara kanıt rozetini ekler (arayüz ve Telegram aynı tabloyu kullanır)."""
     c = cfg()
@@ -518,6 +548,8 @@ def annotate(events: pd.DataFrame, ev: pd.DataFrame, days: int | None = None) ->
         if best is None and roles:
             best_role, best_tick = roles[0]
         b = best or {"status": "collecting", "n_clusters": 0}
+        sec = _dominant_sector(r.get("sector_weights"))
+        sector = f"{SECTOR_TR.get(sec, sec)} ({etfs[sec]})" if sec in etfs else ""
         rows.append({
             "event_id": r["event_id"], "date": r["d"].date().isoformat(), "title": r["title"], "url": r.get("url", ""),
             "source": r["source"], "program": r["program"], "program_name": r.get("program_name", ""),
@@ -528,9 +560,11 @@ def annotate(events: pd.DataFrame, ev: pd.DataFrame, days: int | None = None) ->
             "direction": b.get("direction", ""), "effect": b.get("post_mean", np.nan),
             "n_clusters": _int(b.get("n_clusters")), "consistency": b.get("consistency", np.nan),
             "oos_hit": b.get("oos_hit", np.nan), "oos_n": _int(b.get("oos_n")), "q": b.get("q", np.nan),
-            "explain": plain_text(b), "rank": STATUS_RANK[b["status"]],
+            "explain": plain_text(b), "rank": STATUS_RANK[b["status"]], "sector": sector,
         })
-    return pd.DataFrame(rows).sort_values(["rank", "date"], ascending=[False, False]).reset_index(drop=True)
+    out = pd.DataFrame(rows)
+    out["detail"] = [detail_text(r, r["status"]) for r in out.to_dict("records")]
+    return out.sort_values(["rank", "date"], ascending=[False, False]).reset_index(drop=True)
 
 
 # ---------------------------------------------------------------- yenileme (haftalık ve kapanış)

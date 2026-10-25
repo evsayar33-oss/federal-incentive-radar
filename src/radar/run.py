@@ -276,6 +276,7 @@ def cmd_slot(args) -> None:
     store.append("runs", pd.DataFrame([{"run_id": run_id, "slot": slot, "ok": ok, "seconds": round(time.time() - t0, 1),
                                         "status": json.dumps(run_status, default=str)}]))
     diagnostics.write(f"slot_{slot}", run_status)
+    telegram.health(run_id, run_status, ok)
     if not ok:
         raise SystemExit(1)
 
@@ -310,11 +311,17 @@ def cmd_weekly(args) -> None:
     except Exception as exc:
         log.warning("BEA girdi-çıktı alınamadı: %s", exc)
         status["bea_io"] = {"ok": False, "error": str(exc)[:300]}
-    weekly_learning(status)
+    try:
+        weekly_learning(status)
+        status["learning"] = {"ok": True}
+    except Exception as exc:
+        log.error(traceback.format_exc())
+        status["learning"] = {"ok": False, "error": str(exc)[:300]}
     store.append("runs", pd.DataFrame([{"run_id": datetime.now().strftime("%Y-%m-%dT%H:%M") + "_weekly",
                                         "slot": "weekly", "ok": True, "seconds": 0,
                                         "status": json.dumps(status, default=str)}]))
     diagnostics.write("weekly", status)
+    telegram.health("haftalık öğrenme", status, True)
 
 
 def weekly_learning(status: dict) -> None:
