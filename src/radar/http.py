@@ -61,6 +61,9 @@ def request(method: str, url: str, *, params=None, json=None, headers=None,
             resp.raise_for_status()
         retry_after = resp.headers.get("Retry-After") if resp is not None else None
         delay = float(retry_after) if retry_after and retry_after.isdigit() else min(60.0, 2 ** attempt + random.random())
+        if delay > 120:   # sunucu saatlerce beklemeyi istiyor (kota doldu) → bekleme, hemen yedeğe geç
+            break
+        delay = min(delay, 60.0)
         log.warning("%s %s -> %s, %.1fs sonra tekrar", method, host,
                     resp.status_code if resp is not None else last_exc, delay)
         time.sleep(delay)

@@ -165,6 +165,16 @@ def audit(events: pd.DataFrame, review: pd.DataFrame | None = None, universe: pd
             issues.append({"type": "entity", "lf": "public_recipient", "event_id": eid, "title": r.get("recipient"),
                            "old": r.get("tickers"), "new": "NONE", "reason": res[1], "date": r.get("date")})
             done_ent.add(rn)
+    # Kalıcı genel denetim: doğrudan şirket bağı ile programın sektörleri uyumsuz mu?
+    from .evidence import link_plausible, universe_sectors
+    csec = universe_sectors()
+    for r in events.to_dict("records"):
+        for t in [x.strip() for x in str(r.get("tickers") or "").split(",") if x.strip() and x.strip() != "nan"]:
+            if link_plausible(csec.get(t), str(r.get("program"))) is False:
+                issues.append({"type": "link", "lf": "sector_mismatch", "event_id": str(r.get("event_id")),
+                               "title": str(r.get("title"))[:200], "old": f"{t} → {r.get('program')}",
+                               "new": "sinyal dışı", "reason": f"{t} sektörü ({csec.get(t)}) programla uyumsuz",
+                               "date": r.get("date")})
     if review is not None and not review.empty and universe is not None and not universe.empty:
         names = dict(zip(universe["ticker"].astype(str), universe["name"].astype(str).map(normalize)))
         for q in review.to_dict("records"):

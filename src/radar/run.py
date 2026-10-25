@@ -19,6 +19,7 @@ import pandas as pd
 
 from . import __version__, alerts, autolabel, diagnostics, evidence, learn, scoring, store, telegram
 from .classify import Classifier, train
+from .sources import fallbacks
 from .entity import Matcher, normalize
 from .settings import setup_logging, sources, store_dir
 
@@ -133,24 +134,43 @@ def apply_company_sector(ev: pd.DataFrame, uni: pd.DataFrame) -> pd.DataFrame:
     return ev
 
 
-def ingest(slot: str, state: dict, run_status: dict) -> pd.DataFrame:
+def ingest(slot: str, state: dict, run_status: dict, only: list[str] | None = None) -> pd.DataFrame:
     from .sources import (congress, federal_register, fred_csv, gdelt, grants_gov, prices,
                           sec_edgar, treasury_dts, usaspending)
     mods = {"federal_register": federal_register, "congress": congress, "usaspending": usaspending,
             "grants_gov": grants_gov, "sec_edgar": sec_edgar, "gdelt": gdelt}
     frames = []
-    for name in INTRADAY_SOURCES:
+    for name in only or INTRADAY_SOURCES:
         if not sources().get(name, {}).get("enabled", True):
             continue
         t0 = time.time()
+        df, err = None, None
         try:
             df = mods[name].fetch(_since(state, name))
-            frames.append(df)
-            state.setdefault("last_success", {})[name] = date.today().isoformat()
-            run_status[name] = {"ok": True, "rows": len(df), "sec": round(time.time() - t0, 1)}
         except Exception as exc:
             log.error("%s başarısız: %s", name, exc)
-            run_status[name] = {"ok": False, "error": str(exc)[:300], "sec": round(time.time() - t0, 1)}
+            err = str(exc)[:300]
+        primary_rows = 0 if df is None else len(df)
+        # Birincil hata verdi veya alışılmadık biçimde boş döndü → yedek kaynak.
+        if (err or primary_rows == 0) and name in fallbacks.REGISTRY and usually_has_rows(name):
+            try:
+                fb = fallbacks.REGISTRY[name](_since(state, name))
+                if fb is not None and not fb.empty:
+                    df = fb
+                    run_status[name] = {"ok": True, "rows": len(fb), "via": "yedek", "primary_error": err or "boş yanıt",
+                                        "sec": round(time.time() - t0, 1)}
+            except Exception as exc:
+                log.error("%s yedeği de başarısız: %s", name, exc)
+                err = (err or "boş yanıt") + f" | yedek: {str(exc)[:150]}"
+        if name not in run_status:
+            if err and (df is None or df.empty):
+                run_status[name] = {"ok": False, "error": err, "sec": round(time.time() - t0, 1)}
+            else:
+                run_status[name] = {"ok": True, "rows": primary_rows, "sec": round(time.time() - t0, 1)}
+        if df is not None and not df.empty:
+            frames.append(df)
+        if run_status[name]["ok"]:
+            state.setdefault("last_success", {})[name] = date.today().isoformat()
     if slot == "open":
         for name, fn in (("fred", lambda: store.upsert("fred", fred_csv.fetch(), ["series", "date"])),
                          ("treasury_dts", lambda: store.upsert(
@@ -169,6 +189,46 @@ def ingest(slot: str, state: dict, run_status: dict) -> pd.DataFrame:
         except Exception as exc:
             run_status["prices"] = {"ok": False, "error": str(exc)[:300]}
     return pd.concat([f for f in frames if f is not None and not f.empty], ignore_index=True) if frames else pd.DataFrame()
+
+
+def usually_has_rows(name: str) -> bool:
+    """Son çalışmalarda bu kaynak çoğunlukla veri getirdiyse, boş yanıt şüphelidir."""
+    runs = store.read("runs")
+    if runs.empty:
+        return True
+    n = got = 0
+    for s in runs[runs["slot"] != "weekly"].tail(10)["status"]:
+        try:
+            v = json.loads(s).get(name, {})
+        except (TypeError, ValueError):
+            continue
+        if isinstance(v, dict) and "rows" in v:
+            n += 1
+            got += int(v["rows"] or 0) > 0
+    return n == 0 or got / n >= 0.5
+
+
+def update_company_sic(status: dict, limit: int = 400) -> None:
+    """SEC'te teşvik ifadesi geçen şirketlerin SIC sektörünü önbelleğe alır (kalıcı bağ denetimi)."""
+    from .sources import sec_edgar
+    ev = store.read("events")
+    if ev.empty:
+        return
+    ciks = set()
+    for x in ev.loc[ev["source"] == "sec_edgar", "extra"].dropna():
+        try:
+            c = json.loads(x).get("cik")
+        except ValueError:
+            c = None
+        if c:
+            ciks.add(str(c))
+    have = store.read("company_sic")
+    done = set(have["cik"].astype(str)) if not have.empty else set()
+    todo = sorted(ciks - done)[:limit]
+    if todo:
+        new = sec_edgar.company_sic(todo)
+        store.upsert("company_sic", new, ["cik", "ticker"])
+    status["company_sic"] = {"ok": True, "new": len(todo)}
 
 
 def price_tickers(extra_limit: int | None = None) -> list[str]:
@@ -330,6 +390,10 @@ def cmd_weekly(args) -> None:
         status["universe"] = len(uni)
     except Exception as exc:
         status["universe_error"] = str(exc)[:300]
+    try:
+        update_company_sic(status)
+    except Exception as exc:
+        status["company_sic"] = {"ok": False, "error": str(exc)[:300]}
     try:
         update_prices(prices, period=sources()["prices"]["history_period"])
     except Exception as exc:
