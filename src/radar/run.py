@@ -3,6 +3,7 @@
   python -m radar.run slot [--slot auto|open|midday|close] [--force]
   python -m radar.run weekly
   python -m radar.run demo            # internet olmadan sahte veriyle uçtan uca çalıştırma
+  python -m radar.run telegram-test   # Telegram botunu dener, chat id'yi bulur
 """
 from __future__ import annotations
 
@@ -16,7 +17,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from . import __version__, alerts, diagnostics, learn, scoring, store
+from . import __version__, alerts, autolabel, diagnostics, evidence, learn, scoring, store, telegram
 from .classify import Classifier, train
 from .entity import Matcher, normalize
 from .settings import setup_logging, sources, store_dir
@@ -59,16 +60,53 @@ def _since(state: dict, source: str) -> date:
 
 # ---------------------------------------------------------------- etiketler
 
-def load_labels() -> pd.DataFrame:
-    p = store_dir() / "labels" / "labels.jsonl"
-    if not p.exists():
-        return pd.DataFrame(columns=["event_id", "kind", "label", "recipient_norm", "ticker", "ts"])
-    rows = [json.loads(ln) for ln in p.read_text(encoding="utf-8").splitlines() if ln.strip()]
+def load_labels(include_auto: bool = True) -> pd.DataFrame:
+    """Kullanıcı etiketleri + otomatik etiketler. Aynı kayıtta kullanıcı etiketi her zaman kazanır."""
+    cols = ["event_id", "kind", "label", "recipient_norm", "ticker", "ts", "by"]
+    rows = []
+    files = ([autolabel.AUTO_FILE] if include_auto else []) + ["labels.jsonl"]   # sonra gelen kazanır
+    for name in files:
+        p = store_dir() / "labels" / name
+        if p.exists():
+            for ln in p.read_text(encoding="utf-8").splitlines():
+                if ln.strip():
+                    x = json.loads(ln)
+                    x.setdefault("by", "auto" if name == autolabel.AUTO_FILE else "user")
+                    rows.append(x)
     df = pd.DataFrame(rows)
-    for c in ["event_id", "kind", "label", "recipient_norm", "ticker", "ts"]:
+    for c in cols:
         if c not in df.columns:
             df[c] = ""
-    return df
+    if df.empty:
+        return df[cols]
+    df["_k"] = df["kind"].astype(str) + "|" + df["event_id"].fillna("").astype(str) + df["recipient_norm"].fillna("").astype(str)
+    return df.drop_duplicates("_k", keep="last").drop(columns="_k")
+
+
+def auto_fix(events: pd.DataFrame, review: pd.DataFrame, uni: pd.DataFrame, run_status: dict) -> bool:
+    """Akıllı etiketleme: hatalı program/eşleşmeleri bulur, otomatik etiket yazar. Yeni etiket varsa True."""
+    try:
+        user = load_labels(include_auto=False)
+        labels, issues = autolabel.audit(events, review, uni, user)
+        n = autolabel.save(labels, issues)
+        run_status["autofix"] = {"ok": True, "new": n}
+        return n > 0
+    except Exception as exc:
+        log.error("Otomatik etiketleme: %s", exc)
+        run_status["autofix"] = {"ok": False, "error": str(exc)[:300]}
+        return False
+
+
+def classify_and_match(raw: pd.DataFrame, labels: pd.DataFrame, clf=None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    cls = (clf or Classifier()).classify(raw, labels)
+    uni = store.read("universe")
+    review = pd.DataFrame()
+    if not uni.empty:
+        cls, review = Matcher(uni, entity_overrides(labels)).apply(cls)
+        cls = apply_company_sector(cls, uni)
+    else:
+        cls["match_score"], cls["match_method"] = pd.NA, ""
+    return cls, review
 
 
 def entity_overrides(labels: pd.DataFrame) -> pd.DataFrame:
@@ -138,6 +176,12 @@ def price_tickers(extra_limit: int | None = None) -> list[str]:
     base = list(cfg["sector_etfs"].values()) + [cfg["benchmark"]]
     exp = store.read("company_exposure")
     extra = exp["ticker"].dropna().astype(str).head(extra_limit or cfg["prices"]["max_extra_tickers"]).tolist() if not exp.empty else []
+    # Kanıt motoru için: doğrudan olayı olan tüm şirketler (en yeni olaylar önce).
+    ev = store.read("events")
+    if not ev.empty:
+        t = ev[ev["tickers"].fillna("").astype(str) != ""].sort_values("date", ascending=False)["tickers"]
+        seen = list(dict.fromkeys(x.strip() for v in t.astype(str) for x in v.split(",") if x.strip()))
+        extra += seen[:cfg["prices"].get("max_event_tickers", 500)]
     return sorted(set(base + extra))
 
 
@@ -164,15 +208,11 @@ def process(raw: pd.DataFrame, run_id: str, asof: date, slot: str, run_status: d
         if old_ids:  # ilk görülme zamanı korunur (geriye dönük test sızıntısını önler)
             first_seen = dict(zip(old["event_id"].astype(str), old["known_at"].astype(str)))
             raw["known_at"] = [first_seen.get(str(i), k) for i, k in zip(raw["event_id"], raw["known_at"])]
-        cls = clf.classify(raw, labels)
-        uni = store.read("universe")
-        if not uni.empty:
-            cls, review = Matcher(uni, entity_overrides(labels)).apply(cls)
-            cls = apply_company_sector(cls, uni)
-            if not review.empty:
-                store.upsert("review_queue", review, "recipient_norm")
-        else:
-            cls["match_score"], cls["match_method"] = pd.NA, ""
+        cls, review = classify_and_match(raw, labels, clf)
+        if auto_fix(cls, review, store.read("universe"), run_status):   # hata bulunduysa düzeltilmiş etiketle tekrar
+            cls, review = classify_and_match(raw, load_labels(), clf)
+        if not review.empty:
+            store.upsert("review_queue", review, "recipient_norm")
         events = store.upsert("events", cls, "event_id")
         new_events = cls[~cls["event_id"].astype(str).isin(old_ids)]
     else:
@@ -218,12 +258,20 @@ def score_and_report(events: pd.DataFrame, new_events: pd.DataFrame, run_id: str
     if not al.empty:
         store.append("alerts", al)
         alerts.notify_github(al, run_id)
+    # Kanıt rozetleri (arayüz) ve Telegram: yalnızca etkisi kanıtlanmış haber türleri bildirilir.
+    signals = evidence.annotate(events, store.read("evidence"))
+    if not signals.empty:
+        store.write("event_signals", signals)
+        new_ids = set(new_events["event_id"].astype(str)) if new_events is not None and not new_events.empty else set()
+        telegram.notify(signals, new_ids, run_id)
     if write_ledger and not scores.empty:
         learn.write_ledger(store.read("scores_history"), asof.isoformat(), state, __version__)
     store.save_json("context", {"run_id": run_id, "asof": asof.isoformat(), "regime": regime_info,
                                 "dts_multipliers": dts_mult, "version": __version__,
                                 "spillover": "açık (BEA I-O)" if io_T is not None else "kapalı (yalnızca doğrudan etki)",
-                                "drift": learn.program_psi(events, asof)})
+                                "drift": learn.program_psi(events, asof),
+                                "telegram": {"enabled": telegram.enabled(),
+                                             "notify_statuses": telegram.cfg().get("notify_statuses", ["proven"])}})
 
 
 # ---------------------------------------------------------------- komutlar
@@ -244,6 +292,12 @@ def cmd_slot(args) -> None:
         process(raw, run_id, now_et.date(), slot, run_status, write_ledger=(slot == "close"))
         if slot == "close":
             learn.resolve_ledger(store.read("prices"))
+            try:
+                evidence.refresh()
+                run_status["evidence"] = {"ok": True}
+            except Exception as exc:
+                log.error("Kanıt motoru: %s", exc)
+                run_status["evidence"] = {"ok": False, "error": str(exc)[:300]}
         ok = True
     except Exception:
         log.error(traceback.format_exc())
@@ -254,7 +308,9 @@ def cmd_slot(args) -> None:
     store.save_json("state", state)
     store.append("runs", pd.DataFrame([{"run_id": run_id, "slot": slot, "ok": ok, "seconds": round(time.time() - t0, 1),
                                         "status": json.dumps(run_status, default=str)}]))
+    run_status["quality"] = autolabel.data_checks(store.read("runs"), store.read("prices"), store.read("review_queue"))
     diagnostics.write(f"slot_{slot}", run_status)
+    telegram.health(run_id, run_status, ok)
     if not ok:
         raise SystemExit(1)
 
@@ -289,11 +345,17 @@ def cmd_weekly(args) -> None:
     except Exception as exc:
         log.warning("BEA girdi-çıktı alınamadı: %s", exc)
         status["bea_io"] = {"ok": False, "error": str(exc)[:300]}
-    weekly_learning(status)
+    try:
+        weekly_learning(status)
+        status["learning"] = {"ok": True}
+    except Exception as exc:
+        log.error(traceback.format_exc())
+        status["learning"] = {"ok": False, "error": str(exc)[:300]}
     store.append("runs", pd.DataFrame([{"run_id": datetime.now().strftime("%Y-%m-%dT%H:%M") + "_weekly",
                                         "slot": "weekly", "ok": True, "seconds": 0,
                                         "status": json.dumps(status, default=str)}]))
     diagnostics.write("weekly", status)
+    telegram.health("haftalık öğrenme", status, True)
 
 
 def weekly_learning(status: dict) -> None:
@@ -312,13 +374,14 @@ def weekly_learning(status: dict) -> None:
         base_cols = [c for c in events.columns if c not in
                      ("program", "program_name", "incentive_type", "sector_weights", "confidence", "relevance_prob",
                       "relevant", "method", "match_score", "match_method")]
-        recl = Classifier().classify(events[base_cols], labels)
-        uni = store.read("universe")
-        if not uni.empty:
-            recl, review = Matcher(uni, entity_overrides(labels)).apply(recl)
-            recl = apply_company_sector(recl, uni)
-            store.write("review_queue", review)
+        recl, review = classify_and_match(events[base_cols], labels)
+        if auto_fix(recl, review, store.read("universe"), status):
+            recl, review = classify_and_match(events[base_cols], load_labels())
+        store.write("review_queue", review)
         store.write("events", recl)
+    ev = evidence.refresh()
+    status["evidence"] = {} if ev.empty else ev[ev["level"] == "program_kind"]["status"].value_counts().to_dict()
+    telegram.weekly_summary(ev)
     state["history"] = (state.get("history", []) + [{"date": date.today().isoformat(),
                         "calibration": state["calibration"], "n_program_eff": len(state["program_efficacy"])}])[-104:]
     store.save_json("model_state", state)
@@ -337,10 +400,12 @@ def main() -> None:
     s.add_argument("--slot", default="auto", choices=["auto", "open", "midday", "close"])
     s.add_argument("--force", action="store_true")
     sub.add_parser("weekly")
+    sub.add_parser("telegram-test")
     d = sub.add_parser("demo")
     d.add_argument("--days", type=int, default=420)
     args = ap.parse_args()
-    {"slot": cmd_slot, "weekly": cmd_weekly, "demo": cmd_demo}[args.cmd](args)
+    {"slot": cmd_slot, "weekly": cmd_weekly, "demo": cmd_demo,
+     "telegram-test": lambda _a: telegram.test()}[args.cmd](args)
 
 
 if __name__ == "__main__":

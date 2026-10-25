@@ -24,6 +24,7 @@ MIN_INTERVAL = {
     "www.federalregister.gov": 0.3,
     "api.fiscaldata.treasury.gov": 0.3,
     "fred.stlouisfed.org": 0.6,
+    "api.telegram.org": 1.1,      # Telegram: sohbet başına ~1 mesaj/sn
 }
 BROWSER_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 

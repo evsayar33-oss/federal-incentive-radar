@@ -174,10 +174,12 @@ def train(events: pd.DataFrame, labels: pd.DataFrame) -> dict:
     if labels is not None and not labels.empty:
         lab = labels[labels.get("kind", "program") == "program"] if "kind" in labels.columns else labels
         lab = lab.drop_duplicates("event_id", keep="last")
-        m = ev.merge(lab[["event_id", "label"]].astype(str), on="event_id")
+        by = lab["by"].astype(str) if "by" in lab.columns else pd.Series("user", index=lab.index)
+        lab = lab.assign(_w=by.map(lambda b: 0.6 if b == "auto" else 1.0))   # otomatik etiket daha düşük ağırlık
+        m = ev.merge(lab[["event_id", "label", "_w"]].astype({"event_id": str, "label": str}), on="event_id")
         rows += list(zip(m["_text"], m["label"]))
-        weights += [1.0] * len(m)
-        n_user = len(m)
+        weights += m["_w"].astype(float).tolist()
+        n_user = int((m["_w"] == 1.0).sum())
     # Self-training örnekleri her seferinde SAF KURALLA yeniden hesaplanır
     # (modelin kendi çıktısıyla eğitilmesi döngüyü kilitler ve hatayı büyütür).
     base_cols = [c for c in ["event_id", "source", "stage", "date", "title", "text", "agency", "amount_type",

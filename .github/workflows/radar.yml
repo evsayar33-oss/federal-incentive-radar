@@ -17,7 +17,7 @@ on:
         description: "Çalışma modu"
         type: choice
         default: auto
-        options: [auto, open, midday, close, bootstrap, backfill, demo]
+        options: [auto, open, midday, close, bootstrap, backfill, demo, telegram-test]
 
 permissions:
   contents: write
@@ -38,6 +38,8 @@ jobs:
       SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
       FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
       BEA_API_KEY: ${{ secrets.BEA_API_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       RUN_LABEL: ${{ github.event.inputs.mode || 'auto' }}
     steps:
@@ -61,6 +63,7 @@ jobs:
             bootstrap) python -m radar.run weekly && python -m radar.run slot --slot open --force && python -m radar.run slot --slot close --force ;;
             backfill)  RADAR_BACKFILL_DAYS=60 python -m radar.run slot --slot midday --force ;;
             demo)      python -m radar.run demo --days 420 ;;
+            telegram-test) python -m radar.run telegram-test ;;
             *)         python -m radar.run slot --slot "$MODE" --force ;;
           esac
       - name: Veriyi yayımla
