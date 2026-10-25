@@ -166,6 +166,20 @@ Bir olay için önce en özel tür kontrol edilir. Özel türün yeterli verisi 
 
 **Tablolar (data dalı):** `event_returns` (olay başına getiri), `evidence` (tür başına kanıt), `evidence_history` (kanıtın zamanla değişimi), `event_signals` (son olayların rozetleri), `notifications` (gönderilen sinyaller ve sonuçları).
 
+### Akıllı otomatik etiketleme
+
+Sistem hatalı kayıtları kendisi bulur ve düzeltir. Kod: `src/radar/autolabel.py`. Her çalışmada ve haftalık eğitimde çalışır.
+
+| Kural | Ne bulur? | Ne yapar? |
+|---|---|---|
+| İdari/akademik belge | "Faculty Award", "Comment Request", "Privacy Act", toplantı, tören | İlgisiz yapar |
+| Kurum çelişkisi | Program ile yayımlayan kurum uyumsuz (ör. NIH ödülü "altyapı") | Kuruma uygun programa taşır; uygun program yoksa "diğer" |
+| Kamu alıcısı | Üniversite, belediye, eyalet kurumu bir hisseye eşleşmiş | Eşleşmeyi kaldırır (şirket eki varsa dokunmaz) |
+| Güvenli eşleşme | İnceleme kuyruğunda aday adı alıcı adının içinde | Onaylar |
+| Sepet kalitesi | 10-K'daki kalıp ifadeyle sepete giren ilgisiz şirket | Sepete yalnızca güçlü bağ (ödül, 8-K) veya uygun sektör + ≥2 bildirim ile alır |
+
+Kararlar `labels/auto_labels.jsonl` ve `quality_issues` tablosuna gerekçeyle yazılır. Sizin etiketiniz her zaman otomatik etiketten önce gelir. Model otomatik etiketlerden daha düşük ağırlıkla öğrenir. Veri sorunları (bayat fiyat, sürekli boş kaynak, büyük inceleme kuyruğu) sağlık mesajına eklenir.
+
 ## 4. Arayüz: basit ve uzman görünüm
 
 Sol menüden görünümü seçin.

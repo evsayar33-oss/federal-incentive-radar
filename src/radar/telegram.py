@@ -184,6 +184,11 @@ def health_message(title: str, status: dict, ok: bool) -> str:
                 good.append(f"{k}" + (f" ({v['rows']})" if "rows" in v else ""))
             else:
                 probs.append(f"❌ <b>{e(k)}</b>: {e(str(v.get('error') or v.get('reason') or 'hata'))[:160]}")
+    for w in status.get("quality") or []:
+        probs.append("⚠️ " + e(str(w)))
+    fx = status.get("autofix")
+    if isinstance(fx, dict) and fx.get("new"):
+        good.append(f"otomatik düzeltme: {fx['new']} kayıt")
     if status.get("fatal"):
         probs.append("❌ <b>Çalışma çöktü:</b> " + e(str(status["fatal"]).strip().splitlines()[-1])[:200])
     head = "🟢 <b>Sistem sağlıklı</b>" if ok and not probs else "🔴 <b>Sistemde sorun var</b>"
@@ -203,7 +208,7 @@ def health(title: str, status: dict, ok: bool) -> bool:
     c = cfg()
     if not enabled() or not c.get("health_messages", True):
         return False
-    bad = (not ok) or bool(status.get("fatal")) or any(
+    bad = (not ok) or bool(status.get("fatal")) or bool(status.get("quality")) or any(
         isinstance(v, dict) and v.get("ok") is False for v in status.values())
     if not bad and not any(s in title for s in c.get("health_ok_slots", ["close", "weekly"])):
         return False

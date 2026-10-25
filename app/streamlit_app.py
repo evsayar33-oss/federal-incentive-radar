@@ -293,6 +293,11 @@ def expert_view() -> None:
     # ---------------------------------------------------------------- 9. ETİKETLEME
     with tabs[8]:
         st.subheader("Etiketleme — sisteme öğretin")
+        qi = T("quality_issues")
+        if not qi.empty:
+            with st.expander(f"🛠️ Otomatik etiketleme kararları ({len(qi)})"):
+                st.dataframe(qi.sort_values("found_at", ascending=False) if "found_at" in qi.columns else qi,
+                             hide_index=True)
         st.caption("Her etiket haftalık eğitimde kullanılır. Model en kararsız olduğu kayıtları önce sorar (aktif öğrenme).")
         gh_token, gh_repo = secret("GH_TOKEN"), secret("GH_REPO")
         branch = secret("DATA_BRANCH", "data")

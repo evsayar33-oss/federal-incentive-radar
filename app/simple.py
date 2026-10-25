@@ -78,6 +78,14 @@ def _works(T) -> None:
         st.dataframe(bad.drop(columns=["İleriye dönük isabet"]), hide_index=True)
     with st.expander("⚪ Henüz hüküm verilemeyen türler"):
         st.dataframe(D.evidence_table(ev, ["unclear", "collecting"]), hide_index=True)
+    qi = T("quality_issues")
+    if not qi.empty:
+        with st.expander(f"🛠️ Sistemin otomatik düzelttiği hatalar ({len(qi)})"):
+            st.caption("Sistem yanlış programa düşen haberleri, akademik/idari belgeleri ve yanlış şirket "
+                       "eşleşmelerini kendisi bulur ve düzeltir. Siz Etiketleme sekmesinden farklı karar verirseniz "
+                       "sizin kararınız geçerli olur.")
+            st.dataframe(qi.rename(columns={"title": "Kayıt", "old": "Eski", "new": "Yeni", "reason": "Neden"})[
+                ["Kayıt", "Eski", "Yeni", "Neden"]].tail(200), hide_index=True)
     with st.expander("Bir haber türü nasıl 'kanıtlandı' sayılır?"):
         st.markdown(
             "Bir tür ancak **tüm** şartları sağlarsa 🟢 olur:\n"

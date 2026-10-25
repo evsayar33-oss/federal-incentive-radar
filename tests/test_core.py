@@ -255,6 +255,47 @@ def test_health_message():
     assert "🟢" in telegram.health_message("run", {"congress": {"ok": True}}, True)
 
 
+def test_autolabel_finds_errors():
+    import pandas as pd
+    from radar import autolabel as A
+    ev = pd.DataFrame([
+        {"event_id": "1", "source": "grants_gov", "title": "Young Faculty Award (YFA) 2027", "text": "",
+         "agency": "DARPA", "program": "semiconductors", "relevant": True, "method": "rule", "recipient": "", "tickers": ""},
+        {"event_id": "2", "source": "usaspending", "title": "Department of Energy: CIRBA SOLUTIONS, LLC",
+         "text": "lithium battery critical minerals recycling", "agency": "Department of Energy",
+         "program": "infrastructure", "relevant": True, "method": "rule", "recipient": "CIRBA SOLUTIONS, LLC", "tickers": ""},
+        {"event_id": "3", "source": "federal_register", "title": "CHIPS Incentives Program NOFO", "text": "",
+         "agency": "Commerce Department", "program": "semiconductors", "relevant": True, "method": "rule",
+         "recipient": "", "tickers": ""},
+        {"event_id": "4", "source": "usaspending", "title": "x", "text": "", "agency": "", "program": "other",
+         "relevant": True, "method": "rule", "recipient": "UNIVERSITY OF ARIZONA", "tickers": "UA"},
+    ])
+    review = pd.DataFrame([{"recipient": "LUMEN TECHNOLOGIES GOVERNMENT SOLUTIONS, INC.",
+                            "recipient_norm": "lumen technologies government solutions", "candidate": "LUMN",
+                            "score": 86, "event_id": "9"}])
+    uni = pd.DataFrame({"ticker": ["LUMN"], "name": ["Lumen Technologies Inc"]})
+    labels, issues = A.audit(ev, review, uni, pd.DataFrame(columns=["kind", "event_id", "recipient_norm"]))
+    got = {(x["kind"], x.get("event_id") or x.get("recipient_norm")): x.get("label", x.get("ticker")) for x in labels}
+    assert got[("program", "1")] == "irrelevant"                 # akademik ödül, piyasa haberi değil
+    assert got[("program", "2")] == "critical_minerals"          # kurum + metin → doğru program
+    assert ("program", "3") not in got                            # doğru kayda dokunulmaz
+    assert got[("entity", "university of arizona")] == "NONE"   # üniversite borsada değil
+    assert got[("entity", "lumen technologies government solutions")] == "LUMN"   # şirket eki → şirket
+    # Kullanıcı etiketi otomatik etiketi bastırır
+    user = pd.DataFrame([{"kind": "program", "event_id": "1", "recipient_norm": ""}])
+    labels2, _ = A.audit(ev, None, None, user)
+    assert ("program", "1") not in {(x["kind"], x.get("event_id")) for x in labels2}
+
+
+def test_basket_quality_filter():
+    import pandas as pd
+    from radar.evidence import BasketBook
+    p = pd.DataFrame({"program": ["critical_minerals"] * 4, "kind": ["sec_10k", "sec_8k", "sec_10k", "award_grant"],
+                      "d": pd.to_datetime(["2026-01-01"] * 4), "tick_list": [["BXP"], ["MP"], ["ALB"], ["CAT"]]})
+    b = BasketBook(p, {"BXP": "Real Estate", "MP": "Materials", "CAT": "Industrials"})
+    assert set(b.basket("critical_minerals", pd.Timestamp("2026-02-01"), 10)) == {"MP", "CAT"}
+
+
 if __name__ == "__main__":
     import inspect
     fails = 0

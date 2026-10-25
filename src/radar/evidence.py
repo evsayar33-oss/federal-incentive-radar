@@ -141,23 +141,49 @@ def prepare(events: pd.DataFrame) -> pd.DataFrame:
 class BasketBook:
     """Program → geçmişte doğrudan olayı olan şirketler. Yalnızca olay tarihinden önceki bilgi kullanılır."""
 
-    def __init__(self, prepared: pd.DataFrame):
-        x = prepared[prepared["tick_list"].map(len) > 0][["program", "d", "tick_list"]].explode("tick_list")
+    STRONG_KINDS = {"award_grant", "award_loan", "award_contract", "sec_8k"}
+
+    def __init__(self, prepared: pd.DataFrame, sectors: dict[str, str] | None = None):
+        x = prepared[prepared["tick_list"].map(len) > 0][["program", "kind", "d", "tick_list"]].explode("tick_list")
         self.x = x.rename(columns={"tick_list": "ticker"}).sort_values("d")
+        self.sectors = sectors or {}
+        self.prog_sectors = {pid: set(p["sectors"]) for pid, p in programs()["programs"].items()}
 
     def basket(self, program: str, before: pd.Timestamp, n: int, allowed: set[str] | None = None) -> list[str]:
+        """Sepet kalitesi: şirket ya güçlü bir bağla (ödül, 8-K) ya da en az 2 bildirimle girer.
+        Sektörü biliniyorsa programın sektörlerinden biri olmalıdır (ör. gayrimenkul şirketi kritik
+        mineral sepetine giremez; 10-K'daki kalıp ifadeler sepeti bozmaz)."""
         if program in ("", "other", "nan"):
             return []
         g = self.x[(self.x["program"] == program) & (self.x["d"] < before)]
         if allowed is not None:
             g = g[g["ticker"].isin(allowed)]
-        return g["ticker"].value_counts().head(n).index.tolist()
+        if g.empty:
+            return []
+        st = g.groupby("ticker").agg(n=("kind", "size"), strong=("kind", lambda k: bool(set(k) & self.STRONG_KINDS)))
+        ok_sec = self.prog_sectors.get(program) or set()
+        sec = st.index.map(lambda t: self.sectors.get(t))
+        known = sec.map(lambda v: isinstance(v, str))
+        # Sektörü bilinen: programın sektöründe olmalı ve (güçlü bağ veya ≥2 bildirim).
+        # Sektörü bilinmeyen: yalnızca güçlü bağla (ödül veya 8-K) girer; kalıp 10-K/10-Q ifadeleri yetmez.
+        keep = (known & sec.map(lambda v: v in ok_sec) & (st["strong"] | (st["n"] >= 2))) | (~known & st["strong"])
+        st = st[keep.to_numpy()]
+        return st.sort_values("n", ascending=False).head(n).index.tolist()
 
 
-def targets(prepared: pd.DataFrame, allowed: set[str] | None = None) -> pd.DataFrame:
+def universe_sectors() -> dict[str, str]:
+    u = store.read("universe")
+    if u.empty or "sector" not in u.columns:
+        return {}
+    u = u.dropna(subset=["sector"])
+    return dict(zip(u["ticker"].astype(str), u["sector"].astype(str)))
+
+
+def targets(prepared: pd.DataFrame, allowed: set[str] | None = None,
+            sectors: dict[str, str] | None = None) -> pd.DataFrame:
     """Her olay için (rol, hedef) satırları üretir."""
     c, etfs = cfg(), sector_etfs()
-    book = BasketBook(prepared)
+    book = BasketBook(prepared, sectors)
     rows = []
     for r in prepared.to_dict("records"):
         base = {"event_id": r["event_id"], "date": r["d"], "program": r["program"], "kind": r["kind"]}
@@ -525,7 +551,7 @@ def annotate(events: pd.DataFrame, ev: pd.DataFrame, days: int | None = None) ->
     if recent.empty:
         return pd.DataFrame()
     # Sepet için TÜM geçmiş olaylar kullanılır; hedefler yalnızca son olaylar için üretilir.
-    book = BasketBook(p)
+    book = BasketBook(p, universe_sectors())
     etfs = sector_etfs()
     index = {r["key"]: r for r in ev.to_dict("records")} if ev is not None and not ev.empty else {}
     rows = []
@@ -576,7 +602,7 @@ def refresh(events: pd.DataFrame | None = None, prices: pd.DataFrame | None = No
     if p.empty or prices is None or prices.empty:
         return store.read("evidence")
     allowed = set(prices["ticker"].astype(str).unique())
-    er = compute_returns(targets(p, allowed), prices)
+    er = compute_returns(targets(p, allowed, universe_sectors()), prices)
     if er.empty:
         return store.read("evidence")
     store.write("event_returns", er)
