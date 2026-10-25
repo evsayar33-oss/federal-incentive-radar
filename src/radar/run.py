@@ -15,12 +15,13 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from . import __version__, alerts, learn, scoring, store
+from . import __version__, alerts, diagnostics, learn, scoring, store
 from .classify import Classifier, train
 from .entity import Matcher, normalize
 from .settings import setup_logging, sources, store_dir
 
 log = setup_logging()
+diagnostics.install()
 INTRADAY_SOURCES = ["federal_register", "congress", "usaspending", "grants_gov", "sec_edgar", "gdelt"]
 
 
@@ -226,6 +227,7 @@ def cmd_slot(args) -> None:
     store.save_json("state", state)
     store.append("runs", pd.DataFrame([{"run_id": run_id, "slot": slot, "ok": ok, "seconds": round(time.time() - t0, 1),
                                         "status": json.dumps(run_status, default=str)}]))
+    diagnostics.write(f"slot_{slot}", run_status)
     if not ok:
         raise SystemExit(1)
 
@@ -253,6 +255,7 @@ def cmd_weekly(args) -> None:
     store.append("runs", pd.DataFrame([{"run_id": datetime.now().strftime("%Y-%m-%dT%H:%M") + "_weekly",
                                         "slot": "weekly", "ok": True, "seconds": 0,
                                         "status": json.dumps(status, default=str)}]))
+    diagnostics.write("weekly", status)
 
 
 def weekly_learning(status: dict) -> None:

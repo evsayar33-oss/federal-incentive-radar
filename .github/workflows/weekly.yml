@@ -22,6 +22,7 @@ jobs:
       PYTHONPATH: src
       RADAR_STORE: store
       SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+      FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
       RUN_LABEL: weekly
     steps:
       - uses: actions/checkout@v5
