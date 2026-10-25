@@ -132,8 +132,20 @@ prices:
   enabled: true
   history_period: "3y"
   max_extra_tickers: 150
+  max_event_tickers: 500     # kanıt motoru: olayı olan şirketlerin fiyatları
 
 alerts:
   min_award_usd: 100000000
   sector_score_jump: 8
   create_github_issue: true
+
+# Telegram botu. Gizli anahtarlar: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID (GitHub Secrets).
+telegram:
+  enabled: true
+  # Hangi kanıt düzeyi bildirilsin? proven = yalnızca kanıtlanmış (önerilen).
+  # Daha fazla bildirim isterseniz: ["proven", "promising"]
+  notify_statuses: ["proven"]
+  min_abs_effect: 0.0        # ör. 0.01 = yalnızca beklenen etkisi %1'in üstünde olanlar
+  max_event_age_days: 3      # eski olaylar (geri doldurma) bildirilmez
+  max_per_run: 8             # fazlası tek özet mesajda gelir
+  weekly_summary: true       # cumartesi kanıt raporu ve bot karnesi

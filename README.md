@@ -6,6 +6,8 @@ Bu sistem ABD federal teşviklerini izler. Paranın yolunu kanun tasarısından 
 - **LLM:** Yok. Sınıflandırma kural tabanlıdır ve klasik makine öğrenmesiyle gelişir.
 - **Takvim:** Her iş günü 3 kontrol yapılır: açılış (09:45), gün ortası (12:30) ve kapanış (16:15). Saatler New York saatidir.
 - **Öğrenme:** Sistem her tahmini kaydeder. Sonra tahmini gerçek sonuçla karşılaştırır ve kendini yeniden ayarlar.
+- **Kanıt motoru:** Sistem her haber türünün hisseleri gerçekten etkileyip etkilemediğini ölçer. Yalnızca kanıtlanmış türler öne çıkar.
+- **Telegram:** Kanıtlanmış türde yeni bir haber gelince bot size mesaj gönderir.
 
 ---
 
@@ -20,6 +22,8 @@ GitHub Actions (günde 3 kez + haftada 1)
  ├─ EŞLEŞTİR  Ödül alıcısı adı → ticker (ETF varlıkları + SEC listesi, insan onaylı)
  ├─ SKORLA    Monte Carlo: tutar × aşama olasılığı × zamanlama × sektör payı × etkinlik × rejim × ödeme hızı
  ├─ DEFTER    Kapanışta: "sektör ETF'i SPY'ı geçer mi?" olasılığı yazılır (değiştirilemez)
+ ├─ KANIT     Kapanışta + haftalık: her haber türünün hisseye gerçek etkisi ölçülür (olay çalışması)
+ ├─ TELEGRAM  Yeni haber kanıtlanmış bir türdeyse bildirim gider; sonucu 5 gün sonra ölçülür
  └─ YAYIMLA   Tüm tablolar 'data' dalına yazılır
                      │
                      ▼
@@ -63,6 +67,8 @@ Bu değerler `config/priors.json` dosyasındadır. Siz değiştirebilirsiniz.
 | `CONGRESS_API_KEY` | Önerilir | Ücretsiz anahtar | https://api.congress.gov/sign-up/ |
 | `BEA_API_KEY` | Önerilir | Ücretsiz 36 karakterlik anahtar | https://apps.bea.gov/api/signup/ (girdi-çıktı yayılması için) |
 | `FRED_API_KEY` | İsteğe bağlı | Ücretsiz anahtar | https://fred.stlouisfed.org/docs/api/api_key.html (anahtarsız yol çalışmazsa yedek) |
+| `TELEGRAM_BOT_TOKEN` | İsteğe bağlı | Bot token | Telegram → @BotFather → `/newbot` |
+| `TELEGRAM_CHAT_ID` | İsteğe bağlı | Sohbet numarası | Aşağıdaki Adım 6 |
 
 Diğer tüm kaynaklar anahtar istemez.
 
@@ -99,9 +105,17 @@ GH_REPO = "<kullanici>/<repo>"
 
 Token yoksa da etiket verebilirsiniz. Arayüz bir dosya indirir. Siz onu `data` dalındaki `labels/labels.jsonl` dosyasına eklersiniz.
 
-### Adım 6 (isteğe bağlı) — Telefona bildirim
+### Adım 6 (isteğe bağlı) — Telegram bildirimi
 
-Önemli olaylarda sistem bir GitHub Issue açar. GitHub mobil uygulamasını kurun ve depoyu "Watch" yapın. Bildirimler telefonunuza gelir. Kapatmak için `config/sources.yaml` içinde `create_github_issue: false` yazın.
+1. Telegram'da **@BotFather** ile konuşun. `/newbot` yazın. Size bir token verir.
+2. Token'ı `TELEGRAM_BOT_TOKEN` adlı GitHub Secret olarak ekleyin.
+3. Telegram'da yeni botunuza `/start` yazın.
+4. **Actions → Radar → Run workflow** yolunu izleyin. Mod olarak **`telegram-test`** seçin. Kayıtta chat id görünür.
+5. Bu sayıyı `TELEGRAM_CHAT_ID` adlı GitHub Secret olarak ekleyin. Testi tekrar çalıştırın. Bot size bir deneme mesajı gönderir.
+
+Bot yalnızca **kanıtlanmış** haber türlerini gönderir. Daha çok bildirim için `config/sources.yaml` içinde `telegram.notify_statuses: ["proven", "promising"]` yazın. Cumartesi günleri bot bir kanıt raporu ve kendi isabet karnesini gönderir.
+
+GitHub Issue bildirimi de devam eder. Kapatmak için `config/sources.yaml` içinde `create_github_issue: false` yazın.
 
 ---
 
@@ -114,18 +128,65 @@ Token yoksa da etiket verebilirsiniz. Arayüz bir dosya indirir. Siz onu `data` 
 
 `keepalive.yml` ayın 1'inde ve 15'inde çalışır. Radar iş akışlarını etkin tutar ve ayda bir küçük bir commit atar. Bu sayede GitHub'ın 60 gün kuralı zamanlanmış işleri kapatmaz.
 
-## 3. Saatler neden iki kez tetikleniyor?
+## 3. Kanıt motoru: hangi haber hangi hisseyi etkiler?
+
+Sistem bir haber türünü ancak ölçerek kanıtlar. Kod: `src/radar/evidence.py`. Eşikler: `config/priors.json → evidence`.
+
+**Haber türü** = program × belge türü × etkilenen varlık. Örnek: "Yarı iletken (CHIPS) · 8-K bildirimi · şirketin kendi hissesi".
+
+| Etkilenen varlık | Ne zaman? | Nasıl seçilir? |
+|---|---|---|
+| Şirketin kendi hissesi | Olayda ticker var (SEC bildirimi, eşleşmiş ödül) | Doğrudan |
+| Program sepeti | Ticker yok, program belli (kural, fon ilanı, tasarı) | Bu programda **daha önce** doğrudan olayı olan şirketler. Gelecek bilgi kullanılmaz. |
+| Sektör ETF'i | Ticker yok | Programın baskın sektörü |
+
+**Ölçüm adımları:**
+
+1. **Anormal getiri:** Piyasa modeli (SPY), tahmin penceresi [-250, -30] gün. Pencereler: [-1,+1], [0,+5], [0,+20]. Ana pencere: [0,+5].
+2. **Standartlaştırma:** CAR, hissenin kendi oynaklığına bölünür (SCAR). Oynak küçük hisseler sonucu ezmez.
+3. **Kümeleme:** Aynı gündeki olaylar tek küme sayılır. Test kümeler üzerinde yapılır.
+4. **Çoklu test düzeltmesi:** Benjamini–Hochberg q değeri. Çok sayıda tür test edildiği için şans eseri bulunan etkiler elenir.
+5. **Hiyerarşik daralma (empirical Bayes):** Az örnekli türün etkisi üst türün etkisine doğru küçültülür.
+6. **İleriye dönük doğrulama:** Her olay yalnızca o tarihten önceki verilerle tahmin edilir (8 günlük purge ile). Etki önceden bilinebilir değilse tür kanıtlanmaz.
+7. **Canlı geri besleme:** Telegram sinyallerinin gerçekleşen getirisi ölçülür. Son 10+ sinyalde isabet %45'in altındaysa tür **askıya** alınır.
+
+**Durumlar:**
+
+| Durum | Şart |
+|---|---|
+| 🟢 Kanıtlandı | ≥15 olay günü, q ≤ 0,10, etki ≥ %0,5, posterior yön olasılığı ≥ 0,90, ileriye dönük isabet ≥ %55 (≥6 tahmin) |
+| 🟡 Umut verici | ≥8 olay günü, p ≤ 0,10, q ≤ 0,25, posterior ≥ 0,80, ileriye dönük test negatif değil |
+| ⚫ Etkisiz | ≥30 olay günü, p ≥ 0,5 — bu haberleri önemsemeyebilirsiniz |
+| ⚪ Belirsiz / veri birikiyor | Hüküm yok |
+| 🟠 Askıda | Kanıtlıydı, canlıda tutmadı |
+
+Bir olay için önce en özel tür kontrol edilir. Özel türün yeterli verisi varsa onun hükmü geçerlidir. Genel türe yalnızca özel türde veri yetersizse inilir. Böylece CHIPS 8-K'larının kanıtı, başka bir programın 8-K'sına taşınmaz.
+
+**Doğrulama:** Testler, etkisi bilinen sentetik bir piyasa kurar. Motor gerçek etkiyi bulmalı ve gürültüyü reddetmelidir (`tests/test_core.py`).
+
+**Tablolar (data dalı):** `event_returns` (olay başına getiri), `evidence` (tür başına kanıt), `evidence_history` (kanıtın zamanla değişimi), `event_signals` (son olayların rozetleri), `notifications` (gönderilen sinyaller ve sonuçları).
+
+## 4. Arayüz: basit ve uzman görünüm
+
+Sol menüden görünümü seçin.
+
+- **🟢 Basit (varsayılan):** Bugün (yalnızca kanıtlı ve umut verici haberler), İşe yarayan haberler, Hisse sorgula, Telegram, Nasıl okunur?
+- **🔬 Uzman:** Önceki tüm sekmeler ve **Kanıt motoru** sekmesi (tüm seviyeler, q, posterior, ileriye dönük test, canlı isabet).
+
+## 5. Saatler neden iki kez tetikleniyor?
 
 GitHub cron UTC ile çalışır ve yaz/kış saatini bilmez. Bu yüzden her slot için iki tetikleyici vardır. Kod New York saatini kontrol eder. Yalnızca doğru pencerede ve günde bir kez çalışır. Fazla tetiklemeler birkaç saniyede biter. GitHub zamanlanmış işleri bazen geciktirir. Pencereler (150–180 dakika) bu gecikmeyi tolere eder.
 
 ---
 
-## 4. Sistem kendini nasıl geliştirir?
+## 6. Sistem kendini nasıl geliştirir?
 
 | Döngü | Ne öğrenir? | Ne zaman? |
 |---|---|---|
 | **Tahmin defteri + kalibrasyon** | Akış sürprizi → "SPY'ı geçme" olasılığı ilişkisi (lojistik a, b) ve sektör sapması | Haftalık |
 | **Olay çalışması (CAR)** | Hangi program türü piyasada gerçekten fark yaratıyor? → program etkinlik çarpanı (0,6–1,4) | Haftalık |
+| **Kanıt motoru** | Hangi haber türü hangi hisseyi etkiliyor? Yeni olaylarla kanıt güçlenir veya zayıflar | Her kapanış + haftalık |
+| **Bot karnesi** | Gönderilen sinyaller tuttu mu? Tutmayan tür askıya alınır | Her kapanış + haftalık |
 | **Kendini eğiten sınıflandırıcı** | Sizin etiketleriniz + kuralın çok emin olduğu örnekler → TF-IDF + lojistik regresyon | Haftalık |
 | **Varlık eşleştirme** | Onayladığınız her ad → ticker eşleşmesi kalıcı olur | Her çalışmada |
 | **Drift izleme** | Program dağılımı değişimi (PSI) ve son 60 tahminde kötüleşme | Her çalışmada |
@@ -136,7 +197,7 @@ Modelin ağırlığı etiket sayısıyla artar: 0 etikette %10, 400+ etikette %6
 
 ---
 
-## 5. Yeni program veya kaynak eklemek
+## 7. Yeni program veya kaynak eklemek
 
 - **Yeni teşvik programı:** `config/programs.yaml` dosyasına bir blok ekleyin: anahtar kelimeler, sektör payları, teşvik türü. Kod değişikliği gerekmez.
 - **Yeni SEC ifadesi:** `config/sources.yaml` → `sec_edgar.phrases` altına `'"ifade"': program_kodu` ekleyin.
@@ -145,23 +206,27 @@ Modelin ağırlığı etiket sayısıyla artar: 0 etikette %10, 400+ etikette %6
 
 ---
 
-## 6. Yerel çalıştırma
+## 8. Yerel çalıştırma
 
 ```bash
 pip install -r requirements-etl.txt -r requirements.txt
 PYTHONPATH=src python -m radar.run demo --days 200      # internetsiz demo
 PYTHONPATH=src python -m radar.run slot --slot open --force
+PYTHONPATH=src python -m radar.run telegram-test           # TELEGRAM_BOT_TOKEN gerekir
 streamlit run app/streamlit_app.py
 PYTHONPATH=src pytest -q tests
 ```
 
 ---
 
-## 7. Sınırlamalar
+## 9. Sınırlamalar
 
 - **Fiyat verisi** resmi bir kaynaktan gelmez (yfinance, yedek: Stooq). Sistem fiyat olmadan da skor üretir. Yalnızca puanlama ve olay çalışması ertelenir.
 - **Vergi kredileri** (45X, 48E, ...) USAspending'de görünmez. Bunlar Federal Register rehberleri ve SEC bildirimleriyle izlenir. Tutarları tahminidir.
 - **Tutarı bilinmeyen belgeler** (tasarı, kural) varsayılan tutarla ve geniş belirsizlikle hesaplanır. Aynı programdaki tekrarlar azalan ağırlık alır.
 - **Ad eşleştirme** hatasız değildir. Belirsiz eşleşmeler otomatik kabul edilmez, onayınıza gelir.
+- **Kanıt zaman ister.** İlk aylarda çoğu tür "veri birikiyor" durumundadır. Bu doğru davranıştır: sistem az veriyle hüküm vermez.
+- **Kanıtın kalitesi eşleştirmeye bağlıdır.** Yanlış ticker eşleşmeleri sepetleri bozar. Etiketleme sekmesinden eşleşmeleri onaylayın.
+- **Bildirim gecikmesi:** Sistem günde 3 kez çalışır. Bir haber en geç birkaç saat içinde bildirilir.
 - **Nedensellik sınırlıdır.** Skorlar karar desteği içindir. Yatırım tavsiyesi değildir.
 - Ücretsiz katman limitleri değişebilir. Limitleri `config/sources.yaml` ve `src/radar/http.py` içinde güncelleyin.

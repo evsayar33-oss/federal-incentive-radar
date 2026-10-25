@@ -159,3 +159,79 @@ def fmt_usd(v) -> str:
         if abs(v) >= div:
             return f"{v/div:,.1f} {unit}"
     return f"{v:,.0f} $"
+
+
+# ---------------------------------------------------------------- basit görünüm (kanıt motoru tabloları)
+
+STATUS_ORDER = {"proven": 5, "promising": 4, "suspended": 3, "no_effect": 2, "unclear": 1, "collecting": 0}
+
+
+def pct(v, signed: bool = True) -> str:
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return "-"
+    if v != v:
+        return "-"
+    s = f"{abs(v) * 100:.1f}".replace(".", ",")
+    return (("+" if v > 0 else "−") if signed else "") + "%" + s
+
+
+def evidence_table(ev: pd.DataFrame, statuses: list[str] | None = None) -> pd.DataFrame:
+    """Kanıt tablosunu yeni başlayan için sadeleştirir (yalnızca 'program × tür' ve 'tür' seviyeleri)."""
+    if ev.empty:
+        return pd.DataFrame()
+    e = ev[ev["level"].isin(["program_kind", "kind"])].copy()
+    if statuses:
+        e = e[e["status"].isin(statuses)]
+    if e.empty:
+        return pd.DataFrame()
+    e["_r"] = e["status"].map(STATUS_ORDER)
+    e = e.sort_values(["_r", "n_clusters"], ascending=False)
+    out = pd.DataFrame({
+        "Durum": e["icon"] + " " + e["status_name"],
+        "Program": e["program_name"],
+        "Haber türü": e["kind_name"],
+        "Etkilenen": e["role_name"],
+        "Ortalama etki (5 gün)": e["post_mean"].map(pct),
+        "Olay sayısı": e["n_clusters"].astype(int),
+        "Aynı yön": e["consistency"].map(lambda v: pct(v, signed=False)),
+        "İleriye dönük isabet": [f"{pct(h, signed=False)} ({int(n)})" if n and n == n else "-"
+                                 for h, n in zip(e["oos_hit"], e["oos_n"])],
+        "Açıklama": e["explain"],
+    })
+    return out.reset_index(drop=True)
+
+
+def signal_feed(sig: pd.DataFrame, days: int = 14, only_strong: bool = True) -> pd.DataFrame:
+    if sig.empty:
+        return sig
+    d = pd.to_datetime(sig["date"], errors="coerce")
+    s = sig[d >= d.max() - pd.Timedelta(days=days)]
+    if only_strong:
+        s = s[s["status"].isin(["proven", "promising"])]
+    return s.sort_values(["rank", "date"], ascending=[False, False])
+
+
+def bot_scorecard(nt: pd.DataFrame) -> dict:
+    if nt.empty:
+        return {"sent": 0, "resolved": 0, "hit": None, "avg_signed": None}
+    hit = pd.to_numeric(nt.get("hit"), errors="coerce")
+    car = pd.to_numeric(nt.get("realized_car"), errors="coerce")
+    sign = nt["direction"].map({"+": 1, "-": -1}).fillna(0)
+    res = hit.notna()
+    return {"sent": int(len(nt)), "resolved": int(res.sum()),
+            "hit": float(hit[res].mean()) if res.any() else None,
+            "avg_signed": float((car * sign)[res].mean()) if res.any() else None}
+
+
+def ticker_history(er: pd.DataFrame, ticker: str) -> pd.DataFrame:
+    """Bir hissenin geçmiş teşvik olayları ve her olaydan sonraki piyasa üstü getirisi."""
+    if er.empty or not ticker:
+        return pd.DataFrame()
+    t = ticker.strip().upper()
+    m = (er["target"].astype(str) == t) | er["members"].astype(str).str.split(",").map(lambda x: t in x)
+    x = er[m].copy()
+    if x.empty:
+        return x
+    return x.sort_values("date", ascending=False)

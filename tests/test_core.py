@@ -149,6 +149,98 @@ def test_demo_end_to_end():
     assert len(D.labeling_queue(D.load_table("events"))) > 0
 
 
+def _synthetic_market(seed: int = 3):
+    """Gerçek etkisi bilinen sentetik piyasa: CHIPS 8-K'ları +%4 (5 gün), 10-Q'lar etkisiz."""
+    import json
+    import numpy as np
+    import pandas as pd
+    rng = np.random.default_rng(seed)
+    dates = pd.bdate_range("2023-01-02", periods=700)
+    tick = [f"T{i}" for i in range(30)]
+    spy = rng.normal(0.0003, 0.01, len(dates))
+    rets = {t: 1.0 * spy + rng.normal(0, 0.015, len(dates)) for t in tick}
+    rows = []
+    for j, k in enumerate(rng.choice(np.arange(280, 680), 90, replace=False)):
+        t = tick[j % 30]
+        eight_k = j % 2 == 0
+        if eight_k:
+            rets[t][k:k + 5] += 0.008
+        rows.append({"event_id": f"e{j}", "source": "sec_edgar", "stage": 7, "date": dates[k].date().isoformat(),
+                     "title": f"{t} {'8-K' if eight_k else '10-Q'}", "url": "", "tickers": t, "relevant": True,
+                     "program": "semiconductors" if eight_k else "clean_power", "program_name": "",
+                     "extra": json.dumps({"form": "8-K" if eight_k else "10-Q"}), "amount_type": "",
+                     "amount_usd": float("nan"), "sector_weights": json.dumps({"Information Technology": 1.0})})
+    px = {"SPY": 400 * np.cumprod(1 + spy), **{t: 50 * np.cumprod(1 + r) for t, r in rets.items()}}
+    prices = pd.DataFrame(px, index=[d.date().isoformat() for d in dates]).reset_index(names="date")
+    return pd.DataFrame(rows), prices.melt(id_vars="date", var_name="ticker", value_name="close")
+
+
+def test_evidence_finds_real_effect_and_rejects_noise():
+    from radar import evidence as E
+    events, prices = _synthetic_market()
+    p = E.prepare(events)
+    assert set(p["kind"]) == {"sec_8k", "sec_10q"}
+    er = E.compute_returns(E.targets(p, set(prices["ticker"])), prices)
+    ev = E.build_evidence(er).set_index("key")
+    real, noise = ev.loc["semiconductors|sec_8k|direct"], ev.loc["clean_power|sec_10q|direct"]
+    assert real["status"] == "proven" and real["direction"] == "+" and real["oos_hit"] >= 0.55
+    assert 0.01 < real["post_mean"] < real["mean_car"] + 1e-9      # daraltma temkinli olmalı
+    assert noise["status"] not in ("proven", "promising")
+    # Olay → kanıt eşlemesi: özel anahtar yeterli veriye sahipse genel seviyenin kanıtı devralınmaz.
+    idx = {k: dict(r, key=k) for k, r in ev.iterrows()}
+    assert E.lookup(idx, "clean_power", "sec_10q", "direct")["key"] == "clean_power|sec_10q|direct"
+    assert E.lookup(idx, "semiconductors", "sec_8k", "direct")["status"] == "proven"
+    sig = E.annotate(events, ev.reset_index())
+    assert set(sig.loc[sig["kind"] == "sec_8k", "status"]) == {"proven"}
+
+
+def test_evidence_live_feedback_suspends():
+    import pandas as pd
+    from radar import evidence as E
+    events, prices = _synthetic_market()
+    er = E.compute_returns(E.targets(E.prepare(events), set(prices["ticker"])), prices)
+    live = pd.DataFrame({"evidence_key": ["semiconductors|sec_8k|direct"] * 12, "hit": [0.0] * 10 + [1.0] * 2})
+    ev = E.build_evidence(er, live).set_index("key")
+    assert ev.loc["semiconductors|sec_8k|direct", "status"] == "suspended"
+
+
+def test_benjamini_hochberg():
+    import pandas as pd
+    from radar.evidence import _bh
+    q = _bh(pd.Series([0.01, 0.04, 0.03, 0.5, None]))
+    assert abs(q.iloc[0] - 0.04) < 1e-9 and abs(q.iloc[1] - 0.0533333) < 1e-6 and q.iloc[3] == 0.5 and q.isna().iloc[4]
+
+
+def test_telegram_gate_and_format():
+    from datetime import date
+    import pandas as pd
+    from radar import store, telegram
+    today = date.today().isoformat()
+    base = {"date": today, "status": "proven", "effect": 0.03, "rank": 5, "n_clusters": 20, "url": "",
+            "program": "semiconductors", "program_name": "Yarı iletken", "kind_name": "8-K", "role": "direct",
+            "role_name": "Şirketin kendi hissesi", "evidence_key": "semiconductors|sec_8k|direct",
+            "consistency": 0.7, "oos_hit": 0.6, "oos_n": 10, "q": 0.03, "status_name": "Kanıtlandı",
+            "icon": "🟢", "amount_usd": None}
+    sig = pd.DataFrame([
+        {**base, "event_id": "a", "title": "Intel 8-K <CHIPS>", "affected": "INTC", "url": "https://x"},
+        {**base, "event_id": "b", "title": "belirsiz", "affected": "F", "status": "unclear", "rank": 1},
+        {**base, "event_id": "c", "title": "eski olay", "affected": "MU", "date": "2020-01-01"},
+    ])
+    msg = telegram.format_signal(sig.iloc[0].to_dict())
+    assert "&lt;CHIPS&gt;" in msg and "INTC" in msg and "%3,0" in msg
+    sent = []
+    old_send, old_cred = telegram.send, telegram.credentials
+    telegram.send = lambda text: sent.append(text) or True
+    telegram.credentials = lambda: ("tok", "chat")
+    try:
+        assert telegram.notify(sig, {"a", "b", "c"}, "run1") == 1          # yalnızca yeni + kanıtlı + taze
+        assert telegram.notify(sig, {"a"}, "run2") == 0                    # aynı olay iki kez gönderilmez
+    finally:
+        telegram.send, telegram.credentials = old_send, old_cred
+    nt = store.read("notifications")
+    assert list(nt["event_id"]) == ["a"] and nt["direction"].iloc[0] == "+"
+
+
 if __name__ == "__main__":
     import inspect
     fails = 0

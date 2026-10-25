@@ -13,7 +13,7 @@ import shutil
 import numpy as np
 import pandas as pd
 
-from . import learn, run, schema, store
+from . import evidence, learn, run, schema, store
 from .settings import SECTORS, programs, sector_etfs, sources, store_dir
 
 log = logging.getLogger("radar.demo")
@@ -136,7 +136,8 @@ def build(days: int = 420, seed: int = 11) -> None:
             phrase, ticks = rnd.choice(SEC_PHRASES)
             t = rnd.choice(ticks)
             rows.append(schema.event("sec_edgar", f"{ds}-{phrase}-{t}", 7, ds, f"{t} 8-K: {phrase.strip(chr(34))}",
-                                     text=phrase, agency="SEC filing", tickers=t, recipient=t, url="https://www.sec.gov/"))
+                                     text=phrase, agency="SEC filing", tickers=t, recipient=t, url="https://www.sec.gov/",
+                                     extra={"form": "8-K", "phrase": phrase}))
         for _ in range(rng.poisson(3)):
             t, pid = rnd.choice(BILLS)
             rows.append(schema.event("gdelt", f"{ds}-news-{rnd.random()}", 0, ds, f"Lawmakers debate {t}", text=t,
@@ -157,8 +158,19 @@ def build(days: int = 420, seed: int = 11) -> None:
     for s in SECTORS:
         r = 0.9 * spy_ret + rng.normal(0, 0.008, len(dates)) + 0.0006 * surprise[s].shift(1).fillna(0).to_numpy()
         px[etf[s]] = 100 * np.cumprod(1 + r)
+    # Kanıt motorunun bulması gereken GERÇEK etkiler: CHIPS 8-K'ları (+%5, 5 gün) ve kritik mineral ödülleri (+%5).
+    # Diğer olay türlerinin etkisi yoktur; motor onları "etkisiz" veya "belirsiz" bulmalıdır.
+    pos = {dt.date().isoformat(): i for i, dt in enumerate(dates)}
+    shock = {t: np.zeros(len(dates)) for t, *_ in UNIVERSE}
+    rec_tick = {n: t for n, t, _p in RECIPIENTS}
+    for ds, rows in by_day.items():
+        for r in rows:
+            if r["source"] == "sec_edgar" and "CHIPS" in r["title"] and r["tickers"] in shock:
+                shock[r["tickers"]][pos[ds]:pos[ds] + 5] += 0.01
+            elif r["source"] == "usaspending" and "minerals" in r["text"] and rec_tick.get(r["recipient"]) in shock:
+                shock[rec_tick[r["recipient"]]][pos[ds]] += 0.05
     for t, _n, s, _w in UNIVERSE:
-        r = 1.1 * (np.diff(np.log(px[etf[s]]), prepend=np.log(px[etf[s]][0]))) + rng.normal(0, 0.015, len(dates))
+        r = 1.1 * (np.diff(np.log(px[etf[s]]), prepend=np.log(px[etf[s]][0]))) + rng.normal(0, 0.015, len(dates)) + shock[t]
         px[t] = 50 * np.exp(np.cumsum(r))
     prices = pd.DataFrame(px, index=[x.date().isoformat() for x in dates]).reset_index(names="date")
     store.write("prices", prices.melt(id_vars="date", var_name="ticker", value_name="close"))
@@ -202,6 +214,7 @@ def build(days: int = 420, seed: int = 11) -> None:
     run.weekly_learning(st)
     store.append("runs", pd.DataFrame([{"run_id": "demo", "slot": "demo", "ok": True, "seconds": 0,
                                         "status": json.dumps(st, default=str)}]))
+    store.write("event_signals", evidence.annotate(store.read("events"), store.read("evidence")))
     ctx = store.load_json("context")
     ctx["demo"] = True
     store.save_json("context", ctx)

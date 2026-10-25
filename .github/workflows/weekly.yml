@@ -24,6 +24,8 @@ jobs:
       SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
       FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
       BEA_API_KEY: ${{ secrets.BEA_API_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       RUN_LABEL: weekly
     steps:
       - uses: actions/checkout@v5

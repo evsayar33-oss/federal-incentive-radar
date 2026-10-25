@@ -3,6 +3,7 @@
   python -m radar.run slot [--slot auto|open|midday|close] [--force]
   python -m radar.run weekly
   python -m radar.run demo            # internet olmadan sahte veriyle uçtan uca çalıştırma
+  python -m radar.run telegram-test   # Telegram botunu dener, chat id'yi bulur
 """
 from __future__ import annotations
 
@@ -16,7 +17,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from . import __version__, alerts, diagnostics, learn, scoring, store
+from . import __version__, alerts, diagnostics, evidence, learn, scoring, store, telegram
 from .classify import Classifier, train
 from .entity import Matcher, normalize
 from .settings import setup_logging, sources, store_dir
@@ -138,6 +139,12 @@ def price_tickers(extra_limit: int | None = None) -> list[str]:
     base = list(cfg["sector_etfs"].values()) + [cfg["benchmark"]]
     exp = store.read("company_exposure")
     extra = exp["ticker"].dropna().astype(str).head(extra_limit or cfg["prices"]["max_extra_tickers"]).tolist() if not exp.empty else []
+    # Kanıt motoru için: doğrudan olayı olan tüm şirketler (en yeni olaylar önce).
+    ev = store.read("events")
+    if not ev.empty:
+        t = ev[ev["tickers"].fillna("").astype(str) != ""].sort_values("date", ascending=False)["tickers"]
+        seen = list(dict.fromkeys(x.strip() for v in t.astype(str) for x in v.split(",") if x.strip()))
+        extra += seen[:cfg["prices"].get("max_event_tickers", 500)]
     return sorted(set(base + extra))
 
 
@@ -218,12 +225,20 @@ def score_and_report(events: pd.DataFrame, new_events: pd.DataFrame, run_id: str
     if not al.empty:
         store.append("alerts", al)
         alerts.notify_github(al, run_id)
+    # Kanıt rozetleri (arayüz) ve Telegram: yalnızca etkisi kanıtlanmış haber türleri bildirilir.
+    signals = evidence.annotate(events, store.read("evidence"))
+    if not signals.empty:
+        store.write("event_signals", signals)
+        new_ids = set(new_events["event_id"].astype(str)) if new_events is not None and not new_events.empty else set()
+        telegram.notify(signals, new_ids, run_id)
     if write_ledger and not scores.empty:
         learn.write_ledger(store.read("scores_history"), asof.isoformat(), state, __version__)
     store.save_json("context", {"run_id": run_id, "asof": asof.isoformat(), "regime": regime_info,
                                 "dts_multipliers": dts_mult, "version": __version__,
                                 "spillover": "açık (BEA I-O)" if io_T is not None else "kapalı (yalnızca doğrudan etki)",
-                                "drift": learn.program_psi(events, asof)})
+                                "drift": learn.program_psi(events, asof),
+                                "telegram": {"enabled": telegram.enabled(),
+                                             "notify_statuses": telegram.cfg().get("notify_statuses", ["proven"])}})
 
 
 # ---------------------------------------------------------------- komutlar
@@ -244,6 +259,12 @@ def cmd_slot(args) -> None:
         process(raw, run_id, now_et.date(), slot, run_status, write_ledger=(slot == "close"))
         if slot == "close":
             learn.resolve_ledger(store.read("prices"))
+            try:
+                evidence.refresh()
+                run_status["evidence"] = {"ok": True}
+            except Exception as exc:
+                log.error("Kanıt motoru: %s", exc)
+                run_status["evidence"] = {"ok": False, "error": str(exc)[:300]}
         ok = True
     except Exception:
         log.error(traceback.format_exc())
@@ -319,6 +340,9 @@ def weekly_learning(status: dict) -> None:
             recl = apply_company_sector(recl, uni)
             store.write("review_queue", review)
         store.write("events", recl)
+    ev = evidence.refresh()
+    status["evidence"] = {} if ev.empty else ev[ev["level"] == "program_kind"]["status"].value_counts().to_dict()
+    telegram.weekly_summary(ev)
     state["history"] = (state.get("history", []) + [{"date": date.today().isoformat(),
                         "calibration": state["calibration"], "n_program_eff": len(state["program_efficacy"])}])[-104:]
     store.save_json("model_state", state)
@@ -337,10 +361,12 @@ def main() -> None:
     s.add_argument("--slot", default="auto", choices=["auto", "open", "midday", "close"])
     s.add_argument("--force", action="store_true")
     sub.add_parser("weekly")
+    sub.add_parser("telegram-test")
     d = sub.add_parser("demo")
     d.add_argument("--days", type=int, default=420)
     args = ap.parse_args()
-    {"slot": cmd_slot, "weekly": cmd_weekly, "demo": cmd_demo}[args.cmd](args)
+    {"slot": cmd_slot, "weekly": cmd_weekly, "demo": cmd_demo,
+     "telegram-test": lambda _a: telegram.test()}[args.cmd](args)
 
 
 if __name__ == "__main__":
