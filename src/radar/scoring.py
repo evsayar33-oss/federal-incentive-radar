@@ -193,19 +193,30 @@ def simulate(ev: pd.DataFrame, asof: date, state: dict, regime_mult: float,
 
 
 def company_exposure(e: pd.DataFrame, universe: pd.DataFrame) -> pd.DataFrame:
+    """Şirket bazlı maruziyeti hesapla; explode sonrası yinelenen indeksleri güvenle işle."""
     if e is None or e.empty:
         return pd.DataFrame()
     x = e[e["tickers"].fillna("") != ""].copy()
     if x.empty:
         return pd.DataFrame()
+
+    # Bir olay birden fazla ticker içerdiğinde explode aynı kaynak indeksini tekrarlar.
+    # Sonraki gruplama adımlarının etiket bazlı hizalamaya güvenmemesi için sıfırla.
     x["ticker"] = x["tickers"].str.split(",")
-    x = x.explode("ticker")
+    x = x.explode("ticker", ignore_index=True)
     x["ticker"] = x["ticker"].str.strip()
-    x["is_award"] = x["source"] == "usaspending"
-    x["is_filing"] = x["source"] == "sec_edgar"
+    x["is_award"] = x["source"].eq("usaspending")
+    x["is_filing"] = x["source"].eq("sec_edgar")
+
+    # Award tutarını grup agregasyonundan önce satır bazında hesapla. Eski kodda
+    # x.loc[s.index, ...] yinelenen indeksleri tekrar seçerek satır sayısını bozabiliyordu.
+    # Bu yöntem yalnızca aynı satırdaki award bayrağını uygular; hizalama hatası üretmez.
+    amount = pd.to_numeric(x["amount_usd"], errors="coerce").fillna(0.0)
+    x["award_amount_usd"] = amount * x["is_award"].astype(float)
+
     g = x.groupby("ticker").agg(
         expected_usd_3y=("expected_usd_3y", "sum"),
-        awards_usd=("amount_usd", lambda s: float(pd.to_numeric(s, errors="coerce").where(x.loc[s.index, "is_award"]).sum())),
+        awards_usd=("award_amount_usd", "sum"),
         n_awards=("is_award", "sum"), n_filings=("is_filing", "sum"),
         programs=("program", lambda s: ", ".join(sorted(set(s)))),
         last_date=("date", "max"),
