@@ -1,0 +1,32 @@
+{
+  "asof": "2026-10-25",
+  "events": 53296,
+  "tickers_in_events": 1688,
+  "tickers_with_prices": 1085,
+  "tickers_without_prices": 603,
+  "survivorship_note": "Fiyatı olmayan şirketler (iflas, birleşme, ticker değişimi) ölçülemez; etkiler hafif iyimser olabilir.",
+  "history": {
+    "windows_done": 133,
+    "events": 82904,
+    "stopped_early": false,
+    "errors": [
+      "usaspending 2024-09-13: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+      "usaspending 2024-10-14: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+      "usaspending 2024-11-14: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+      "usaspending 2024-12-15: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+      "usaspending 2025-01-15: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"
+    ]
+  },
+  "company_sic": {
+    "ok": true,
+    "new": 1500
+  },
+  "prices": {
+    "ok": true
+  },
+  "evidence": {
+    "unclear": 114,
+    "collecting": 107,
+    "no_effect": 48
+  }
+}

@@ -1,0 +1,2244 @@
+{
+  "slot_open": {
+    "at": "2026-10-25T09:38:47Z",
+    "status": {
+      "federal_register": {
+        "ok": true,
+        "rows": 20,
+        "sec": 2.8
+      },
+      "congress": {
+        "ok": true,
+        "rows": 35,
+        "sec": 0.3
+      },
+      "usaspending": {
+        "ok": true,
+        "rows": 0,
+        "sec": 0.6
+      },
+      "grants_gov": {
+        "ok": true,
+        "rows": 0,
+        "sec": 4.6
+      },
+      "sec_edgar": {
+        "ok": true,
+        "rows": 0,
+        "sec": 2.8
+      },
+      "gdelt": {
+        "ok": true,
+        "rows": 0,
+        "sec": 123.3
+      },
+      "fred": {
+        "ok": true
+      },
+      "treasury_dts": {
+        "ok": true
+      },
+      "events_total": 828,
+      "events_new": 25
+    },
+    "warnings": [
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 1.7s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 2.7s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 4.9s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.gdelt",
+        "msg": "GDELT sorgu hatası: 429 Client Error: Too Many Requests for url: https://api.gdeltproject.org/api/v2/doc/doc?query=%22CHIPS+Act%22+%28grant+OR+award+OR+incentive%29+sourcecountry%3AUS&mode=artlist&format=json&maxrecords=75&timespan=1d&sort=datedesc"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 1.4s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 2.4s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 4.4s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.gdelt",
+        "msg": "GDELT sorgu hatası: 429 Client Error: Too Many Requests for url: https://api.gdeltproject.org/api/v2/doc/doc?query=%28%22tax+credit%22+OR+%22loan+guarantee%22%29+%28%22Department+of+Energy%22+OR+Treasury%29+sourcecountry%3AUS&mode=artlist&format=json&maxrecords=75&timespan=1d&sort=datedesc"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 1.7s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 2.7s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 5.0s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.gdelt",
+        "msg": "GDELT sorgu hatası: 429 Client Error: Too Many Requests for url: https://api.gdeltproject.org/api/v2/doc/doc?query=%22Inflation+Reduction+Act%22+%28repeal+OR+credit+OR+guidance%29+sourcecountry%3AUS&mode=artlist&format=json&maxrecords=75&timespan=1d&sort=datedesc"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 1.5s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 2.2s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 1.3s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 3.0s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 4.5s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.gdelt",
+        "msg": "GDELT sorgu hatası: 429 Client Error: Too Many Requests for url: https://api.gdeltproject.org/api/v2/doc/doc?query=%28%22federal+grant%22+OR+%22federal+funding%22%29+%28manufacturing+OR+plant+OR+factory%29+sourcecountry%3AUS&mode=artlist&format=json&maxrecords=75&timespan=1d&sort=datedesc"
+      }
+    ]
+  },
+  "tables": {
+    "events": 53983,
+    "universe": 10443,
+    "prices": {
+      "tickers": 1324,
+      "first": "2019-10-24",
+      "last": "2026-10-30"
+    },
+    "outlays": 13800,
+    "fred": 33743,
+    "ledger": 132,
+    "scores_latest": 33,
+    "company_exposure": 1031,
+    "review_queue": 204,
+    "alerts": 953,
+    "event_study": 7670,
+    "metrics": 0,
+    "events_by_source": {
+      "congress": {
+        "total": 501,
+        "relevant": 15,
+        "with_ticker": 0,
+        "with_amount": 0,
+        "last_date": "2026-10-29"
+      },
+      "federal_register": {
+        "total": 4124,
+        "relevant": 2128,
+        "with_ticker": 0,
+        "with_amount": 0,
+        "last_date": "2026-10-30"
+      },
+      "gdelt": {
+        "total": 258,
+        "relevant": 22,
+        "with_ticker": 0,
+        "with_amount": 0,
+        "last_date": "2026-10-30"
+      },
+      "grants_gov": {
+        "total": 68,
+        "relevant": 49,
+        "with_ticker": 0,
+        "with_amount": 30,
+        "last_date": "2026-10-30"
+      },
+      "sec_edgar": {
+        "total": 9036,
+        "relevant": 9036,
+        "with_ticker": 8316,
+        "with_amount": 0,
+        "last_date": "2026-10-30"
+      },
+      "usaspending": {
+        "total": 39996,
+        "relevant": 39996,
+        "with_ticker": 2705,
+        "with_amount": 29895,
+        "last_date": "2028-12-31"
+      }
+    },
+    "events_by_program": {
+      "other": 30440,
+      "infrastructure": 8148,
+      "clean_power": 3176,
+      "housing": 2597,
+      "critical_minerals": 1748,
+      "agriculture": 1722,
+      "semiconductors": 762,
+      "nuclear": 590,
+      "clean_manufacturing": 578,
+      "defense_industrial": 487,
+      "carbon_management": 332,
+      "ai_quantum": 274,
+      "health_bio": 121,
+      "broadband": 121,
+      "hydrogen": 68,
+      "ev_auto": 56,
+      "grid": 26
+    },
+    "match_methods": {
+      "none": 36646,
+      "": 16675,
+      "review": 589,
+      "override_none": 56,
+      "override": 17
+    },
+    "universe_by_sector": {
+      "(yok)": 9929,
+      "Industrials": 84,
+      "Financials": 77,
+      "Information Technology": 76,
+      "Health Care": 61,
+      "Consumer Discretionary": 48,
+      "Consumer Staples": 35,
+      "Utilities": 32,
+      "Real Estate": 31,
+      "Materials": 25,
+      "Communication Services": 23,
+      "Energy": 22
+    },
+    "universe_sp500_weight_n": 503,
+    "universe_r2000_weight_n": 0,
+    "universe_sector_weight_n": 511
+  },
+  "slot_midday": {
+    "at": "2026-10-30T18:54:54Z",
+    "status": {
+      "federal_register": {
+        "ok": true,
+        "rows": 85,
+        "sec": 2.8
+      },
+      "congress": {
+        "ok": true,
+        "rows": 709,
+        "sec": 9.4
+      },
+      "usaspending": {
+        "ok": true,
+        "rows": 48,
+        "sec": 9.5
+      },
+      "grants_gov": {
+        "ok": true,
+        "rows": 10,
+        "sec": 9.6
+      },
+      "sec_edgar": {
+        "ok": true,
+        "rows": 133,
+        "sec": 3.1
+      },
+      "gdelt": {
+        "ok": true,
+        "rows": 59,
+        "sec": 13.9
+      },
+      "autofix": {
+        "ok": true,
+        "new": 3
+      },
+      "events_total": 53950,
+      "events_new": 752,
+      "quality": [
+        "İnceleme kuyruğunda 215 belirsiz şirket eşleşmesi var."
+      ],
+      "_diagnostics": {
+        "captured": 2,
+        "warning_count": 2,
+        "error_count": 0,
+        "by_level": {
+          "WARNING": 2
+        },
+        "groups": [
+          {
+            "level": "WARNING",
+            "logger": "radar.gdelt",
+            "count": 1,
+            "example": "GDELT 429 (paylaşılan IP sınırı); bu çalışmada Google News RSS kullanılacak",
+            "file": "gdelt.py",
+            "line": 79,
+            "at": "2026-10-30T18:54:44+00:00"
+          },
+          {
+            "level": "WARNING",
+            "logger": "radar.http",
+            "count": 1,
+            "example": "GET api.gdeltproject.org -> 429, 1.1s sonra tekrar",
+            "file": "http.py",
+            "line": 67,
+            "at": "2026-10-30T18:54:43+00:00"
+          }
+        ],
+        "recent_records": [
+          {
+            "at": "2026-10-30T18:54:43+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 67,
+            "msg": "GET api.gdeltproject.org -> 429, 1.1s sonra tekrar"
+          },
+          {
+            "at": "2026-10-30T18:54:44+00:00",
+            "level": "WARNING",
+            "logger": "radar.gdelt",
+            "file": "gdelt.py",
+            "line": 79,
+            "msg": "GDELT 429 (paylaşılan IP sınırı); bu çalışmada Google News RSS kullanılacak"
+          }
+        ],
+        "records_kept": 2,
+        "total_seen": 2,
+        "records_dropped": 0
+      }
+    },
+    "warnings": [
+      {
+        "at": "2026-10-30T18:54:43+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 67,
+        "msg": "GET api.gdeltproject.org -> 429, 1.1s sonra tekrar"
+      },
+      {
+        "at": "2026-10-30T18:54:44+00:00",
+        "level": "WARNING",
+        "logger": "radar.gdelt",
+        "file": "gdelt.py",
+        "line": 79,
+        "msg": "GDELT 429 (paylaşılan IP sınırı); bu çalışmada Google News RSS kullanılacak"
+      }
+    ],
+    "log_diagnostics": {
+      "captured": 2,
+      "warning_count": 2,
+      "error_count": 0,
+      "by_level": {
+        "WARNING": 2
+      },
+      "groups": [
+        {
+          "level": "WARNING",
+          "logger": "radar.gdelt",
+          "count": 1,
+          "example": "GDELT 429 (paylaşılan IP sınırı); bu çalışmada Google News RSS kullanılacak",
+          "file": "gdelt.py",
+          "line": 79,
+          "at": "2026-10-30T18:54:44+00:00"
+        },
+        {
+          "level": "WARNING",
+          "logger": "radar.http",
+          "count": 1,
+          "example": "GET api.gdeltproject.org -> 429, 1.1s sonra tekrar",
+          "file": "http.py",
+          "line": 67,
+          "at": "2026-10-30T18:54:43+00:00"
+        }
+      ],
+      "recent_records": [
+        {
+          "at": "2026-10-30T18:54:43+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 67,
+          "msg": "GET api.gdeltproject.org -> 429, 1.1s sonra tekrar"
+        },
+        {
+          "at": "2026-10-30T18:54:44+00:00",
+          "level": "WARNING",
+          "logger": "radar.gdelt",
+          "file": "gdelt.py",
+          "line": 79,
+          "msg": "GDELT 429 (paylaşılan IP sınırı); bu çalışmada Google News RSS kullanılacak"
+        }
+      ],
+      "records_kept": 2,
+      "total_seen": 2,
+      "records_dropped": 0
+    }
+  },
+  "weekly": {
+    "at": "2026-10-31T15:33:38Z",
+    "status": {
+      "universe": 10443,
+      "company_sic": {
+        "ok": true,
+        "new": 400
+      },
+      "bea_io": {
+        "ok": true,
+        "year": "2025"
+      },
+      "classifier": {
+        "trained": true,
+        "n": 16555,
+        "n_user_labels": 0,
+        "classes": 18
+      },
+      "autofix": {
+        "ok": true,
+        "new": 37
+      },
+      "evidence": {
+        "collecting": 119,
+        "unclear": 116,
+        "no_effect": 43
+      },
+      "metrics_rows": 0,
+      "learning": {
+        "ok": true
+      },
+      "_diagnostics": {
+        "captured": 5,
+        "warning_count": 5,
+        "error_count": 0,
+        "by_level": {
+          "WARNING": 5
+        },
+        "groups": [
+          {
+            "level": "WARNING",
+            "logger": "radar.etf",
+            "count": 1,
+            "example": "iShares IWM alınamadı: ",
+            "file": "etf_holdings.py",
+            "line": 73,
+            "at": "2026-10-31T15:25:10+00:00"
+          },
+          {
+            "level": "WARNING",
+            "logger": "radar.http",
+            "count": 1,
+            "example": "GET query2.finance.yahoo.com -> 429, 1.9s sonra tekrar",
+            "file": "http.py",
+            "line": 67,
+            "at": "2026-10-31T15:28:38+00:00"
+          },
+          {
+            "level": "WARNING",
+            "logger": "radar.http",
+            "count": 1,
+            "example": "GET query1.finance.yahoo.com -> 429, 1.2s sonra tekrar",
+            "file": "http.py",
+            "line": 67,
+            "at": "2026-10-31T15:28:40+00:00"
+          },
+          {
+            "level": "WARNING",
+            "logger": "radar.prices",
+            "count": 1,
+            "example": "Yahoo Chart hız sınırına ulaştı; kalan yedek fiyat istekleri durduruldu",
+            "file": "prices.py",
+            "line": 193,
+            "at": "2026-10-31T15:28:42+00:00"
+          },
+          {
+            "level": "WARNING",
+            "logger": "radar.prices",
+            "count": 1,
+            "example": "Fiyat verisi bulunamayan sembol: 246/1512. Örnek: AADI, AAN, ABIO, ABMC, ACCD, ADAP, ADN, AGR, AGS, AILE, AKRO, AL (+234 daha); 216 sembol yedek kaynak bütçesi dışında kaldı; Yahoo hız sınırı nedeniyle yedek arama durduruldu",
+            "file": "prices.py",
+            "line": 229,
+            "at": "2026-10-31T15:28:44+00:00"
+          }
+        ],
+        "recent_records": [
+          {
+            "at": "2026-10-31T15:25:10+00:00",
+            "level": "WARNING",
+            "logger": "radar.etf",
+            "file": "etf_holdings.py",
+            "line": 73,
+            "msg": "iShares IWM alınamadı: "
+          },
+          {
+            "at": "2026-10-31T15:28:38+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 67,
+            "msg": "GET query2.finance.yahoo.com -> 429, 1.9s sonra tekrar"
+          },
+          {
+            "at": "2026-10-31T15:28:40+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 67,
+            "msg": "GET query1.finance.yahoo.com -> 429, 1.2s sonra tekrar"
+          },
+          {
+            "at": "2026-10-31T15:28:42+00:00",
+            "level": "WARNING",
+            "logger": "radar.prices",
+            "file": "prices.py",
+            "line": 193,
+            "msg": "Yahoo Chart hız sınırına ulaştı; kalan yedek fiyat istekleri durduruldu"
+          },
+          {
+            "at": "2026-10-31T15:28:44+00:00",
+            "level": "WARNING",
+            "logger": "radar.prices",
+            "file": "prices.py",
+            "line": 229,
+            "msg": "Fiyat verisi bulunamayan sembol: 246/1512. Örnek: AADI, AAN, ABIO, ABMC, ACCD, ADAP, ADN, AGR, AGS, AILE, AKRO, AL (+234 daha); 216 sembol yedek kaynak bütçesi dışında kaldı; Yahoo hız sınırı nedeniyle yedek arama durduruldu"
+          }
+        ],
+        "records_kept": 5,
+        "total_seen": 5,
+        "records_dropped": 0
+      }
+    },
+    "warnings": [
+      {
+        "at": "2026-10-31T15:25:10+00:00",
+        "level": "WARNING",
+        "logger": "radar.etf",
+        "file": "etf_holdings.py",
+        "line": 73,
+        "msg": "iShares IWM alınamadı: "
+      },
+      {
+        "at": "2026-10-31T15:28:38+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 67,
+        "msg": "GET query2.finance.yahoo.com -> 429, 1.9s sonra tekrar"
+      },
+      {
+        "at": "2026-10-31T15:28:40+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 67,
+        "msg": "GET query1.finance.yahoo.com -> 429, 1.2s sonra tekrar"
+      },
+      {
+        "at": "2026-10-31T15:28:42+00:00",
+        "level": "WARNING",
+        "logger": "radar.prices",
+        "file": "prices.py",
+        "line": 193,
+        "msg": "Yahoo Chart hız sınırına ulaştı; kalan yedek fiyat istekleri durduruldu"
+      },
+      {
+        "at": "2026-10-31T15:28:44+00:00",
+        "level": "WARNING",
+        "logger": "radar.prices",
+        "file": "prices.py",
+        "line": 229,
+        "msg": "Fiyat verisi bulunamayan sembol: 246/1512. Örnek: AADI, AAN, ABIO, ABMC, ACCD, ADAP, ADN, AGR, AGS, AILE, AKRO, AL (+234 daha); 216 sembol yedek kaynak bütçesi dışında kaldı; Yahoo hız sınırı nedeniyle yedek arama durduruldu"
+      }
+    ],
+    "log_diagnostics": {
+      "captured": 5,
+      "warning_count": 5,
+      "error_count": 0,
+      "by_level": {
+        "WARNING": 5
+      },
+      "groups": [
+        {
+          "level": "WARNING",
+          "logger": "radar.etf",
+          "count": 1,
+          "example": "iShares IWM alınamadı: ",
+          "file": "etf_holdings.py",
+          "line": 73,
+          "at": "2026-10-31T15:25:10+00:00"
+        },
+        {
+          "level": "WARNING",
+          "logger": "radar.http",
+          "count": 1,
+          "example": "GET query2.finance.yahoo.com -> 429, 1.9s sonra tekrar",
+          "file": "http.py",
+          "line": 67,
+          "at": "2026-10-31T15:28:38+00:00"
+        },
+        {
+          "level": "WARNING",
+          "logger": "radar.http",
+          "count": 1,
+          "example": "GET query1.finance.yahoo.com -> 429, 1.2s sonra tekrar",
+          "file": "http.py",
+          "line": 67,
+          "at": "2026-10-31T15:28:40+00:00"
+        },
+        {
+          "level": "WARNING",
+          "logger": "radar.prices",
+          "count": 1,
+          "example": "Yahoo Chart hız sınırına ulaştı; kalan yedek fiyat istekleri durduruldu",
+          "file": "prices.py",
+          "line": 193,
+          "at": "2026-10-31T15:28:42+00:00"
+        },
+        {
+          "level": "WARNING",
+          "logger": "radar.prices",
+          "count": 1,
+          "example": "Fiyat verisi bulunamayan sembol: 246/1512. Örnek: AADI, AAN, ABIO, ABMC, ACCD, ADAP, ADN, AGR, AGS, AILE, AKRO, AL (+234 daha); 216 sembol yedek kaynak bütçesi dışında kaldı; Yahoo hız sınırı nedeniyle yedek arama durduruldu",
+          "file": "prices.py",
+          "line": 229,
+          "at": "2026-10-31T15:28:44+00:00"
+        }
+      ],
+      "recent_records": [
+        {
+          "at": "2026-10-31T15:25:10+00:00",
+          "level": "WARNING",
+          "logger": "radar.etf",
+          "file": "etf_holdings.py",
+          "line": 73,
+          "msg": "iShares IWM alınamadı: "
+        },
+        {
+          "at": "2026-10-31T15:28:38+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 67,
+          "msg": "GET query2.finance.yahoo.com -> 429, 1.9s sonra tekrar"
+        },
+        {
+          "at": "2026-10-31T15:28:40+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 67,
+          "msg": "GET query1.finance.yahoo.com -> 429, 1.2s sonra tekrar"
+        },
+        {
+          "at": "2026-10-31T15:28:42+00:00",
+          "level": "WARNING",
+          "logger": "radar.prices",
+          "file": "prices.py",
+          "line": 193,
+          "msg": "Yahoo Chart hız sınırına ulaştı; kalan yedek fiyat istekleri durduruldu"
+        },
+        {
+          "at": "2026-10-31T15:28:44+00:00",
+          "level": "WARNING",
+          "logger": "radar.prices",
+          "file": "prices.py",
+          "line": 229,
+          "msg": "Fiyat verisi bulunamayan sembol: 246/1512. Örnek: AADI, AAN, ABIO, ABMC, ACCD, ADAP, ADN, AGR, AGS, AILE, AKRO, AL (+234 daha); 216 sembol yedek kaynak bütçesi dışında kaldı; Yahoo hız sınırı nedeniyle yedek arama durduruldu"
+        }
+      ],
+      "records_kept": 5,
+      "total_seen": 5,
+      "records_dropped": 0
+    }
+  },
+  "slot_close": {
+    "at": "2026-10-30T21:11:02Z",
+    "status": {
+      "federal_register": {
+        "ok": true,
+        "rows": 62,
+        "sec": 5.3
+      },
+      "congress": {
+        "ok": true,
+        "rows": 550,
+        "sec": 8.7
+      },
+      "usaspending": {
+        "ok": true,
+        "rows": 0,
+        "sec": 3.8
+      },
+      "grants_gov": {
+        "ok": true,
+        "rows": 8,
+        "sec": 8.6
+      },
+      "sec_edgar": {
+        "ok": true,
+        "rows": 117,
+        "sec": 9.5
+      },
+      "gdelt": {
+        "ok": true,
+        "rows": 51,
+        "sec": 17.6
+      },
+      "prices": {
+        "ok": true
+      },
+      "autofix": {
+        "ok": true,
+        "new": 0
+      },
+      "events_total": 53983,
+      "events_new": 375,
+      "evidence": {
+        "ok": true
+      },
+      "quality": [
+        "İnceleme kuyruğunda 215 belirsiz şirket eşleşmesi var."
+      ],
+      "_diagnostics": {
+        "captured": 4,
+        "warning_count": 4,
+        "error_count": 0,
+        "by_level": {
+          "WARNING": 4
+        },
+        "groups": [
+          {
+            "level": "WARNING",
+            "logger": "radar.gdelt",
+            "count": 1,
+            "example": "GDELT 429 (paylaşılan IP sınırı); bu çalışmada Google News RSS kullanılacak",
+            "file": "gdelt.py",
+            "line": 79,
+            "at": "2026-10-30T21:00:52+00:00"
+          },
+          {
+            "level": "WARNING",
+            "logger": "radar.http",
+            "count": 1,
+            "example": "GET efts.sec.gov -> 500, 2.0s sonra tekrar",
+            "file": "http.py",
+            "line": 67,
+            "at": "2026-10-30T21:00:33+00:00"
+          },
+          {
+            "level": "WARNING",
+            "logger": "radar.http",
+            "count": 1,
+            "example": "GET api.gdeltproject.org -> 429, 1.0s sonra tekrar",
+            "file": "http.py",
+            "line": 67,
+            "at": "2026-10-30T21:00:51+00:00"
+          },
+          {
+            "level": "WARNING",
+            "logger": "radar.prices",
+            "count": 1,
+            "example": "Fiyat verisi bulunamayan sembol: 584/1512. Örnek: AADI, AAN, ABIO, ABMC, ACCD, ADAP, ADN, AEAE, AGR, AGS, AILE, AIXC (+572 daha); 560 sembol yedek kaynak deneme sınırına takıldı",
+            "file": "prices.py",
+            "line": 115,
+            "at": "2026-10-30T21:02:27+00:00"
+          }
+        ],
+        "recent_records": [
+          {
+            "at": "2026-10-30T21:00:33+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 67,
+            "msg": "GET efts.sec.gov -> 500, 2.0s sonra tekrar"
+          },
+          {
+            "at": "2026-10-30T21:00:51+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 67,
+            "msg": "GET api.gdeltproject.org -> 429, 1.0s sonra tekrar"
+          },
+          {
+            "at": "2026-10-30T21:00:52+00:00",
+            "level": "WARNING",
+            "logger": "radar.gdelt",
+            "file": "gdelt.py",
+            "line": 79,
+            "msg": "GDELT 429 (paylaşılan IP sınırı); bu çalışmada Google News RSS kullanılacak"
+          },
+          {
+            "at": "2026-10-30T21:02:27+00:00",
+            "level": "WARNING",
+            "logger": "radar.prices",
+            "file": "prices.py",
+            "line": 115,
+            "msg": "Fiyat verisi bulunamayan sembol: 584/1512. Örnek: AADI, AAN, ABIO, ABMC, ACCD, ADAP, ADN, AEAE, AGR, AGS, AILE, AIXC (+572 daha); 560 sembol yedek kaynak deneme sınırına takıldı"
+          }
+        ],
+        "records_kept": 4,
+        "total_seen": 4,
+        "records_dropped": 0
+      }
+    },
+    "warnings": [
+      {
+        "at": "2026-10-30T21:00:33+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 67,
+        "msg": "GET efts.sec.gov -> 500, 2.0s sonra tekrar"
+      },
+      {
+        "at": "2026-10-30T21:00:51+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 67,
+        "msg": "GET api.gdeltproject.org -> 429, 1.0s sonra tekrar"
+      },
+      {
+        "at": "2026-10-30T21:00:52+00:00",
+        "level": "WARNING",
+        "logger": "radar.gdelt",
+        "file": "gdelt.py",
+        "line": 79,
+        "msg": "GDELT 429 (paylaşılan IP sınırı); bu çalışmada Google News RSS kullanılacak"
+      },
+      {
+        "at": "2026-10-30T21:02:27+00:00",
+        "level": "WARNING",
+        "logger": "radar.prices",
+        "file": "prices.py",
+        "line": 115,
+        "msg": "Fiyat verisi bulunamayan sembol: 584/1512. Örnek: AADI, AAN, ABIO, ABMC, ACCD, ADAP, ADN, AEAE, AGR, AGS, AILE, AIXC (+572 daha); 560 sembol yedek kaynak deneme sınırına takıldı"
+      }
+    ],
+    "log_diagnostics": {
+      "captured": 4,
+      "warning_count": 4,
+      "error_count": 0,
+      "by_level": {
+        "WARNING": 4
+      },
+      "groups": [
+        {
+          "level": "WARNING",
+          "logger": "radar.gdelt",
+          "count": 1,
+          "example": "GDELT 429 (paylaşılan IP sınırı); bu çalışmada Google News RSS kullanılacak",
+          "file": "gdelt.py",
+          "line": 79,
+          "at": "2026-10-30T21:00:52+00:00"
+        },
+        {
+          "level": "WARNING",
+          "logger": "radar.http",
+          "count": 1,
+          "example": "GET efts.sec.gov -> 500, 2.0s sonra tekrar",
+          "file": "http.py",
+          "line": 67,
+          "at": "2026-10-30T21:00:33+00:00"
+        },
+        {
+          "level": "WARNING",
+          "logger": "radar.http",
+          "count": 1,
+          "example": "GET api.gdeltproject.org -> 429, 1.0s sonra tekrar",
+          "file": "http.py",
+          "line": 67,
+          "at": "2026-10-30T21:00:51+00:00"
+        },
+        {
+          "level": "WARNING",
+          "logger": "radar.prices",
+          "count": 1,
+          "example": "Fiyat verisi bulunamayan sembol: 584/1512. Örnek: AADI, AAN, ABIO, ABMC, ACCD, ADAP, ADN, AEAE, AGR, AGS, AILE, AIXC (+572 daha); 560 sembol yedek kaynak deneme sınırına takıldı",
+          "file": "prices.py",
+          "line": 115,
+          "at": "2026-10-30T21:02:27+00:00"
+        }
+      ],
+      "recent_records": [
+        {
+          "at": "2026-10-30T21:00:33+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 67,
+          "msg": "GET efts.sec.gov -> 500, 2.0s sonra tekrar"
+        },
+        {
+          "at": "2026-10-30T21:00:51+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 67,
+          "msg": "GET api.gdeltproject.org -> 429, 1.0s sonra tekrar"
+        },
+        {
+          "at": "2026-10-30T21:00:52+00:00",
+          "level": "WARNING",
+          "logger": "radar.gdelt",
+          "file": "gdelt.py",
+          "line": 79,
+          "msg": "GDELT 429 (paylaşılan IP sınırı); bu çalışmada Google News RSS kullanılacak"
+        },
+        {
+          "at": "2026-10-30T21:02:27+00:00",
+          "level": "WARNING",
+          "logger": "radar.prices",
+          "file": "prices.py",
+          "line": 115,
+          "msg": "Fiyat verisi bulunamayan sembol: 584/1512. Örnek: AADI, AAN, ABIO, ABMC, ACCD, ADAP, ADN, AEAE, AGR, AGS, AILE, AIXC (+572 daha); 560 sembol yedek kaynak deneme sınırına takıldı"
+        }
+      ],
+      "records_kept": 4,
+      "total_seen": 4,
+      "records_dropped": 0
+    }
+  },
+  "history": {
+    "at": "2026-10-25T16:19:57Z",
+    "status": {
+      "history": {
+        "windows_done": 133,
+        "events": 82904,
+        "stopped_early": false,
+        "errors": [
+          "usaspending 2024-09-13: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+          "usaspending 2024-10-14: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+          "usaspending 2024-11-14: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+          "usaspending 2024-12-15: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+          "usaspending 2025-01-15: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"
+        ]
+      },
+      "company_sic": {
+        "ok": true,
+        "new": 1500
+      },
+      "prices": {
+        "ok": true
+      },
+      "evidence": {
+        "unclear": 114,
+        "collecting": 107,
+        "no_effect": 48
+      }
+    },
+    "warnings": [
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> 500, 1.2s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 2.4s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 4.7s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.7s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 16.4s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.usaspending",
+        "msg": "Sözleşme araması başarısız: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 1.3s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 2.1s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 4.6s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.7s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 16.3s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 1.1s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 2.9s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 4.9s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.0s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 16.0s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 2.0s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 2.7s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 4.7s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.1s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 16.3s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 1.7s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 2.9s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 4.2s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.7s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 16.3s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 2.0s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 2.9s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 4.2s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.5s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 16.8s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 1.5s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 2.9s sonra tekrar"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "HTTP Error 404: {\"quoteSummary\":{\"result\":null,\"error\":{\"code\":\"Not Found\",\"description\":\"Quote not found for symbol: DEVS\"}}}"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "HTTP Error 404: {\"quoteSummary\":{\"result\":null,\"error\":{\"code\":\"Not Found\",\"description\":\"Quote not found for symbol: WAVS\"}}}"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$DEVS: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$WAVS: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$LATG: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$GCI: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$X: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$GOEV: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$TMHC: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$SLNO: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$GLDD: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$SJW: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$ROSS: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$SGH: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$PALT: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$NKLA: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$MNTX: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$FAT: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$NOVA: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$BCOV: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$BASE: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$OS: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$STRM: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$AKRO: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$SUM: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$EWCZ: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$PORT: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$NARI: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$GATE: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$YELLQ: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$DIST: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$BNIX: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$SPEV: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$AADI: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$MINM: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$QVCGA: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$OLO: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$HYZN: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$AILE: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$GODN: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$CNGL: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$EYEN: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$APDN: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$BYON: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$JAMF: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$DZSI: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$YORK: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$MCW: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$CHX: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$PRFT: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$ALVR: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$TCOA: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$INVO: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$ORGN: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$PMD: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$ESPR: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$AZEK: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$TGI: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$HOLX: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$ADAP: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$MKFG: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$TRML: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$CSGS: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$VTYX: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$AL: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$SIVBQ: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$FGRS: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$SBLX: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$ISPO: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$SANP: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$IZTC: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$USEG: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$VOXX: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$RDUS: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$DAY: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$EVE: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$WLMSQ: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$RMGCF: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$KORE: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$LLFLQ: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$NR: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$INST: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$SOCGM: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$SHYF: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$OCAX: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$VIRI: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$AUGX: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$UGRO: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$USAP: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$ABIO: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$GMS: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$NSTD: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$SFTGQ: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$MRC: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$LUNA: possibly delisted; no price data found  (period=7y)"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$SPI: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$TBMC: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$HAYN: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$AVTE: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$TELL: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$VMCA: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$YTEN: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$DECA: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$JHG: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$ADN: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$CFFS: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$VAPO: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$GTHX: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$KA: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$CIVI: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$FI: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$ATSG: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$WTMA: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$CCCX: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$SNBR: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$RAAQ: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$MITA: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$DYNT: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$NVAC: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$HUSA: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$IGMS: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$HLGN: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$ONYX: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$IMG: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$SEDA: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$NCL: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$GVP: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$MIMOQ: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$WOW: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$HCVI: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$NDOI: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$AGS: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$VTLE: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$RGLS: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$LEDR: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$INFN: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$KVAC: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$VIGL: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$AMBC: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$THAR: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$BSGM: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$NSTC: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$CNSL: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$VMEO: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$ITCI: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$HI: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$IRRX: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$ZIMV: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$KAR: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$DSAQ: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$CHAC: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$THPTF: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$EMKR: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$PSTX: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$SVAC: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$ALE: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$TPICQ: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$AMPS: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$DMYY: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$GSRT: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$EVGR: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$MRO: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$MIGI: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$TERN: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$AYRO: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$IVCA: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$IVCB: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$LICYF: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$IXAQ: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$APAD: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$NXU: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$PLMJ: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$ALTM: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$MULN: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$ITI: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$ABMC: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$CPTN: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$CWAN: possibly delisted; no price data found  (period=7y)"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$PELI: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$AVNS: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$FFIE: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$CCTS: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$BRZH: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$TMRC: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$HOND: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$ENLC: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$BRRK: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$CTLT: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$FREY: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$HAWEL: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$ITRM: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$TPIC: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$LICY: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$RYI: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$FYBR: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$DYCQ: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$DRQ: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$PEV: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$PKBO: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$PETQ: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$ELEV: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$MSGR: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$SWTX: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$GLLI: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$CLOE: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$SVT: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$MRSN: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$SDIG: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$GIG: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$GAN: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$PFTA: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$GTLS: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$ETNB: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$NUZE: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$ROCL: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$LGF-A: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$GBBK: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$IPXX: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$DHIL: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "$CCIX: No data found, symbol may be delisted"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "\n461 Failed downloads:"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "['DEVS', 'WAVS', 'LATG', 'GCI', 'X', 'GOEV', 'TMHC', 'SLNO', 'GLDD', 'SJW', 'ROSS', 'SGH', 'PALT', 'NKLA', 'MNTX', 'FAT', 'NOVA', 'BCOV', 'BASE', 'OS', 'STRM', 'AKRO', 'SUM', 'EWCZ', 'PORT', 'NARI', 'GATE', 'YELLQ', 'DIST', 'BNIX', 'SPEV', 'AADI', 'MINM', 'QVCGA', 'OLO', 'HYZN', 'AILE', 'GODN', 'CNGL', 'EYEN', 'APDN', 'BYON', 'JAMF', 'DZSI', 'YORK', 'MCW', 'CHX', 'PRFT', 'ALVR', 'TCOA', 'INVO', 'O"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "['LUNA', 'CWAN']: possibly delisted; no price data found  (period=7y)"
+      },
+      {
+        "level": "ERROR",
+        "logger": "yfinance",
+        "msg": "['KRON', 'STTK', 'CYRB', 'WSFS', 'VYEY', 'CODI', 'CHRS', 'AXDXQ', 'EGBN', 'WOR', 'EXEL', 'SWI', 'CBT', 'MRUS', 'PWSC', 'PLBC', 'JFB', 'EOSE', 'VTVT', 'OLN', 'VMC', 'YMAB', 'UAN', 'MRAI', 'TLS', 'TEVA', 'NOV', 'ACCD', 'MXL', 'TILE', 'PROP', 'MTWO', 'SNTI', 'MPC', 'APTN', 'ELV', 'OKLO', 'BJ', 'BRNS', 'COMM', 'SERV', 'BOX', 'BNZI', 'OACC', 'DM', 'MOH', 'THCP', 'VVV', 'DY', 'AAN', 'EOG', 'AVHI', 'PESI"
+      }
+    ]
+  },
+  "diagnostics_version": 2
+}

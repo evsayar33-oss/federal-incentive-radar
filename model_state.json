@@ -1,0 +1,158 @@
+{
+  "version": 1,
+  "calibration": {
+    "5": {
+      "a": 0.0,
+      "b": 0.15,
+      "n": 0
+    },
+    "20": {
+      "a": 0.0,
+      "b": 0.15,
+      "n": 0
+    },
+    "60": {
+      "a": 0.0,
+      "b": 0.15,
+      "n": 0
+    }
+  },
+  "sector_logit_bias": {
+    "Information Technology": 0.0,
+    "Energy": 0.0,
+    "Industrials": 0.0,
+    "Materials": 0.0,
+    "Utilities": 0.0,
+    "Health Care": 0.0,
+    "Financials": 0.0,
+    "Consumer Discretionary": 0.0,
+    "Consumer Staples": 0.0,
+    "Communication Services": 0.0,
+    "Real Estate": 0.0
+  },
+  "program_efficacy": {
+    "clean_manufacturing": 1.4,
+    "clean_power": 0.937,
+    "critical_minerals": 1.4,
+    "hydrogen": 1.16,
+    "infrastructure": 0.915,
+    "other": 1.4,
+    "semiconductors": 0.6,
+    "carbon_management": 1.11,
+    "nuclear": 0.958,
+    "agriculture": 0.975,
+    "ai_quantum": 1.065,
+    "defense_industrial": 0.969,
+    "ev_auto": 1.219,
+    "health_bio": 1.225,
+    "housing": 0.961
+  },
+  "sector_efficacy": {},
+  "history": [
+    {
+      "date": "2026-10-25",
+      "calibration": {
+        "5": {
+          "a": 0.0,
+          "b": 0.15,
+          "n": 0
+        },
+        "20": {
+          "a": 0.0,
+          "b": 0.15,
+          "n": 0
+        },
+        "60": {
+          "a": 0.0,
+          "b": 0.15,
+          "n": 0
+        }
+      },
+      "n_program_eff": 0
+    },
+    {
+      "date": "2026-10-25",
+      "calibration": {
+        "5": {
+          "a": 0.0,
+          "b": 0.15,
+          "n": 0
+        },
+        "20": {
+          "a": 0.0,
+          "b": 0.15,
+          "n": 0
+        },
+        "60": {
+          "a": 0.0,
+          "b": 0.15,
+          "n": 0
+        }
+      },
+      "n_program_eff": 7
+    },
+    {
+      "date": "2026-10-25",
+      "calibration": {
+        "5": {
+          "a": 0.0,
+          "b": 0.15,
+          "n": 0
+        },
+        "20": {
+          "a": 0.0,
+          "b": 0.15,
+          "n": 0
+        },
+        "60": {
+          "a": 0.0,
+          "b": 0.15,
+          "n": 0
+        }
+      },
+      "n_program_eff": 9
+    },
+    {
+      "date": "2026-10-25",
+      "calibration": {
+        "5": {
+          "a": 0.0,
+          "b": 0.15,
+          "n": 0
+        },
+        "20": {
+          "a": 0.0,
+          "b": 0.15,
+          "n": 0
+        },
+        "60": {
+          "a": 0.0,
+          "b": 0.15,
+          "n": 0
+        }
+      },
+      "n_program_eff": 9
+    },
+    {
+      "date": "2026-10-31",
+      "calibration": {
+        "5": {
+          "a": 0.0,
+          "b": 0.15,
+          "n": 0
+        },
+        "20": {
+          "a": 0.0,
+          "b": 0.15,
+          "n": 0
+        },
+        "60": {
+          "a": 0.0,
+          "b": 0.15,
+          "n": 0
+        }
+      },
+      "n_program_eff": 15
+    }
+  ]
+}

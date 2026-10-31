@@ -1,0 +1,40 @@
+{
+  "run_id": "2026-10-30T17:00_close",
+  "asof": "2026-10-30",
+  "regime": {
+    "series": "EPUFISCAL",
+    "last": 240.56169704113,
+    "z": 0.18,
+    "mult": 0.985
+  },
+  "dts_multipliers": {
+    "Information Technology": 0.8,
+    "Energy": 1.025,
+    "Industrials": 0.937,
+    "Materials": 0.901,
+    "Utilities": 1.023,
+    "Health Care": 0.9795,
+    "Financials": 1.0,
+    "Consumer Discretionary": 1.0,
+    "Consumer Staples": 1.25,
+    "Communication Services": 1.0,
+    "Real Estate": 1.079
+  },
+  "version": "2.0.0",
+  "spillover": "açık (BEA I-O)",
+  "drift": {
+    "psi": 0.22,
+    "flag": false,
+    "rising_programs": {
+      "clean_power": 0.066,
+      "housing": 0.058,
+      "ai_quantum": 0.051
+    }
+  },
+  "telegram": {
+    "enabled": true,
+    "notify_statuses": [
+      "proven"
+    ]
+  }
+}
