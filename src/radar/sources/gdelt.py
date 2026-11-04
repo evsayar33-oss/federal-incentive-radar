@@ -79,9 +79,9 @@ def fetch(since: date) -> pd.DataFrame:
                     log.info("GDELT 429 (paylaşılan IP sınırı); bu çalışmada Google News RSS kullanılacak")
                     gdelt_ok = False
                 else:
-                    log.warning("GDELT hatası: %s", exc)
+                    log.info("GDELT hatası (Google News RSS yedeği kullanılacak): %s", exc)
             except Exception as exc:
-                log.warning("GDELT hatası: %s", exc)
+                log.info("GDELT hatası (Google News RSS yedeği kullanılacak): %s", exc)
                 gdelt_ok = False
         try:
             rows.extend(_gnews(q))

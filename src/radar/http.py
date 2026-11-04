@@ -76,6 +76,8 @@ def request(method: str, url: str, *, params=None, json=None, headers=None,
         if delay > 120:   # sunucu saatlerce beklemeyi istiyor (kota doldu) → bekleme, hemen yedeğe geç
             break
         delay = min(delay, 60.0)
+        if attempt >= retries:   # son deneme: bekleme ve "tekrar" mesajı yok, hata aşağıda yükseltilir
+            break
         # Ara denemeler geçici sayılır (INFO); yalnızca son deneme uyarı üretir.
         # Son deneme değilse veya GDELT 429 (bilinen paylaşılan IP sınırı, yedek var) ise INFO.
         transient = attempt < retries - 1 or (host == "api.gdeltproject.org" and resp is not None
