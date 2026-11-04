@@ -133,6 +133,7 @@ prices:
   enabled: true
   history_period: "6y"       # kanıt motoru her olay için 250 gün öncesine bakar; 5 yıllık olay için 6+ yıl gerekir
   max_extra_tickers: 150
+  warn_missing_share: 0.4    # bulunamayan sembol oranı bunu aşarsa uyarı (altında yalnızca INFO)
   max_event_tickers: 1500    # kanıt motoru: olayı olan şirketlerin fiyatları (geçmiş veri için geniş)
 
 alerts:

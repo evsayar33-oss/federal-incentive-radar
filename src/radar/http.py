@@ -77,7 +77,10 @@ def request(method: str, url: str, *, params=None, json=None, headers=None,
             break
         delay = min(delay, 60.0)
         # Ara denemeler geçici sayılır (INFO); yalnızca son deneme uyarı üretir.
-        log.log(logging.WARNING if attempt >= retries - 1 else logging.INFO,
+        # Son deneme değilse veya GDELT 429 (bilinen paylaşılan IP sınırı, yedek var) ise INFO.
+        transient = attempt < retries - 1 or (host == "api.gdeltproject.org" and resp is not None
+                                              and resp.status_code == 429)
+        log.log(logging.INFO if transient else logging.WARNING,
                 "%s %s -> %s, %.1fs sonra tekrar", method, host,
                 resp.status_code if resp is not None else last_exc, delay)
         time.sleep(delay)

@@ -188,7 +188,10 @@ def audit(events: pd.DataFrame, review: pd.DataFrame | None = None, universe: pd
                 t, why = "NONE", "alıcı kamu kurumu/üniversite"
             elif lf_safe_entity(rn, names.get(str(q["candidate"]), "")):
                 t, why = str(q["candidate"]), "aday şirket adı alıcı adının içinde, ilk kelime aynı"
-            elif float(q.get("score") or 0) < float(_quality_cfg().get("auto_none_below_score", 90)):
+            elif (float(q.get("score") or 0) < float(_quality_cfg().get("auto_none_below_score", 90))
+                  and not _is_subset_match(rn, names.get(str(q["candidate"]), ""))
+                  and rn.split()[:1] != names.get(str(q["candidate"]), "").split()[:1]):
+                # Alt küme eşleşmeleri ve ilk kelimesi aynı olanlar insan onayına kalır.
                 # Düşük benzerlik: büyük olasılıkla halka açık olmayan farklı bir şirket; yanlış sinyal üretme.
                 t, why = "NONE", "benzerlik düşük ve ilk kelime uyuşmuyor"
             else:
@@ -222,6 +225,11 @@ def save(labels: list[dict], issues: pd.DataFrame) -> int:
 
 
 # ---------------------------------------------------------------- veri denetimleri
+
+def _is_subset_match(recipient_norm: str, candidate_name: str) -> bool:
+    ct = candidate_name.split()
+    return len(ct) >= 2 and set(ct) <= set(recipient_norm.split())
+
 
 def _quality_cfg() -> dict:
     return sources().get("quality", {})

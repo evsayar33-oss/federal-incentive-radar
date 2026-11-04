@@ -432,3 +432,17 @@ def test_auto_none_for_low_score_review():
     uni = pd.DataFrame([{"ticker": "ZZZ", "name": "Zzz Holdings"}])
     labels, _ = autolabel.audit(ev, rq, uni, pd.DataFrame())
     assert any(x.get("ticker") == "NONE" for x in labels)
+
+
+def test_auto_none_skips_subset_and_same_first_word():
+    import pandas as pd
+    from radar import autolabel
+    ev = pd.DataFrame(columns=["event_id", "program", "tickers", "recipient", "title", "relevant", "method", "date"])
+    uni = pd.DataFrame([{"ticker": "CEG", "name": "Constellation Energy"}, {"ticker": "ZZZ", "name": "Zzz Holdings"}])
+    rq = pd.DataFrame([
+        {"recipient": "Constellation Energy Generation", "recipient_norm": "constellation energy generation",
+         "candidate": "CEG", "score": 80.0, "event_id": "a", "amount_usd": 1.0},
+        {"recipient": "Zzz Labs Partners", "recipient_norm": "zzz labs partners",
+         "candidate": "ZZZ", "score": 86.0, "event_id": "b", "amount_usd": 1.0}])
+    labels, _ = autolabel.audit(ev, rq, uni, pd.DataFrame())
+    assert not any(x.get("ticker") == "NONE" for x in labels)
