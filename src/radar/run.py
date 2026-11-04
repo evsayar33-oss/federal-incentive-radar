@@ -85,10 +85,27 @@ def load_labels(include_auto: bool = True) -> pd.DataFrame:
     return df.drop_duplicates("_k", keep="last").drop(columns="_k")
 
 
+def prune_review_queue() -> None:
+    """Etiketle (kullanıcı/otomatik) karara bağlanmış alıcıları inceleme kuyruğundan çıkarır."""
+    rq = store.read("review_queue")
+    lab = load_labels()
+    if rq.empty or lab.empty:
+        return
+    done = set(lab.loc[lab["kind"] == "entity", "recipient_norm"].astype(str))
+    left = rq[~rq["recipient_norm"].astype(str).isin(done)]
+    if len(left) != len(rq):
+        store.write("review_queue", left)
+
+
 def auto_fix(events: pd.DataFrame, review: pd.DataFrame, uni: pd.DataFrame, run_status: dict) -> bool:
     """Akıllı etiketleme: hatalı program/eşleşmeleri bulur, otomatik etiket yazar. Yeni etiket varsa True."""
     try:
         user = load_labels(include_auto=False)
+        backlog = store.read("review_queue")   # birikmiş eski kayıtlar da otomatik denetlenir
+        if review is not None and not review.empty and not backlog.empty:
+            review = pd.concat([review, backlog], ignore_index=True).drop_duplicates("recipient_norm")
+        elif review is None or review.empty:
+            review = backlog
         labels, issues = autolabel.audit(events, review, uni, user)
         n = autolabel.save(labels, issues)
         run_status["autofix"] = {"ok": True, "new": n}
@@ -274,6 +291,7 @@ def process(raw: pd.DataFrame, run_id: str, asof: date, slot: str, run_status: d
             cls, review = classify_and_match(raw, load_labels(), clf)
         if not review.empty:
             store.upsert("review_queue", review, "recipient_norm")
+        prune_review_queue()
         events = store.upsert("events", cls, "event_id")
         new_events = cls[~cls["event_id"].astype(str).isin(old_ids)]
     else:
@@ -483,6 +501,37 @@ def cmd_history(args) -> None:
     telegram.health("geçmiş veri yüklemesi (history)", status, True)
 
 
+def cmd_review(args) -> None:
+    """İnceleme kuyruğu: listele, onayla (adayı kabul et) veya reddet (şirket değil)."""
+    rq = store.read("review_queue")
+    if rq.empty:
+        print("İnceleme kuyruğu boş.")
+        return
+    rq = rq.assign(_amt=pd.to_numeric(rq.get("amount_usd"), errors="coerce").fillna(0)).sort_values("_amt", ascending=False)
+    if args.action == "list":
+        for r in rq.head(args.limit).to_dict("records"):
+            print(f"{r['recipient_norm']} | aday: {r['candidate']} | skor: {r['score']} | ${r['_amt']:,.0f}")
+        print(f"Toplam: {len(rq)}")
+        return
+    known = set(rq["recipient_norm"].astype(str))
+    targets = [t for t in args.names if t in known]
+    for t in set(args.names) - set(targets):
+        print(f"Kuyrukta yok: {t}")
+    ts = datetime.now().isoformat(timespec="seconds")
+    p = store_dir() / "labels" / "labels.jsonl"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    needs_nl = p.exists() and p.stat().st_size > 0 and not p.read_bytes().endswith(b"\n")
+    with open(p, "a", encoding="utf-8") as f:
+        if needs_nl:
+            f.write("\n")
+        for r in rq[rq["recipient_norm"].astype(str).isin(targets)].to_dict("records"):
+            ticker = str(r["candidate"]) if args.action == "approve" else "NONE"
+            f.write(json.dumps({"kind": "entity", "recipient_norm": str(r["recipient_norm"]), "ticker": ticker,
+                                "ts": ts, "by": "user"}, ensure_ascii=False) + "\n")
+    prune_review_queue()
+    print(f"{len(targets)} kayıt {'onaylandı' if args.action == 'approve' else 'reddedildi'}.")
+
+
 def cmd_demo(args) -> None:
     from . import demo
     demo.build(days=args.days)
@@ -499,11 +548,15 @@ def main() -> None:
     h = sub.add_parser("history")
     h.add_argument("--years", type=float, default=5.0)
     h.add_argument("--budget", type=float, default=100.0, help="dakika; dolarsa durur, sonra devam eder")
+    rv = sub.add_parser("review", help="belirsiz şirket eşleşmelerini yönet")
+    rv.add_argument("action", choices=["list", "approve", "reject"])
+    rv.add_argument("names", nargs="*", help="recipient_norm değerleri (approve/reject için)")
+    rv.add_argument("--limit", type=int, default=50)
     d = sub.add_parser("demo")
     d.add_argument("--days", type=int, default=420)
     args = ap.parse_args()
     {"slot": cmd_slot, "weekly": cmd_weekly, "demo": cmd_demo,
-     "telegram-test": lambda _a: telegram.test(), "history": cmd_history}[args.cmd](args)
+     "telegram-test": lambda _a: telegram.test(), "history": cmd_history, "review": cmd_review}[args.cmd](args)
 
 
 if __name__ == "__main__":

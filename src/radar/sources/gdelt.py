@@ -76,7 +76,7 @@ def fetch(since: date) -> pd.DataFrame:
                 continue
             except requests.HTTPError as exc:
                 if exc.response is not None and exc.response.status_code == 429:
-                    log.warning("GDELT 429 (paylaşılan IP sınırı); bu çalışmada Google News RSS kullanılacak")
+                    log.info("GDELT 429 (paylaşılan IP sınırı); bu çalışmada Google News RSS kullanılacak")
                     gdelt_ok = False
                 else:
                     log.warning("GDELT hatası: %s", exc)

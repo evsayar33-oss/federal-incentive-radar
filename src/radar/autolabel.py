@@ -25,7 +25,7 @@ import pandas as pd
 
 from . import store
 from .entity import normalize
-from .settings import programs, store_dir
+from .settings import programs, sources, store_dir
 
 log = logging.getLogger("radar.autolabel")
 AUTO_FILE = "auto_labels.jsonl"
@@ -137,8 +137,11 @@ def lf_safe_entity(rec_norm: str, cand_name_norm: str) -> bool:
 def audit(events: pd.DataFrame, review: pd.DataFrame | None = None, universe: pd.DataFrame | None = None,
           user_labels: pd.DataFrame | None = None) -> tuple[list[dict], pd.DataFrame]:
     """Otomatik etiketler ve gerekçeli sorun listesi üretir. Kullanıcının etiketlediği olaya dokunmaz."""
-    if events is None or events.empty:
+    no_review = review is None or review.empty
+    if (events is None or events.empty) and no_review:
         return [], pd.DataFrame()
+    if events is None or events.empty:
+        events = pd.DataFrame(columns=["event_id", "program", "tickers", "recipient", "title", "relevant", "method", "date"])
     clf = _rules()
     ts = date.today().isoformat()
     done_ev, done_ent = set(), set()
@@ -185,10 +188,13 @@ def audit(events: pd.DataFrame, review: pd.DataFrame | None = None, universe: pd
                 t, why = "NONE", "alıcı kamu kurumu/üniversite"
             elif lf_safe_entity(rn, names.get(str(q["candidate"]), "")):
                 t, why = str(q["candidate"]), "aday şirket adı alıcı adının içinde, ilk kelime aynı"
+            elif float(q.get("score") or 0) < float(_quality_cfg().get("auto_none_below_score", 90)):
+                # Düşük benzerlik: büyük olasılıkla halka açık olmayan farklı bir şirket; yanlış sinyal üretme.
+                t, why = "NONE", "benzerlik düşük ve ilk kelime uyuşmuyor"
             else:
                 continue
             labels.append({"kind": "entity", "recipient_norm": rn, "ticker": t, "ts": ts, "by": "auto",
-                           "lf": "safe_entity" if t != "NONE" else "public_recipient"})
+                           "lf": "safe_entity" if t not in ("NONE",) else "public_recipient"})
             issues.append({"type": "entity", "lf": "review_queue", "event_id": q.get("event_id"), "title": q["recipient"],
                            "old": q["candidate"], "new": t, "reason": why, "date": ts})
             done_ent.add(rn)
@@ -217,12 +223,16 @@ def save(labels: list[dict], issues: pd.DataFrame) -> int:
 
 # ---------------------------------------------------------------- veri denetimleri
 
+def _quality_cfg() -> dict:
+    return sources().get("quality", {})
+
+
 def data_checks(runs: pd.DataFrame, prices: pd.DataFrame, review: pd.DataFrame) -> list[str]:
     """Sistem sağlığı mesajına eklenecek uyarılar (insan müdahalesi gerekenler)."""
     out = []
     if prices is not None and not prices.empty:
         last = pd.to_datetime(prices["date"], errors="coerce").max()
-        if pd.notna(last) and last.date() < date.today() - timedelta(days=5):
+        if pd.notna(last) and last.date() < date.today() - timedelta(days=int(_quality_cfg().get("stale_price_days", 5))):
             out.append(f"Fiyat verisi bayat (son: {last.date()}). Fiyat kaynağı çalışmıyor olabilir.")
     if runs is not None and not runs.empty and "status" in runs.columns:
         recent = runs[runs["slot"] != "weekly"].tail(6)
@@ -238,7 +248,7 @@ def data_checks(runs: pd.DataFrame, prices: pd.DataFrame, review: pd.DataFrame) 
         for k, n in zero.items():
             if n >= 6 and k not in ("gdelt",):
                 out.append(f"'{k}' son {n} çalışmada hiç veri getirmedi. Kaynak değişmiş olabilir.")
-    if review is not None and len(review) > 50:
+    if review is not None and len(review) > int(_quality_cfg().get("review_queue_warn", 50)):
         out.append(f"İnceleme kuyruğunda {len(review)} belirsiz şirket eşleşmesi var.")
     return out
 

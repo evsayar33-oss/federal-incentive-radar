@@ -58,6 +58,7 @@ usaspending:
   contract_codes: ["A", "B", "C", "D"]   # tanımlı teslim, satın alma siparişi, sözleşme, teslimat siparişi
   contract_min_usd: 50000000             # 50 milyon $ ve üstü sözleşmeler
   max_pages: 3
+  timeout_seconds: 100         # yavaş API için okuma süresi
 
 grants_gov:
   enabled: true
@@ -150,4 +151,13 @@ telegram:
   max_per_run: 8             # fazlası tek özet mesajda gelir
   weekly_summary: true       # cumartesi kanıt raporu ve bot karnesi
   health_messages: true      # ayrı sistem sağlığı mesajı
-  health_ok_slots: ["close", "weekly"]   # sorun yoksa yalnız bu çalışmalarda; sorun varsa HER çalışmada
+  health_ok_slots: ["close", "weekly"]   # sorun yoksa yalnız bu çalışmalarda
+  health_repeat_hours: 24    # aynı sorun imzası bu süre içinde tekrar mesaj üretmez (yeni/farklı sorun hemen gelir)
+  persistent_runs: 3         # bir kaynak üst üste bu kadar çalışmada yedekte/başarısızsa "kalıcı sorun" sayılır
+
+# Veri kalitesi eşikleri
+quality:
+  review_queue_warn: 50        # bu sayıdan fazla çözülmemiş belirsiz eşleşme → uyarı
+  auto_none_below_score: 90    # bundan düşük benzerlikli ve ilk kelimesi uyuşmayan adaylar otomatik "şirket yok"
+  stale_price_days: 5          # fiyat verisi bu kadar günden eskiyse uyarı
+

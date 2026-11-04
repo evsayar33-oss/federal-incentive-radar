@@ -26,6 +26,17 @@ MIN_INTERVAL = {
     "fred.stlouisfed.org": 0.6,
     "api.telegram.org": 1.1,      # Telegram: sohbet başına ~1 mesaj/sn
 }
+# Yavaş yanıt veren ana bilgisayarlar için daha uzun okuma süresi (saniye).
+HOST_TIMEOUT = {"api.usaspending.gov": 100}
+
+
+def _host_timeout(host: str) -> int:
+    if host == "api.usaspending.gov":
+        from .settings import sources
+        return int(sources().get("usaspending", {}).get("timeout_seconds", HOST_TIMEOUT[host]))
+    return HOST_TIMEOUT.get(host, 0)
+
+
 BROWSER_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 
 _last_call: dict[str, float] = {}
@@ -40,6 +51,7 @@ def research_user_agent() -> str:
 def request(method: str, url: str, *, params=None, json=None, headers=None,
             timeout: int = 45, retries: int = 4, browser: bool = False) -> requests.Response:
     host = urlparse(url).netloc
+    timeout = max(timeout, _host_timeout(host))
     h = {"User-Agent": BROWSER_UA if browser else research_user_agent(),
          "Accept-Encoding": "gzip, deflate"}
     if headers:
@@ -64,8 +76,10 @@ def request(method: str, url: str, *, params=None, json=None, headers=None,
         if delay > 120:   # sunucu saatlerce beklemeyi istiyor (kota doldu) → bekleme, hemen yedeğe geç
             break
         delay = min(delay, 60.0)
-        log.warning("%s %s -> %s, %.1fs sonra tekrar", method, host,
-                    resp.status_code if resp is not None else last_exc, delay)
+        # Ara denemeler geçici sayılır (INFO); yalnızca son deneme uyarı üretir.
+        log.log(logging.WARNING if attempt >= retries - 1 else logging.INFO,
+                "%s %s -> %s, %.1fs sonra tekrar", method, host,
+                resp.status_code if resp is not None else last_exc, delay)
         time.sleep(delay)
     if resp is not None:
         resp.raise_for_status()

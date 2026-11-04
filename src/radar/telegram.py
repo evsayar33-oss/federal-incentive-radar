@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import html
 import logging
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import numpy as np
 import pandas as pd
@@ -189,6 +189,35 @@ def _component_status(status: dict) -> tuple[list[str], list[str], list[str]]:
     return failed, fallback, good
 
 
+def _signature(status: dict) -> str:
+    """Sorunun parmak izi: aynı sorun tekrar eden mesaj üretmesin diye."""
+    failed, fallbacks, _ = _component_status(status)
+    diag = status.get("_diagnostics") if isinstance(status.get("_diagnostics"), dict) else {}
+    parts = sorted(f.split(":")[0] for f in failed) + sorted("yedek:" + f.split(":")[0] for f in fallbacks)
+    parts += sorted(str(q) for q in status.get("quality") or [])
+    fatal = str(status.get("fatal") or "").strip().splitlines()
+    if fatal:
+        parts.append("fatal:" + fatal[-1][:120])
+    if int(diag.get("error_count", 0) or 0):
+        parts.append("log_error")
+    parts += sorted("kalici:" + str(x).split(":")[0] for x in status.get("_persistent") or [])
+    return "|".join(parts)
+
+
+def track_persistent(status: dict, state: dict | None = None) -> list[str]:
+    """Üst üste N çalışmada yedekte/başarısız kalan kaynaklar. Sayaçlar health_state.json'da tutulur."""
+    st = state if state is not None else store.load_json("health_state")
+    need = int(cfg().get("persistent_runs", 3))
+    failed, fallbacks, _ = _component_status(status)
+    bad = {f.split(":")[0] for f in failed} | {f.split(":")[0] for f in fallbacks}
+    streaks = {k: v + 1 for k, v in (st.get("streaks") or {}).items() if k in bad}
+    streaks.update({k: 1 for k in bad if k not in streaks})
+    st["streaks"] = streaks
+    if state is None:
+        store.save_json("health_state", st)
+    return sorted(f"{k}: son {n} çalışmadır sorunlu (yedek/başarısız)" for k, n in streaks.items() if n >= need)
+
+
 def health_message(title: str, status: dict, ok: bool) -> str:
     """Create a truthful report: red means run failure; yellow means degraded/review."""
     e = html.escape
@@ -199,10 +228,13 @@ def health_message(title: str, status: dict, ok: bool) -> str:
     log_errors = int(diag.get("error_count", 0) or 0)
     log_warnings = int(diag.get("warning_count", 0) or 0)
 
+    persistent = [str(x) for x in (status.get("_persistent") or [])]
     if not ok or fatal:
         heading = "🔴 <b>Çalışma başarısız</b>"
     elif failed:
         heading = "🟠 <b>Kısmi kesinti</b>"
+    elif persistent:
+        heading = "🟠 <b>Kalıcı kaynak sorunu</b>"
     elif fallbacks:
         heading = "🟡 <b>Yedek kaynak devrede</b>"
     elif quality or log_errors:
@@ -224,6 +256,9 @@ def health_message(title: str, status: dict, ok: bool) -> str:
     if fallbacks:
         lines.append("♻️ Yedek kaynak uyarıları:")
         lines.extend(f"• {e(item)}" for item in fallbacks[:4])
+    if persistent:
+        lines.append("🔁 <b>Kalıcı sorunlar (müdahale gerekebilir):</b>")
+        lines.extend(f"• {e(item)}" for item in persistent[:5])
     if fatal:
         lines.append("❌ <b>Hata izi (fatal):</b> " + e(_one_line(fatal.splitlines()[-1], 240)))
         # Preserve the final traceback lines, where the originating exception usually appears.
@@ -256,7 +291,7 @@ def health_message(title: str, status: dict, ok: bool) -> str:
             shown += 1
             if shown >= 3:
                 break
-    if failed or fallbacks or fatal or quality or log_errors or log_warnings:
+    if failed or fallbacks or fatal or quality or log_errors or log_warnings or persistent:
         lines.append("🔎 Ayrıntılı teşhis: GitHub → Actions çalışma kaydı veya data dalındaki last_run.json (log_diagnostics / warnings alanları).")
     return "\n".join(lines)[:3900]
 
@@ -268,10 +303,29 @@ def health(title: str, status: dict, ok: bool) -> bool:
         return False
     failed, fallbacks, _ = _component_status(status)
     diag = status.get("_diagnostics") if isinstance(status.get("_diagnostics"), dict) else {}
-    bad = (not ok) or bool(status.get("fatal")) or bool(failed) or bool(fallbacks) or bool(status.get("quality")) \
-        or int(diag.get("error_count", 0) or 0) > 0 or int(diag.get("warning_count", 0) or 0) > 0
+    persistent = track_persistent(status)
+    if persistent:
+        status["_persistent"] = persistent
+    # Geçici uyarılar ve çalışan yedek kaynaklar ayrı mesaj tetiklemez; kalıcı olanlar tetikler.
+    bad = (not ok) or bool(status.get("fatal")) or bool(failed) or bool(persistent) \
+        or int(diag.get("error_count", 0) or 0) > 0
     if not bad and not any(s in title for s in c.get("health_ok_slots", ["close", "weekly"])):
         return False
+    if bad:
+        st = store.load_json("health_state")
+        sig, now = _signature(status), datetime.now(timezone.utc)
+        try:
+            age_h = (now - datetime.fromisoformat(st.get("last_sent_at", ""))).total_seconds() / 3600
+        except ValueError:
+            age_h = float("inf")
+        hard = (not ok) or bool(status.get("fatal"))   # başarısız çalışma her zaman bildirilir
+        if not hard and st.get("last_signature") == sig and age_h < float(c.get("health_repeat_hours", 24)):
+            return False
+        sent = send(health_message(title, status, ok))
+        if sent:
+            st.update(last_signature=sig, last_sent_at=now.isoformat())
+            store.save_json("health_state", st)
+        return sent
     return send(health_message(title, status, ok))
 
 

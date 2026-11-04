@@ -196,7 +196,7 @@ def build(days: int = 420, seed: int = 11) -> None:
                 pid = _guess_program(r["title"])
                 labels.append({"event_id": r["event_id"], "kind": "program", "label": pid or "irrelevant", "ts": ds})
     labels.append({"kind": "entity", "recipient_norm": "duke energy carolinas", "ticker": "DUK", "ts": "demo"})
-    (lab_dir / "labels.jsonl").write_text("\n".join(json.dumps(x) for x in labels), encoding="utf-8")
+    (lab_dir / "labels.jsonl").write_text("\n".join(json.dumps(x) for x in labels) + "\n", encoding="utf-8")
 
     # ---- günlük kapanış döngüsü
     log.info("Demo: %d gün işleniyor...", len(dates))

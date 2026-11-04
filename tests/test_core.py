@@ -251,7 +251,7 @@ def test_health_message():
     from radar import telegram
     bad = telegram.health_message("run", {"sec_edgar": {"ok": False, "error": "429 <x>"},
                                           "congress": {"ok": True, "rows": 5}, "events_new": 3}, True)
-    assert "🔴" in bad and "sec_edgar" in bad and "&lt;x&gt;" in bad and "congress (5)" in bad
+    assert "🟠" in bad and "sec_edgar" in bad and "&lt;x&gt;" in bad and "congress (5)" in bad
     assert "🟢" in telegram.health_message("run", {"congress": {"ok": True}}, True)
 
 
@@ -326,6 +326,7 @@ def test_fallback_parsers_and_switch():
     old = F.REGISTRY["grants_gov"]
     F.REGISTRY["grants_gov"] = lambda since: schema.frame([schema.event("grants_gov", "1", 4, "2026-10-01", "NOFO")])
     import radar.sources as S
+    import radar.sources.grants_gov  # noqa: F401
     real = S.grants_gov
     S.grants_gov = Broken
     st = {}
@@ -336,7 +337,7 @@ def test_fallback_parsers_and_switch():
     assert st["grants_gov"]["via"] == "yedek" and st["grants_gov"]["ok"] and len(df) == 1
     from radar import telegram
     msg = telegram.health_message("r", st, True)
-    assert "♻️" in msg and "🔴" in msg
+    assert "♻️" in msg and "🟡" in msg
 
 
 def test_history_windows_resume_and_known_at():
@@ -387,3 +388,47 @@ if __name__ == "__main__":
                 fails += 1
                 print("FAIL", name, repr(exc))
     sys.exit(1 if fails else 0)
+
+
+def test_health_dedup_and_persistent(monkeypatch=None):
+    from radar import telegram, store
+    sent = []
+    telegram.send = lambda text: sent.append(text) or True
+    telegram.enabled = lambda: True
+    st = {"usaspending": {"ok": True, "via": "yedek", "rows": 1, "primary_error": "x"}}
+    store.save_json("health_state", {})
+    results = [telegram.health(f"r{i}", dict(st), True) for i in range(5)]
+    # 3. çalışmada kalıcı sorun olur ve bildirilir; sonrasında aynı imza tekrarlanmaz.
+    assert results == [False, False, True, False, False]
+    assert "Kalıcı" in sent[0]
+    # Başarısız çalışma imza aynı olsa bile her zaman bildirilir.
+    assert telegram.health("r9", {"fatal": "Traceback\nBoom"}, False)
+    assert telegram.health("r10", {"fatal": "Traceback\nBoom"}, False)
+
+
+def test_review_cli_approve_reject():
+    import argparse
+    import pandas as pd
+    from radar import run, store
+    from radar.settings import store_dir
+    store.write("review_queue", pd.DataFrame([
+        {"recipient": "Acme Power Inc", "recipient_norm": "acme power", "candidate": "ACM", "score": 88.0,
+         "event_id": "e1", "amount_usd": 5.0},
+        {"recipient": "Zed Corp", "recipient_norm": "zed", "candidate": "ZED", "score": 86.0,
+         "event_id": "e2", "amount_usd": 1.0}]))
+    run.cmd_review(argparse.Namespace(action="approve", names=["acme power"], limit=10))
+    run.cmd_review(argparse.Namespace(action="reject", names=["zed"], limit=10))
+    lines = (store_dir() / "labels" / "labels.jsonl").read_text().splitlines()
+    assert any('"ACM"' in x for x in lines) and any('"NONE"' in x for x in lines)
+    assert store.read("review_queue").empty
+
+
+def test_auto_none_for_low_score_review():
+    import pandas as pd
+    from radar import autolabel
+    ev = pd.DataFrame(columns=["event_id", "program", "tickers", "recipient", "title", "relevant", "method", "date"])
+    rq = pd.DataFrame([{"recipient": "Totally Different LLC", "recipient_norm": "totally different llc",
+                        "candidate": "ZZZ", "score": 86.0, "event_id": "e", "amount_usd": 1.0}])
+    uni = pd.DataFrame([{"ticker": "ZZZ", "name": "Zzz Holdings"}])
+    labels, _ = autolabel.audit(ev, rq, uni, pd.DataFrame())
+    assert any(x.get("ticker") == "NONE" for x in labels)
