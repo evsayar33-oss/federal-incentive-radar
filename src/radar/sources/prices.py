@@ -226,7 +226,12 @@ def fetch(tickers: list[str], period: str = "3y") -> pd.DataFrame:
         if stooq_failures:
             suffixes.append(f"{stooq_failures} Stooq isteği başarısız oldu")
         suffix = "; " + "; ".join(suffixes) if suffixes else ""
-        log.warning(
+        # Delist/küçük semboller normaldir; yalnızca oran yüksekse (kaynak bozuk olabilir) uyarı seviyesi.
+        from ..settings import sources
+        limit = float(sources().get("prices", {}).get("warn_missing_share", 0.4))
+        level = logging.WARNING if len(unresolved) / max(1, len(tickers)) > limit else logging.INFO
+        log.log(
+            level,
             "Fiyat verisi bulunamayan sembol: %d/%d. Örnek: %s%s%s",
             len(unresolved),
             len(tickers),
