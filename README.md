@@ -263,6 +263,8 @@ pip install -r requirements-etl.txt -r requirements.txt
 PYTHONPATH=src python -m radar.run demo --days 200      # internetsiz demo
 PYTHONPATH=src python -m radar.run slot --slot open --force
 PYTHONPATH=src python -m radar.run telegram-test           # TELEGRAM_BOT_TOKEN gerekir
+PYTHONPATH=src python -m radar.run review list                # belirsiz şirket eşleşmeleri
+PYTHONPATH=src python -m radar.run review approve <recipient_norm>   # adayı kabul et (reject: şirket değil)
 streamlit run app/streamlit_app.py
 PYTHONPATH=src pytest -q tests
 ```

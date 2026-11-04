@@ -134,7 +134,7 @@ def usaspending(since: date) -> pd.DataFrame:
                             "award_type_codes": codes, "award_amounts": [{"lower_bound": lo}]},
                 "fields": fields, "page": 1, "limit": 100, "sort": "Transaction Amount", "order": "desc"}
         try:
-            res = http.post_json(url, json=body, retries=1).get("results") or []
+            res = http.post_json(url, json=body, retries=3).get("results") or []
         except Exception as exc:
             log.warning("USAspending yedek (%s): %s", kind, exc)
             continue
