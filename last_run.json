@@ -1,0 +1,892 @@
+{
+  "slot_open": {
+    "at": "2026-10-25T09:38:47Z",
+    "status": {
+      "federal_register": {
+        "ok": true,
+        "rows": 20,
+        "sec": 2.8
+      },
+      "congress": {
+        "ok": true,
+        "rows": 35,
+        "sec": 0.3
+      },
+      "usaspending": {
+        "ok": true,
+        "rows": 0,
+        "sec": 0.6
+      },
+      "grants_gov": {
+        "ok": true,
+        "rows": 0,
+        "sec": 4.6
+      },
+      "sec_edgar": {
+        "ok": true,
+        "rows": 0,
+        "sec": 2.8
+      },
+      "gdelt": {
+        "ok": true,
+        "rows": 0,
+        "sec": 123.3
+      },
+      "fred": {
+        "ok": true
+      },
+      "treasury_dts": {
+        "ok": true
+      },
+      "events_total": 828,
+      "events_new": 25
+    },
+    "warnings": [
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 1.7s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 2.7s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 4.9s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.gdelt",
+        "msg": "GDELT sorgu hatası: 429 Client Error: Too Many Requests for url: https://api.gdeltproject.org/api/v2/doc/doc?query=%22CHIPS+Act%22+%28grant+OR+award+OR+incentive%29+sourcecountry%3AUS&mode=artlist&format=json&maxrecords=75&timespan=1d&sort=datedesc"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 1.4s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 2.4s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 4.4s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.gdelt",
+        "msg": "GDELT sorgu hatası: 429 Client Error: Too Many Requests for url: https://api.gdeltproject.org/api/v2/doc/doc?query=%28%22tax+credit%22+OR+%22loan+guarantee%22%29+%28%22Department+of+Energy%22+OR+Treasury%29+sourcecountry%3AUS&mode=artlist&format=json&maxrecords=75&timespan=1d&sort=datedesc"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 1.7s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 2.7s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 5.0s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.gdelt",
+        "msg": "GDELT sorgu hatası: 429 Client Error: Too Many Requests for url: https://api.gdeltproject.org/api/v2/doc/doc?query=%22Inflation+Reduction+Act%22+%28repeal+OR+credit+OR+guidance%29+sourcecountry%3AUS&mode=artlist&format=json&maxrecords=75&timespan=1d&sort=datedesc"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 1.5s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 2.2s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 1.3s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 3.0s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.http",
+        "msg": "GET api.gdeltproject.org -> 429, 4.5s sonra tekrar"
+      },
+      {
+        "level": "WARNING",
+        "logger": "radar.gdelt",
+        "msg": "GDELT sorgu hatası: 429 Client Error: Too Many Requests for url: https://api.gdeltproject.org/api/v2/doc/doc?query=%28%22federal+grant%22+OR+%22federal+funding%22%29+%28manufacturing+OR+plant+OR+factory%29+sourcecountry%3AUS&mode=artlist&format=json&maxrecords=75&timespan=1d&sort=datedesc"
+      }
+    ]
+  },
+  "tables": {
+    "events": 60583,
+    "universe": 10443,
+    "prices": {
+      "tickers": 1412,
+      "first": "2019-10-24",
+      "last": "2026-11-06"
+    },
+    "outlays": 13800,
+    "fred": 33743,
+    "ledger": 297,
+    "scores_latest": 33,
+    "company_exposure": 1148,
+    "review_queue": 30,
+    "alerts": 1281,
+    "event_study": 7670,
+    "metrics": 0,
+    "events_by_source": {
+      "congress": {
+        "total": 592,
+        "relevant": 23,
+        "with_ticker": 0,
+        "with_amount": 0,
+        "last_date": "2026-11-05"
+      },
+      "federal_register": {
+        "total": 4228,
+        "relevant": 2366,
+        "with_ticker": 0,
+        "with_amount": 0,
+        "last_date": "2026-11-06"
+      },
+      "gdelt": {
+        "total": 399,
+        "relevant": 31,
+        "with_ticker": 0,
+        "with_amount": 0,
+        "last_date": "2026-11-06"
+      },
+      "grants_gov": {
+        "total": 78,
+        "relevant": 57,
+        "with_ticker": 0,
+        "with_amount": 40,
+        "last_date": "2026-11-06"
+      },
+      "sec_edgar": {
+        "total": 9356,
+        "relevant": 9356,
+        "with_ticker": 8623,
+        "with_amount": 0,
+        "last_date": "2026-11-06"
+      },
+      "usaspending": {
+        "total": 45930,
+        "relevant": 45930,
+        "with_ticker": 3032,
+        "with_amount": 33933,
+        "last_date": "2028-12-31"
+      }
+    },
+    "events_by_program": {
+      "other": 34508,
+      "infrastructure": 9124,
+      "clean_power": 3638,
+      "housing": 2843,
+      "agriculture": 2075,
+      "critical_minerals": 1776,
+      "semiconductors": 789,
+      "nuclear": 698,
+      "clean_manufacturing": 601,
+      "defense_industrial": 545,
+      "carbon_management": 353,
+      "ai_quantum": 314,
+      "broadband": 171,
+      "health_bio": 152,
+      "ev_auto": 75,
+      "hydrogen": 72,
+      "grid": 29
+    },
+    "match_methods": {
+      "none": 42171,
+      "": 17329,
+      "review": 608,
+      "exact": 227,
+      "override_none": 119,
+      "override": 116,
+      "fuzzy": 13
+    },
+    "universe_by_sector": {
+      "(yok)": 9929,
+      "Industrials": 84,
+      "Financials": 77,
+      "Information Technology": 76,
+      "Health Care": 61,
+      "Consumer Discretionary": 48,
+      "Consumer Staples": 35,
+      "Utilities": 32,
+      "Real Estate": 31,
+      "Materials": 25,
+      "Communication Services": 23,
+      "Energy": 22
+    },
+    "universe_sp500_weight_n": 503,
+    "universe_r2000_weight_n": 0,
+    "universe_sector_weight_n": 511
+  },
+  "slot_midday": {
+    "at": "2026-10-30T18:54:54Z",
+    "status": {
+      "federal_register": {
+        "ok": true,
+        "rows": 85,
+        "sec": 2.8
+      },
+      "congress": {
+        "ok": true,
+        "rows": 709,
+        "sec": 9.4
+      },
+      "usaspending": {
+        "ok": true,
+        "rows": 48,
+        "sec": 9.5
+      },
+      "grants_gov": {
+        "ok": true,
+        "rows": 10,
+        "sec": 9.6
+      },
+      "sec_edgar": {
+        "ok": true,
+        "rows": 133,
+        "sec": 3.1
+      },
+      "gdelt": {
+        "ok": true,
+        "rows": 59,
+        "sec": 13.9
+      },
+      "autofix": {
+        "ok": true,
+        "new": 3
+      },
+      "events_total": 53950,
+      "events_new": 752,
+      "quality": [
+        "İnceleme kuyruğunda 215 belirsiz şirket eşleşmesi var."
+      ],
+      "_diagnostics": {
+        "captured": 2,
+        "warning_count": 2,
+        "error_count": 0,
+        "by_level": {
+          "WARNING": 2
+        },
+        "groups": [
+          {
+            "level": "WARNING",
+            "logger": "radar.gdelt",
+            "count": 1,
+            "example": "GDELT 429 (paylaşılan IP sınırı); bu çalışmada Google News RSS kullanılacak",
+            "file": "gdelt.py",
+            "line": 79,
+            "at": "2026-10-30T18:54:44+00:00"
+          },
+          {
+            "level": "WARNING",
+            "logger": "radar.http",
+            "count": 1,
+            "example": "GET api.gdeltproject.org -> 429, 1.1s sonra tekrar",
+            "file": "http.py",
+            "line": 67,
+            "at": "2026-10-30T18:54:43+00:00"
+          }
+        ],
+        "recent_records": [
+          {
+            "at": "2026-10-30T18:54:43+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 67,
+            "msg": "GET api.gdeltproject.org -> 429, 1.1s sonra tekrar"
+          },
+          {
+            "at": "2026-10-30T18:54:44+00:00",
+            "level": "WARNING",
+            "logger": "radar.gdelt",
+            "file": "gdelt.py",
+            "line": 79,
+            "msg": "GDELT 429 (paylaşılan IP sınırı); bu çalışmada Google News RSS kullanılacak"
+          }
+        ],
+        "records_kept": 2,
+        "total_seen": 2,
+        "records_dropped": 0
+      }
+    },
+    "warnings": [
+      {
+        "at": "2026-10-30T18:54:43+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 67,
+        "msg": "GET api.gdeltproject.org -> 429, 1.1s sonra tekrar"
+      },
+      {
+        "at": "2026-10-30T18:54:44+00:00",
+        "level": "WARNING",
+        "logger": "radar.gdelt",
+        "file": "gdelt.py",
+        "line": 79,
+        "msg": "GDELT 429 (paylaşılan IP sınırı); bu çalışmada Google News RSS kullanılacak"
+      }
+    ],
+    "log_diagnostics": {
+      "captured": 2,
+      "warning_count": 2,
+      "error_count": 0,
+      "by_level": {
+        "WARNING": 2
+      },
+      "groups": [
+        {
+          "level": "WARNING",
+          "logger": "radar.gdelt",
+          "count": 1,
+          "example": "GDELT 429 (paylaşılan IP sınırı); bu çalışmada Google News RSS kullanılacak",
+          "file": "gdelt.py",
+          "line": 79,
+          "at": "2026-10-30T18:54:44+00:00"
+        },
+        {
+          "level": "WARNING",
+          "logger": "radar.http",
+          "count": 1,
+          "example": "GET api.gdeltproject.org -> 429, 1.1s sonra tekrar",
+          "file": "http.py",
+          "line": 67,
+          "at": "2026-10-30T18:54:43+00:00"
+        }
+      ],
+      "recent_records": [
+        {
+          "at": "2026-10-30T18:54:43+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 67,
+          "msg": "GET api.gdeltproject.org -> 429, 1.1s sonra tekrar"
+        },
+        {
+          "at": "2026-10-30T18:54:44+00:00",
+          "level": "WARNING",
+          "logger": "radar.gdelt",
+          "file": "gdelt.py",
+          "line": 79,
+          "msg": "GDELT 429 (paylaşılan IP sınırı); bu çalışmada Google News RSS kullanılacak"
+        }
+      ],
+      "records_kept": 2,
+      "total_seen": 2,
+      "records_dropped": 0
+    }
+  },
+  "weekly": {
+    "at": "2026-10-31T15:33:38Z",
+    "status": {
+      "universe": 10443,
+      "company_sic": {
+        "ok": true,
+        "new": 400
+      },
+      "bea_io": {
+        "ok": true,
+        "year": "2025"
+      },
+      "classifier": {
+        "trained": true,
+        "n": 16555,
+        "n_user_labels": 0,
+        "classes": 18
+      },
+      "autofix": {
+        "ok": true,
+        "new": 37
+      },
+      "evidence": {
+        "collecting": 119,
+        "unclear": 116,
+        "no_effect": 43
+      },
+      "metrics_rows": 0,
+      "learning": {
+        "ok": true
+      },
+      "_diagnostics": {
+        "captured": 5,
+        "warning_count": 5,
+        "error_count": 0,
+        "by_level": {
+          "WARNING": 5
+        },
+        "groups": [
+          {
+            "level": "WARNING",
+            "logger": "radar.etf",
+            "count": 1,
+            "example": "iShares IWM alınamadı: ",
+            "file": "etf_holdings.py",
+            "line": 73,
+            "at": "2026-10-31T15:25:10+00:00"
+          },
+          {
+            "level": "WARNING",
+            "logger": "radar.http",
+            "count": 1,
+            "example": "GET query2.finance.yahoo.com -> 429, 1.9s sonra tekrar",
+            "file": "http.py",
+            "line": 67,
+            "at": "2026-10-31T15:28:38+00:00"
+          },
+          {
+            "level": "WARNING",
+            "logger": "radar.http",
+            "count": 1,
+            "example": "GET query1.finance.yahoo.com -> 429, 1.2s sonra tekrar",
+            "file": "http.py",
+            "line": 67,
+            "at": "2026-10-31T15:28:40+00:00"
+          },
+          {
+            "level": "WARNING",
+            "logger": "radar.prices",
+            "count": 1,
+            "example": "Yahoo Chart hız sınırına ulaştı; kalan yedek fiyat istekleri durduruldu",
+            "file": "prices.py",
+            "line": 193,
+            "at": "2026-10-31T15:28:42+00:00"
+          },
+          {
+            "level": "WARNING",
+            "logger": "radar.prices",
+            "count": 1,
+            "example": "Fiyat verisi bulunamayan sembol: 246/1512. Örnek: AADI, AAN, ABIO, ABMC, ACCD, ADAP, ADN, AGR, AGS, AILE, AKRO, AL (+234 daha); 216 sembol yedek kaynak bütçesi dışında kaldı; Yahoo hız sınırı nedeniyle yedek arama durduruldu",
+            "file": "prices.py",
+            "line": 229,
+            "at": "2026-10-31T15:28:44+00:00"
+          }
+        ],
+        "recent_records": [
+          {
+            "at": "2026-10-31T15:25:10+00:00",
+            "level": "WARNING",
+            "logger": "radar.etf",
+            "file": "etf_holdings.py",
+            "line": 73,
+            "msg": "iShares IWM alınamadı: "
+          },
+          {
+            "at": "2026-10-31T15:28:38+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 67,
+            "msg": "GET query2.finance.yahoo.com -> 429, 1.9s sonra tekrar"
+          },
+          {
+            "at": "2026-10-31T15:28:40+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 67,
+            "msg": "GET query1.finance.yahoo.com -> 429, 1.2s sonra tekrar"
+          },
+          {
+            "at": "2026-10-31T15:28:42+00:00",
+            "level": "WARNING",
+            "logger": "radar.prices",
+            "file": "prices.py",
+            "line": 193,
+            "msg": "Yahoo Chart hız sınırına ulaştı; kalan yedek fiyat istekleri durduruldu"
+          },
+          {
+            "at": "2026-10-31T15:28:44+00:00",
+            "level": "WARNING",
+            "logger": "radar.prices",
+            "file": "prices.py",
+            "line": 229,
+            "msg": "Fiyat verisi bulunamayan sembol: 246/1512. Örnek: AADI, AAN, ABIO, ABMC, ACCD, ADAP, ADN, AGR, AGS, AILE, AKRO, AL (+234 daha); 216 sembol yedek kaynak bütçesi dışında kaldı; Yahoo hız sınırı nedeniyle yedek arama durduruldu"
+          }
+        ],
+        "records_kept": 5,
+        "total_seen": 5,
+        "records_dropped": 0
+      }
+    },
+    "warnings": [
+      {
+        "at": "2026-10-31T15:25:10+00:00",
+        "level": "WARNING",
+        "logger": "radar.etf",
+        "file": "etf_holdings.py",
+        "line": 73,
+        "msg": "iShares IWM alınamadı: "
+      },
+      {
+        "at": "2026-10-31T15:28:38+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 67,
+        "msg": "GET query2.finance.yahoo.com -> 429, 1.9s sonra tekrar"
+      },
+      {
+        "at": "2026-10-31T15:28:40+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 67,
+        "msg": "GET query1.finance.yahoo.com -> 429, 1.2s sonra tekrar"
+      },
+      {
+        "at": "2026-10-31T15:28:42+00:00",
+        "level": "WARNING",
+        "logger": "radar.prices",
+        "file": "prices.py",
+        "line": 193,
+        "msg": "Yahoo Chart hız sınırına ulaştı; kalan yedek fiyat istekleri durduruldu"
+      },
+      {
+        "at": "2026-10-31T15:28:44+00:00",
+        "level": "WARNING",
+        "logger": "radar.prices",
+        "file": "prices.py",
+        "line": 229,
+        "msg": "Fiyat verisi bulunamayan sembol: 246/1512. Örnek: AADI, AAN, ABIO, ABMC, ACCD, ADAP, ADN, AGR, AGS, AILE, AKRO, AL (+234 daha); 216 sembol yedek kaynak bütçesi dışında kaldı; Yahoo hız sınırı nedeniyle yedek arama durduruldu"
+      }
+    ],
+    "log_diagnostics": {
+      "captured": 5,
+      "warning_count": 5,
+      "error_count": 0,
+      "by_level": {
+        "WARNING": 5
+      },
+      "groups": [
+        {
+          "level": "WARNING",
+          "logger": "radar.etf",
+          "count": 1,
+          "example": "iShares IWM alınamadı: ",
+          "file": "etf_holdings.py",
+          "line": 73,
+          "at": "2026-10-31T15:25:10+00:00"
+        },
+        {
+          "level": "WARNING",
+          "logger": "radar.http",
+          "count": 1,
+          "example": "GET query2.finance.yahoo.com -> 429, 1.9s sonra tekrar",
+          "file": "http.py",
+          "line": 67,
+          "at": "2026-10-31T15:28:38+00:00"
+        },
+        {
+          "level": "WARNING",
+          "logger": "radar.http",
+          "count": 1,
+          "example": "GET query1.finance.yahoo.com -> 429, 1.2s sonra tekrar",
+          "file": "http.py",
+          "line": 67,
+          "at": "2026-10-31T15:28:40+00:00"
+        },
+        {
+          "level": "WARNING",
+          "logger": "radar.prices",
+          "count": 1,
+          "example": "Yahoo Chart hız sınırına ulaştı; kalan yedek fiyat istekleri durduruldu",
+          "file": "prices.py",
+          "line": 193,
+          "at": "2026-10-31T15:28:42+00:00"
+        },
+        {
+          "level": "WARNING",
+          "logger": "radar.prices",
+          "count": 1,
+          "example": "Fiyat verisi bulunamayan sembol: 246/1512. Örnek: AADI, AAN, ABIO, ABMC, ACCD, ADAP, ADN, AGR, AGS, AILE, AKRO, AL (+234 daha); 216 sembol yedek kaynak bütçesi dışında kaldı; Yahoo hız sınırı nedeniyle yedek arama durduruldu",
+          "file": "prices.py",
+          "line": 229,
+          "at": "2026-10-31T15:28:44+00:00"
+        }
+      ],
+      "recent_records": [
+        {
+          "at": "2026-10-31T15:25:10+00:00",
+          "level": "WARNING",
+          "logger": "radar.etf",
+          "file": "etf_holdings.py",
+          "line": 73,
+          "msg": "iShares IWM alınamadı: "
+        },
+        {
+          "at": "2026-10-31T15:28:38+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 67,
+          "msg": "GET query2.finance.yahoo.com -> 429, 1.9s sonra tekrar"
+        },
+        {
+          "at": "2026-10-31T15:28:40+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 67,
+          "msg": "GET query1.finance.yahoo.com -> 429, 1.2s sonra tekrar"
+        },
+        {
+          "at": "2026-10-31T15:28:42+00:00",
+          "level": "WARNING",
+          "logger": "radar.prices",
+          "file": "prices.py",
+          "line": 193,
+          "msg": "Yahoo Chart hız sınırına ulaştı; kalan yedek fiyat istekleri durduruldu"
+        },
+        {
+          "at": "2026-10-31T15:28:44+00:00",
+          "level": "WARNING",
+          "logger": "radar.prices",
+          "file": "prices.py",
+          "line": 229,
+          "msg": "Fiyat verisi bulunamayan sembol: 246/1512. Örnek: AADI, AAN, ABIO, ABMC, ACCD, ADAP, ADN, AGR, AGS, AILE, AKRO, AL (+234 daha); 216 sembol yedek kaynak bütçesi dışında kaldı; Yahoo hız sınırı nedeniyle yedek arama durduruldu"
+        }
+      ],
+      "records_kept": 5,
+      "total_seen": 5,
+      "records_dropped": 0
+    }
+  },
+  "slot_close": {
+    "at": "2026-11-06T21:50:06Z",
+    "status": {
+      "federal_register": {
+        "ok": true,
+        "rows": 74,
+        "sec": 2.8
+      },
+      "congress": {
+        "ok": true,
+        "rows": 367,
+        "sec": 0.9
+      },
+      "usaspending": {
+        "ok": true,
+        "rows": 35,
+        "sec": 1.2
+      },
+      "grants_gov": {
+        "ok": true,
+        "rows": 4,
+        "sec": 6.6
+      },
+      "sec_edgar": {
+        "ok": true,
+        "rows": 213,
+        "sec": 2.9
+      },
+      "gdelt": {
+        "ok": true,
+        "rows": 31,
+        "sec": 11.9
+      },
+      "prices": {
+        "ok": true
+      },
+      "autofix": {
+        "ok": true,
+        "new": 0
+      },
+      "events_total": 60583,
+      "events_new": 410,
+      "evidence": {
+        "ok": true
+      },
+      "quality": [],
+      "_diagnostics": {
+        "captured": 0,
+        "warning_count": 0,
+        "error_count": 0,
+        "by_level": {},
+        "groups": [],
+        "recent_records": [],
+        "records_kept": 0,
+        "total_seen": 0,
+        "records_dropped": 0
+      }
+    },
+    "warnings": [],
+    "log_diagnostics": {
+      "captured": 0,
+      "warning_count": 0,
+      "error_count": 0,
+      "by_level": {},
+      "groups": [],
+      "recent_records": [],
+      "records_kept": 0,
+      "total_seen": 0,
+      "records_dropped": 0
+    }
+  },
+  "history": {
+    "at": "2026-11-04T19:32:33Z",
+    "status": {
+      "history": {
+        "windows_done": 105,
+        "events": 67543,
+        "stopped_early": true,
+        "errors": [
+          "usaspending 2024-07-23: 504 Server Error: Gateway Time-out for url: https://api.usaspending.gov/api/v2/search/spending_by_award/"
+        ]
+      },
+      "company_sic": {
+        "ok": true,
+        "new": 42
+      },
+      "prices": {
+        "ok": true
+      },
+      "evidence": {
+        "collecting": 121,
+        "unclear": 119,
+        "no_effect": 46
+      },
+      "_diagnostics": {
+        "captured": 2,
+        "warning_count": 2,
+        "error_count": 0,
+        "by_level": {
+          "WARNING": 2
+        },
+        "groups": [
+          {
+            "level": "WARNING",
+            "logger": "radar.http",
+            "count": 1,
+            "example": "POST api.usaspending.gov -> 504, 8.1s sonra tekrar",
+            "file": "http.py",
+            "line": 85,
+            "at": "2026-11-04T18:57:26+00:00"
+          },
+          {
+            "level": "WARNING",
+            "logger": "radar.http",
+            "count": 1,
+            "example": "POST api.usaspending.gov -> 502, 8.8s sonra tekrar",
+            "file": "http.py",
+            "line": 85,
+            "at": "2026-11-04T19:01:17+00:00"
+          }
+        ],
+        "recent_records": [
+          {
+            "at": "2026-11-04T18:57:26+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 85,
+            "msg": "POST api.usaspending.gov -> 504, 8.1s sonra tekrar"
+          },
+          {
+            "at": "2026-11-04T19:01:17+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 85,
+            "msg": "POST api.usaspending.gov -> 502, 8.8s sonra tekrar"
+          }
+        ],
+        "records_kept": 2,
+        "total_seen": 2,
+        "records_dropped": 0
+      }
+    },
+    "warnings": [
+      {
+        "at": "2026-11-04T18:57:26+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 85,
+        "msg": "POST api.usaspending.gov -> 504, 8.1s sonra tekrar"
+      },
+      {
+        "at": "2026-11-04T19:01:17+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 85,
+        "msg": "POST api.usaspending.gov -> 502, 8.8s sonra tekrar"
+      }
+    ],
+    "log_diagnostics": {
+      "captured": 2,
+      "warning_count": 2,
+      "error_count": 0,
+      "by_level": {
+        "WARNING": 2
+      },
+      "groups": [
+        {
+          "level": "WARNING",
+          "logger": "radar.http",
+          "count": 1,
+          "example": "POST api.usaspending.gov -> 504, 8.1s sonra tekrar",
+          "file": "http.py",
+          "line": 85,
+          "at": "2026-11-04T18:57:26+00:00"
+        },
+        {
+          "level": "WARNING",
+          "logger": "radar.http",
+          "count": 1,
+          "example": "POST api.usaspending.gov -> 502, 8.8s sonra tekrar",
+          "file": "http.py",
+          "line": 85,
+          "at": "2026-11-04T19:01:17+00:00"
+        }
+      ],
+      "recent_records": [
+        {
+          "at": "2026-11-04T18:57:26+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 85,
+          "msg": "POST api.usaspending.gov -> 504, 8.1s sonra tekrar"
+        },
+        {
+          "at": "2026-11-04T19:01:17+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 85,
+          "msg": "POST api.usaspending.gov -> 502, 8.8s sonra tekrar"
+        }
+      ],
+      "records_kept": 2,
+      "total_seen": 2,
+      "records_dropped": 0
+    }
+  },
+  "diagnostics_version": 2
+}

@@ -1,0 +1,28 @@
+{
+  "asof": "2026-11-04",
+  "events": 60269,
+  "tickers_in_events": 1791,
+  "tickers_with_prices": 1354,
+  "tickers_without_prices": 437,
+  "survivorship_note": "Fiyatı olmayan şirketler (iflas, birleşme, ticker değişimi) ölçülemez; etkiler hafif iyimser olabilir.",
+  "history": {
+    "windows_done": 105,
+    "events": 67543,
+    "stopped_early": true,
+    "errors": [
+      "usaspending 2024-07-23: 504 Server Error: Gateway Time-out for url: https://api.usaspending.gov/api/v2/search/spending_by_award/"
+    ]
+  },
+  "company_sic": {
+    "ok": true,
+    "new": 42
+  },
+  "prices": {
+    "ok": true
+  },
+  "evidence": {
+    "collecting": 121,
+    "unclear": 119,
+    "no_effect": 46
+  }
+}
