@@ -296,3 +296,11 @@ Ana kategori testi sonuç vermediğinde `investments.build_subgroups` alt grupla
 yatırım tutarının şirket değerine oranı, 3 ve 60 günlük ufuk, uzun/kısa yön. Tüm testler birlikte BH ile düzeltilir ve
 `corp_invest.subgroups.cost_bps` işlem maliyeti düşülür. Kapıyı geçen grup yalnızca "aday" olur; keşiften sonraki yeni
 olaylarda (`confirm_n`) tekrar ederse "doğrulandı" olur. Sonuçlar `invest_subgroups` tablosunda; Telegram bildirimi yoktur.
+
+### İçeriden alım (SEC Form 4) bölümü
+
+`insiders.py`, SEC'in üç aylık "Insider Transactions Data Sets" dosyalarından açık piyasa alımlarını (işlem kodu P) okur.
+Olaylar: 10 gün içinde 3+ yöneticinin toplu alımı ve CEO/CFO'nun ≥$250k alımı. Olay tarihi bildirimin verildiği gündür
+(ileriye bakış yok). Ölçüm ve kanıt kapıları yatırım bölümüyle aynıdır (`corp_invest.gate`, alt grup keşfi dahil);
+sonuçlar `insider_*` tablolarında, arayüzde "Büyük yatırımlar" sekmesindedir. Geçmiş veri ve haftalık çalışma çeyrekleri
+indirir. Telegram bildirimi yoktur.

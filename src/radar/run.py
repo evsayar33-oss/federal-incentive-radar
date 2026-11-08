@@ -18,7 +18,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from . import __version__, alerts, autolabel, diagnostics, evidence, investments, learn, scoring, store, telegram
+from . import __version__, alerts, autolabel, diagnostics, evidence, insiders, investments, learn, scoring, store, telegram
 from .classify import Classifier, train
 from .sources import fallbacks
 from .entity import Matcher, normalize
@@ -261,7 +261,7 @@ def price_tickers(extra_limit: int | None = None) -> list[str]:
         seen = list(dict.fromkeys(x.strip() for v in t.astype(str) for x in v.split(",") if x.strip()))
         extra += seen[:cfg["prices"].get("max_event_tickers", 500)]
     from . import investments
-    return sorted(set(base + extra + investments.tickers()))
+    return sorted(set(base + extra + investments.tickers() + insiders.tickers()))
 
 
 def update_prices(prices_mod, period: str) -> None:
@@ -474,6 +474,12 @@ def weekly_learning(status: dict) -> None:
         status["corp_invest_evidence"] = {"ok": True, **({} if inv.empty else inv["status"].value_counts().to_dict())}
     except Exception as exc:
         status["corp_invest_evidence"] = {"ok": False, "error": str(exc)[:300]}
+    try:
+        status["insider_sync"] = insiders.sync(years=1, budget_minutes=10)
+        ins = insiders.refresh()
+        status["insider_evidence"] = {"ok": True, **({} if ins.empty else ins["status"].value_counts().to_dict())}
+    except Exception as exc:
+        status["insider_evidence"] = {"ok": False, "error": str(exc)[:300]}
     telegram.weekly_summary(ev)
     state["history"] = (state.get("history", []) + [{"date": date.today().isoformat(),
                         "calibration": state["calibration"], "n_program_eff": len(state["program_efficacy"])}])[-104:]
@@ -496,6 +502,10 @@ def cmd_history(args) -> None:
     except Exception as exc:
         status["corp_invest_history"] = {"ok": False, "error": str(exc)[:300]}
     try:
+        status["insider_sync"] = insiders.sync(years=args.years, budget_minutes=min(20.0, args.budget / 6))
+    except Exception as exc:
+        status["insider_sync"] = {"ok": False, "error": str(exc)[:300]}
+    try:
         update_company_sic(status, limit=1500)
     except Exception as exc:
         status["company_sic"] = {"ok": False, "error": str(exc)[:300]}
@@ -511,6 +521,11 @@ def cmd_history(args) -> None:
         status["corp_invest_evidence"] = {"ok": True, **({} if inv.empty else inv["status"].value_counts().to_dict())}
     except Exception as exc:
         status["corp_invest_evidence"] = {"ok": False, "error": str(exc)[:300]}
+    try:
+        ins = insiders.refresh()
+        status["insider_evidence"] = {"ok": True, **({} if ins.empty else ins["status"].value_counts().to_dict())}
+    except Exception as exc:
+        status["insider_evidence"] = {"ok": False, "error": str(exc)[:300]}
     if not ev.empty:
         sig = evidence.annotate(store.read("events"), ev)
         if not sig.empty:

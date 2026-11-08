@@ -544,3 +544,33 @@ def test_invest_subgroups_gate_and_confirmation():
     more["ticker"] = [f"N{i}" for i in range(30)]
     again = I.build_subgroups(pd.concat([ret, more], ignore_index=True), first).set_index("key")
     assert again.loc["small|car_0_60|uzun", "status"] == "confirmed"
+
+
+def _insider_zip():
+    import io
+    import zipfile
+    sub = ["ACCESSION_NUMBER\tFILING_DATE\tDOCUMENT_TYPE\tISSUERTRADINGSYMBOL"]
+    own = ["ACCESSION_NUMBER\tRPTOWNERCIK\tRPTOWNER_TITLE"]
+    trn = ["ACCESSION_NUMBER\tTRANS_CODE\tTRANS_SHARES\tTRANS_PRICEPERSHARE\tTRANS_ACQUIRED_DISP_CD"]
+    for i, day in enumerate(["02-JAN-2024", "04-JAN-2024", "08-JAN-2024"]):   # 3 yönetici, 10 gün içinde
+        sub.append(f"A{i}\t{day}\t4\tACME")
+        own.append(f"A{i}\t{100 + i}\tDirector")
+        trn.append(f"A{i}\tP\t10000\t12.5\tA")
+    sub.append("B1\t05-JAN-2024\t4\tOTHR"); own.append("B1\t900\tChief Executive Officer"); trn.append("B1\tP\t40000\t10\tA")
+    sub.append("B2\t05-JAN-2024\t4\tSELL"); own.append("B2\t901\tDirector"); trn.append("B2\tS\t40000\t10\tD")   # satış: yok sayılır
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("SUBMISSION.tsv", "\n".join(sub)); z.writestr("REPORTINGOWNER.tsv", "\n".join(own))
+        z.writestr("NONDERIV_TRANS.tsv", "\n".join(trn))
+    return buf.getvalue()
+
+
+def test_insider_parse_and_events():
+    from radar import insiders as N
+    tx = N.parse_zip(_insider_zip())
+    assert set(tx["ticker"]) == {"ACME", "OTHR"}            # satış (S) elendi
+    ev = N.make_events(tx)
+    cats = {(r["tickers"], __import__("json").loads(r["extra"])["category"]) for r in ev.to_dict("records")}
+    assert ("ACME", "cluster") in cats and ("OTHR", "exec_buy") in cats and ("SELL", "cluster") not in cats
+    cl = ev[ev["tickers"] == "ACME"].iloc[0]
+    assert cl["date"] == "2024-01-08" and cl["amount_usd"] == 375000   # tetikleyici = 3. bildirimin günü (ileriye bakış yok)
