@@ -142,6 +142,16 @@ corp_invest:
     - '"billion" "data center" invest OR build'
     - '"billion" semiconductor fab invest'
     - '"billion" investment expansion U.S. announces'
+    - '"to invest" "billion" AI infrastructure OR "cloud" OR "AI"'
+    - '"billion" battery OR EV OR "electric vehicle" plant invest'
+    - '"billion" "power plant" OR "nuclear" OR "solar" OR "grid" invest'
+    - '"billion" pharmaceutical OR biotech manufacturing invest'
+    - '"billion" "research and development" OR "R&D" invest'
+    - '"billion" steel OR aluminum OR chemicals OR "critical minerals" invest'
+    - '"commits" "billion" expansion OR "new facility" OR campus'
+    - '"billion" "headquarters" OR "distribution center" OR "warehouse" invest'
+    - '"unveils" OR "plans" "billion" investment'
+    - '"billion" aerospace OR defense OR shipbuilding invest'
   gate:
     min_gap_days: 30           # aynı hissede üst üste binen 60 günlük pencereleri azaltır
     clip_car: 0.5
