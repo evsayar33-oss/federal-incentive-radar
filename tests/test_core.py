@@ -574,3 +574,16 @@ def test_insider_parse_and_events():
     assert ("ACME", "cluster") in cats and ("OTHR", "exec_buy") in cats and ("SELL", "cluster") not in cats
     cl = ev[ev["tickers"] == "ACME"].iloc[0]
     assert cl["date"] == "2024-01-08" and cl["amount_usd"] == 375000   # tetikleyici = 3. bildirimin günü (ileriye bakış yok)
+
+
+def test_invest_abnormal_has_no_alpha_artifact():
+    import numpy as np
+    from radar import investments as I
+    rng = np.random.default_rng(0)
+    m = rng.normal(0, 0.01, 600)
+    y = 0.5 * m + rng.normal(0, 0.01, 600)
+    y[:400] -= 0.004          # tahmin penceresinde sürekli düşüş (negatif alfa); olay sonrası etki yok
+    c = I._ecfg(2)
+    cars = [I._abnormal(y, m, 400, c)["car_0_60"] for _ in range(1)]
+    assert abs(cars[0]) < 0.12     # alfa taşınsaydı ≈ +0.24 olurdu
+    assert I._ecfg(2)["windows"]["0_3"] == [2, 5]

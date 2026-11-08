@@ -162,7 +162,7 @@ def refresh(prices: pd.DataFrame | None = None) -> pd.DataFrame:
     prices = store.read("prices") if prices is None else prices
     if events.empty or prices is None or prices.empty:
         return store.read("insider_evidence")
-    ret = I.measure(events, prices)
+    ret = I.measure(events, prices, lag=int(cfg().get("entry_lag", 2)))
     if not ret.empty:
         store.write("insider_returns", ret)
     ev = I.build_evidence(ret)
