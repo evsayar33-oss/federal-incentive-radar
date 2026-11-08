@@ -282,3 +282,10 @@ PYTHONPATH=src pytest -q tests
 - **Bildirim gecikmesi:** Sistem günde 3 kez çalışır. Bir haber en geç birkaç saat içinde bildirilir.
 - **Nedensellik sınırlıdır.** Skorlar karar desteği içindir. Yatırım tavsiyesi değildir.
 - Ücretsiz katman limitleri değişebilir. Limitleri `config/sources.yaml` ve `src/radar/http.py` içinde güncelleyin.
+
+## Büyük şirket yatırımları (ayrı bölüm)
+
+`corp_invest` kaynağı (Google News RSS) 1 milyar $ ve üstü şirket yatırım duyurularını toplar; hisse eşleşmesi kesin değilse atar.
+`src/radar/investments.py` bunları 5/20/60 işlem günü ufuklarında ölçer. Bir kategori ancak `config/sources.yaml` →
+`corp_invest.gate` içindeki tüm koşulları (örnek sayısı, isabet, ortalama getiri, çoklu test düzeltmesi, ileriye dönük sınav)
+geçerse 🟢 olur ve Telegram'a gider. Geçmişi doldurmak için "Geçmiş veri (backtest)" iş akışını çalıştırın.

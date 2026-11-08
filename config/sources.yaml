@@ -129,6 +129,36 @@ etf_holdings:
     IVV: "https://www.ishares.com/us/products/239726/ishares-core-sp-500-etf/1467271812596.ajax?fileType=csv&fileName=IVV_holdings&dataType=fund"
     IWM: "https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/1467271812596.ajax?fileType=csv&fileName=IWM_holdings&dataType=fund"
 
+# Büyük şirket yatırımları (ayrı bölüm): başlıkta tutar + şirket + hisse eşleşmesi aranır.
+# Bir kategori yalnızca "gate" içindeki TÜM koşulları geçerse "kanıtlandı" olur (uzun vade: 60 işlem günü).
+corp_invest:
+  enabled: true
+  min_usd: 1000000000          # 1 milyar $ ve üstü
+  signal_days: 30
+  notify_statuses: ["proven"]
+  queries:
+    - '"announces" "billion" investment plant OR factory OR facility'
+    - '"to invest" "billion" manufacturing'
+    - '"billion" "data center" invest OR build'
+    - '"billion" semiconductor fab invest'
+    - '"billion" investment expansion U.S. announces'
+  gate:
+    min_gap_days: 30           # aynı hissede üst üste binen 60 günlük pencereleri azaltır
+    clip_car: 0.5
+    min_n_proven: 25
+    hit_proven: 0.60           # haberlerin en az %60'ında 60 gün sonra piyasaya göre pozitif
+    min_mean_proven: 0.02      # ortalama anormal getiri en az +%2
+    q_proven: 0.10
+    oos_min_n: 8
+    oos_hit: 0.55              # zaman sırasıyla ikinci yarıda da tutmalı
+    min_n_promising: 12
+    hit_promising: 0.55
+    min_mean_promising: 0.01
+    p_promising: 0.10
+    q_promising: 0.25
+    null_min_n: 30
+    null_p: 0.5
+
 prices:
   enabled: true
   history_period: "6y"       # kanıt motoru her olay için 250 gün öncesine bakar; 5 yıllık olay için 6+ yıl gerekir
