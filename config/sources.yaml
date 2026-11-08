@@ -135,6 +135,7 @@ corp_invest:
   enabled: true
   min_usd: 1000000000          # 1 milyar $ ve üstü
   signal_days: 30
+  min_price: 5                 # olay gününde fiyatı bunun altındaki hisseler ölçülmez (likidite/spread)
   notify_statuses: ["proven"]
   queries:
     - '"announces" "billion" investment plant OR factory OR facility'
@@ -177,6 +178,7 @@ corp_invest:
 
 insider:                       # SEC Form 4 açık piyasa alımları (üç aylık veri setleri); kapılar corp_invest.gate ile aynı
   enabled: true
+  entry_lag: 2                 # bildirim saati bilinmiyor: ertesi işlem günü kapanışında girilir (konservatif)
   min_tx_usd: 10000            # tek işlemde en az bu tutar (gürültüyü eler)
   min_total_usd: 250000        # küme / CEO-CFO alımı toplamı
   cluster_days: 10

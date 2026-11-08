@@ -100,9 +100,35 @@ def backfill(years: float = 5.0, budget_minutes: float = 40.0) -> dict:
 
 # ---------------------------------------------------------------- ölçüm
 
-def _ecfg() -> dict:
+def _ecfg(lag: int = 1) -> dict:
+    # Pencereler olay gününü ATLAR (lag=1: olay günü kapanışında girilir; lag=2: ertesi gün kapanışı): haber/bildirim gün içinde çıkmış olabilir,
+    # o günkü hareket işlem yapılabilir değildir. Anahtar adları geriye dönük uyumluluk için eski kaldı.
     return {"est_window": E.cfg()["est_window"], "min_est_obs": E.cfg()["min_est_obs"],
-            "windows": {"0_3": [0, 3], "0_5": [0, 5], "0_20": [0, 20], "0_60": [0, 60]}}
+            "windows": {"0_3": [lag, lag + 3], "0_5": [lag, lag + 5], "0_20": [lag, lag + 20], "0_60": [lag, lag + 60]}}
+
+
+def _abnormal(y: np.ndarray, m: np.ndarray, k0: int, c: dict) -> dict | None:
+    """Piyasa modeli, ALFA OLMADAN: ar = y − beta·m. Tahmin penceresindeki alfa dışarı taşınmaz.
+    (Düşüşten sonra alım yapılan hisselerde negatif alfa, CAR'ı yapay şişiriyordu.)"""
+    lo, hi = k0 + c["est_window"][0], k0 + c["est_window"][1]
+    if lo < 1:
+        return None
+    ye, me = y[lo:hi], m[lo:hi]
+    ok = np.isfinite(ye) & np.isfinite(me)
+    if ok.sum() < c["min_est_obs"]:
+        return None
+    beta = float(np.clip(np.polyfit(me[ok], ye[ok], 1)[0], 0.0, 3.0))
+    out = {}
+    for name, (a, b) in c["windows"].items():
+        s, e = k0 + a, k0 + b
+        out[f"car_{name}"] = np.nan
+        if s < 0 or e >= len(y):
+            continue
+        ar = y[s:e + 1] - beta * m[s:e + 1]
+        if np.isfinite(ar).all():
+            out[f"car_{name}"] = float(ar.sum())
+    out["beta"] = round(beta, 3)
+    return out
 
 
 def _thin(ev: pd.DataFrame, gap_days: int) -> pd.DataFrame:
@@ -125,7 +151,7 @@ def _weights() -> dict:
     return dict(zip(u["ticker"], pd.to_numeric(u["sp500_weight"], errors="coerce").fillna(0.0)))
 
 
-def measure(events: pd.DataFrame, prices: pd.DataFrame) -> pd.DataFrame:
+def measure(events: pd.DataFrame, prices: pd.DataFrame, lag: int | None = None) -> pd.DataFrame:
     """Her olay için 5/20/60 günlük anormal getiri (piyasa modeli)."""
     if events is None or events.empty or prices is None or prices.empty:
         return pd.DataFrame()
@@ -134,8 +160,14 @@ def measure(events: pd.DataFrame, prices: pd.DataFrame) -> pd.DataFrame:
     if bench not in rets.columns:
         return pd.DataFrame()
     idx, m = rets.index, rets[bench].to_numpy()
-    c = _ecfg()
+    c = _ecfg(int(cfg().get("entry_lag", 1) if lag is None else lag))
     wt = _weights()
+    min_px = float(cfg().get("min_price", 0) or 0)
+    prices_px = {}
+    if min_px:
+        pp = prices.assign(close=pd.to_numeric(prices["close"], errors="coerce"), date=pd.to_datetime(prices["date"], errors="coerce"))
+        prices_px = pp.dropna(subset=["close", "date"]).pivot_table(index="date", columns="ticker", values="close",
+                                                                    aggfunc="last").reindex(idx).ffill()
     rows = []
     for r in events.to_dict("records"):
         t = str(r["tickers"]).split(",")[0].strip()
@@ -148,7 +180,10 @@ def measure(events: pd.DataFrame, prices: pd.DataFrame) -> pd.DataFrame:
         if k0 >= len(idx):
             continue
         with np.errstate(all="ignore"):
-            ab = E._abnormal(rets[t].to_numpy(), m, k0, c)
+            px = prices_px.get(t)
+            if min_px and (px is None or px.iloc[min(k0, len(px) - 1)] < min_px):
+                continue   # düşük fiyatlı hisse: spread/likidite nedeniyle işlem yapılabilir değil
+            ab = _abnormal(rets[t].to_numpy(), m, k0, c)
         if ab is None:
             continue
         try:
