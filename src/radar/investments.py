@@ -75,7 +75,11 @@ def backfill(years: float = 5.0, budget_minutes: float = 40.0) -> dict:
     t0, end = time.time(), date.today()
     start = end - timedelta(days=int(365.25 * years))
     prog = store.read("invest_progress")
-    done = set(prog["start"].astype(str)) if not prog.empty else set()
+    qh = corp_invest.query_hash()
+    # Sorgu kümesi değişince eski pencereler yeni sorgularla yeniden taranır.
+    done = set()
+    if not prog.empty and "qhash" in prog:
+        done = set(prog.loc[prog["qhash"].astype(str) == qh, "start"].astype(str))
     out = {"windows_done": 0, "events": 0, "stopped_early": False, "errors": []}
     for a, b in windows(start, end, 31):
         if a.isoformat() in done:
@@ -88,7 +92,7 @@ def backfill(years: float = 5.0, budget_minutes: float = 40.0) -> dict:
         except Exception as exc:
             out["errors"].append(f"{a}: {str(exc)[:120]}")
             continue
-        store.append("invest_progress", pd.DataFrame([{"start": a.isoformat(), "end": b.isoformat(), "events": n}]))
+        store.append("invest_progress", pd.DataFrame([{"start": a.isoformat(), "end": b.isoformat(), "events": n, "qhash": qh}]))
         out["windows_done"] += 1
         out["events"] += n
     return out
