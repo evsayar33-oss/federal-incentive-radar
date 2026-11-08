@@ -446,3 +446,69 @@ def test_auto_none_skips_subset_and_same_first_word():
          "candidate": "ZZZ", "score": 86.0, "event_id": "b", "amount_usd": 1.0}])
     labels, _ = autolabel.audit(ev, rq, uni, pd.DataFrame())
     assert not any(x.get("ticker") == "NONE" for x in labels)
+
+
+def test_corp_invest_parse():
+    import pandas as pd
+    from radar.entity import Matcher
+    from radar.sources import corp_invest as C
+    assert C.parse_amount("Acme to invest $2.5 billion in new plant") == 2.5e9
+    assert C.parse_amount("Acme invests $300 million") == 3e8 and C.parse_amount("no money here") is None
+    assert C.category("Acme to build $5 billion data center") == "datacenter_ai"
+    m = Matcher(pd.DataFrame([{"ticker": "ACME", "name": "Acme Corporation"}]))
+    xml = ("<rss><channel>"
+           "<item><title>Acme Corp announces $2 billion factory in Ohio - Reuters</title><link>http://x/1</link>"
+           "<pubDate>Tue, 03 Mar 2026 14:00:00 GMT</pubDate></item>"
+           "<item><title>Unknown Co announces $2 billion factory - Reuters</title><link>http://x/2</link>"
+           "<pubDate>Tue, 03 Mar 2026 14:00:00 GMT</pubDate></item>"
+           "<item><title>Acme Corp announces $50 million factory - Reuters</title><link>http://x/3</link>"
+           "<pubDate>Tue, 03 Mar 2026 14:00:00 GMT</pubDate></item>"
+           "</channel></rss>")
+    rows = C.parse_rss(xml, "q", m, 1e9)
+    assert len(rows) == 1 and rows[0]["tickers"] == "ACME" and rows[0]["date"] == "2026-03-03"
+    assert C.parse_rss(xml, "q", None, 1e9) == []
+
+
+def _inv_returns(n, mean, noise, seed=0):
+    import numpy as np
+    import pandas as pd
+    rng = np.random.default_rng(seed)
+    d = pd.date_range("2021-01-01", periods=n, freq="7D").date.astype(str)
+    c60 = rng.normal(mean, noise, n)
+    return pd.DataFrame({"event_id": [f"e{i}" for i in range(n)], "ticker": "T", "date": d, "category": "plant",
+                         "car_0_5": c60 / 4, "car_0_20": c60 / 2, "car_0_60": c60})
+
+
+def test_invest_gate_requires_real_effect():
+    import pandas as pd
+    from radar import investments as I
+    good = I.build_evidence(_inv_returns(60, 0.06, 0.04))
+    assert good.set_index("category").loc["plant", "status"] == "proven"
+    # Etkisiz gürültü kanıtlanmış sayılmaz.
+    noise = I.build_evidence(_inv_returns(60, 0.0, 0.08, seed=3))
+    assert noise.set_index("category").loc["plant", "status"] != "proven"
+    # İlk yarıda güçlü, ikinci yarıda negatif (ileriye dönük sınavı geçemez).
+    a, b = _inv_returns(30, 0.10, 0.02), _inv_returns(30, -0.03, 0.02, seed=5)
+    b["date"] = pd.date_range("2023-01-01", periods=30, freq="7D").date.astype(str)
+    fade = I.build_evidence(pd.concat([a, b], ignore_index=True))
+    assert fade.set_index("category").loc["plant", "status"] != "proven"
+    # Az örnek: veri birikiyor.
+    assert I.build_evidence(_inv_returns(5, 0.1, 0.01)).set_index("category").loc["plant", "status"] == "collecting"
+
+
+def test_invest_measure_end_to_end():
+    import numpy as np
+    import pandas as pd
+    from radar import investments as I, schema
+    rng = np.random.default_rng(1)
+    days = pd.bdate_range("2023-01-02", periods=500)
+    spy = 100 * np.cumprod(1 + rng.normal(0, 0.01, len(days)))
+    stk = 50 * np.cumprod(1 + rng.normal(0, 0.01, len(days)))
+    prices = pd.concat([pd.DataFrame({"date": days.strftime("%Y-%m-%d"), "ticker": "SPY", "close": spy}),
+                        pd.DataFrame({"date": days.strftime("%Y-%m-%d"), "ticker": "ACME", "close": stk})])
+    d = days[300].date().isoformat()
+    ev = schema.frame([schema.event("corp_invest", "1", 7, d, "Acme announces $2 billion plant", tickers="ACME",
+                                    amount_usd=2e9, extra={"category": "plant"})])
+    ret = I.measure(ev, prices)
+    assert len(ret) == 1 and ret.iloc[0]["ticker"] == "ACME" and np.isfinite(ret.iloc[0]["car_0_60"])
+    assert I.build_evidence(ret).set_index("category").loc["plant", "status"] == "collecting"

@@ -18,7 +18,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from . import __version__, alerts, autolabel, diagnostics, evidence, learn, scoring, store, telegram
+from . import __version__, alerts, autolabel, diagnostics, evidence, investments, learn, scoring, store, telegram
 from .classify import Classifier, train
 from .sources import fallbacks
 from .entity import Matcher, normalize
@@ -260,7 +260,8 @@ def price_tickers(extra_limit: int | None = None) -> list[str]:
         t = ev[ev["tickers"].fillna("").astype(str) != ""].sort_values("date", ascending=False)["tickers"]
         seen = list(dict.fromkeys(x.strip() for v in t.astype(str) for x in v.split(",") if x.strip()))
         extra += seen[:cfg["prices"].get("max_event_tickers", 500)]
-    return sorted(set(base + extra))
+    from . import investments
+    return sorted(set(base + extra + investments.tickers()))
 
 
 def update_prices(prices_mod, period: str) -> None:
@@ -369,11 +370,15 @@ def cmd_slot(args) -> None:
     try:
         raw = ingest(slot, state, run_status)
         process(raw, run_id, now_et.date(), slot, run_status, write_ledger=(slot == "close"))
+        investments.collect(_since(state, "corp_invest"), run_status)
+        if run_status.get("corp_invest", {}).get("ok"):
+            state.setdefault("last_success", {})["corp_invest"] = date.today().isoformat()
         if slot == "close":
             learn.resolve_ledger(store.read("prices"))
             try:
                 evidence.refresh()
                 run_status["evidence"] = {"ok": True}
+                telegram.notify_investments(investments.refresh(), store.read("invest_signals"), run_id)
             except Exception as exc:
                 log.error("Kanıt motoru: %s", exc)
                 run_status["evidence"] = {"ok": False, "error": str(exc)[:300]}
@@ -464,6 +469,11 @@ def weekly_learning(status: dict) -> None:
         store.write("events", recl)
     ev = evidence.refresh()
     status["evidence"] = {} if ev.empty else ev[ev["level"] == "program_kind"]["status"].value_counts().to_dict()
+    try:
+        inv = investments.refresh()
+        status["corp_invest_evidence"] = {"ok": True, **({} if inv.empty else inv["status"].value_counts().to_dict())}
+    except Exception as exc:
+        status["corp_invest_evidence"] = {"ok": False, "error": str(exc)[:300]}
     telegram.weekly_summary(ev)
     state["history"] = (state.get("history", []) + [{"date": date.today().isoformat(),
                         "calibration": state["calibration"], "n_program_eff": len(state["program_efficacy"])}])[-104:]
@@ -482,6 +492,10 @@ def cmd_history(args) -> None:
         log.error(traceback.format_exc())
         status["history"] = {"ok": False, "error": str(exc)[:300]}
     try:
+        status["corp_invest_history"] = investments.backfill(years=args.years, budget_minutes=min(40.0, args.budget / 3))
+    except Exception as exc:
+        status["corp_invest_history"] = {"ok": False, "error": str(exc)[:300]}
+    try:
         update_company_sic(status, limit=1500)
     except Exception as exc:
         status["company_sic"] = {"ok": False, "error": str(exc)[:300]}
@@ -492,6 +506,11 @@ def cmd_history(args) -> None:
         status["prices"] = {"ok": False, "error": str(exc)[:300]}
     ev = evidence.refresh()
     status["evidence"] = {} if ev.empty else ev[ev["level"] == "program_kind"]["status"].value_counts().to_dict()
+    try:
+        inv = investments.refresh()
+        status["corp_invest_evidence"] = {"ok": True, **({} if inv.empty else inv["status"].value_counts().to_dict())}
+    except Exception as exc:
+        status["corp_invest_evidence"] = {"ok": False, "error": str(exc)[:300]}
     if not ev.empty:
         sig = evidence.annotate(store.read("events"), ev)
         if not sig.empty:

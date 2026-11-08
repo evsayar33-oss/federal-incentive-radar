@@ -3,6 +3,7 @@
 İlke: her ekran tek bir soruya cevap verir.
   🔔 Bugün            → "Şu an dikkat etmem gereken haber var mı?"
   ✅ İşe yarayan       → "Hangi haber türü hisseleri gerçekten etkiliyor?"
+  🏭 Büyük yatırımlar → "Büyük şirket yatırım haberleri hissede kanıtlanmış getiri sağlıyor mu?"
   🔎 Hisse sorgula     → "Benim hissem teşvik haberlerinden nasıl etkilenmiş?"
   🤖 Telegram          → "Bot çalışıyor mu, ne kadar isabetli?"
   ❓ Nasıl okunur?     → kısa sözlük
@@ -54,6 +55,36 @@ def _today(T, sig: pd.DataFrame) -> None:
     st.caption(f"{len(feed)} haber · en güçlü kanıt en üstte")
     for r in feed.head(40).to_dict("records"):
         _card(r)
+
+
+def _invest(T) -> None:
+    ev, sig = T("invest_evidence"), T("invest_signals")
+    st.subheader("Büyük şirket yatırımları")
+    st.caption("Büyük şirketlerin (1 milyar $ ve üstü) yatırım duyuruları. Bir yatırım türü ancak geçmişte hissesini "
+               "60 işlem günü sonunda piyasadan (SPY) iyi performansa taşıdığı, yüksek isabetle ve ileriye dönük "
+               "sınavla kanıtlanırsa 🟢 olur.")
+    if ev.empty:
+        st.info("Henüz kanıt oluşmadı. Geçmiş veri yüklemesi ve fiyatlar sonrası ilk kapanış/haftalık çalışmada oluşur.")
+        return
+    show = pd.DataFrame({
+        "Durum": ev["icon"] + " " + ev["status_name"], "Yatırım türü": ev["category_name"],
+        "Haber sayısı": ev["n"].astype(int),
+        "60 gün ort. getiri": ev["mean_car_60"].map(D.pct),
+        "Pozitif oran": ev["hit_60"].map(lambda v: D.pct(v, signed=False)),
+        "İleriye dönük isabet": [f"{D.pct(h, signed=False)} ({int(n)})" if n and n == n else "-"
+                                 for h, n in zip(ev["oos_hit"], ev["oos_n"])],
+        "Açıklama": ev["explain"]})
+    st.dataframe(show, hide_index=True)
+    if (ev["status"] == "proven").sum() == 0:
+        st.info("Henüz hiçbir yatırım türü kanıt eşiğini geçmedi; bu bir hata değil. Sistem örnek topluyor ve "
+                "yalnızca kanıtlanan türler Telegram'a bildirilir.")
+    if not sig.empty:
+        st.markdown("#### Son yatırım haberleri")
+        for r in sig.head(25).to_dict("records"):
+            with st.container(border=True):
+                st.markdown(f"{r['icon']} **[{str(r['title'])[:170]}]({r['url']})**" if r.get("url")
+                            else f"{r['icon']} **{str(r['title'])[:170]}**")
+                st.caption(f"{r['date']} · {r['category_name']} · `{r['ticker']}` · {D.fmt_usd(r.get('amount_usd'))} · {r['status_name']}")
 
 
 def _works(T) -> None:
@@ -194,14 +225,17 @@ def render(T, J, ctx: dict) -> None:
     k2.metric("Son 7 günde güçlü sinyal", len(strong))
     sc = D.bot_scorecard(nt)
     k3.metric("Telegram bot isabeti", D.pct(sc["hit"], signed=False) if sc["hit"] is not None else "bekleniyor")
-    tabs = st.tabs(["🔔 Bugün", "✅ İşe yarayan haberler", "🔎 Hisse sorgula", "🤖 Telegram", "❓ Nasıl okunur?"])
+    tabs = st.tabs(["🔔 Bugün", "✅ İşe yarayan haberler", "🏭 Büyük yatırımlar", "🔎 Hisse sorgula", "🤖 Telegram",
+                    "❓ Nasıl okunur?"])
     with tabs[0]:
         _today(T, sig)
     with tabs[1]:
         _works(T)
     with tabs[2]:
-        _ticker(T)
+        _invest(T)
     with tabs[3]:
-        _telegram(T, ctx)
+        _ticker(T)
     with tabs[4]:
+        _telegram(T, ctx)
+    with tabs[5]:
         _guide()

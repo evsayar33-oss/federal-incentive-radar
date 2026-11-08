@@ -91,6 +91,30 @@ def format_signal(r: dict) -> str:
     return "\n".join(lines)
 
 
+def notify_investments(ev: pd.DataFrame, sig: pd.DataFrame, run_id: str) -> int:
+    """Yalnızca kanıtlanmış kategorideki, yeni büyük yatırım haberlerini bildirir."""
+    c = sources().get("corp_invest", {})
+    allowed = set(c.get("notify_statuses", ["proven"])) & {"proven", "promising"}
+    if sig is None or sig.empty or not enabled():
+        return 0
+    fresh = (date.today() - timedelta(days=int(c.get("max_event_age_days", 3)))).isoformat()
+    s = sig[sig["status"].isin(allowed) & (sig["date"].astype(str) >= fresh)]
+    old = store.read("invest_notified")
+    if not old.empty:
+        s = s[~s["event_id"].astype(str).isin(set(old["event_id"].astype(str)))]
+    sent = []
+    for r in s.head(int(cfg().get("max_per_run", 8))).to_dict("records"):
+        amt = f"${float(r['amount_usd']) / 1e9:.1f} milyar" if r.get("amount_usd") == r.get("amount_usd") else ""
+        text = (f"{r['icon']} <b>Büyük yatırım · {html.escape(str(r['category_name']))}</b>\n"
+                f"{html.escape(str(r['title'])[:160])}\n🎯 <code>{html.escape(str(r['ticker']))}</code> {amt}\n"
+                f"{html.escape(str(r['explain']))}" + (f"\n{r['url']}" if r.get("url") else ""))
+        if send(text):
+            sent.append({"event_id": r["event_id"], "sent_at": run_id, "ticker": r["ticker"], "date": r["date"]})
+    if sent:
+        store.append("invest_notified", pd.DataFrame(sent))
+    return len(sent)
+
+
 def notify(signals: pd.DataFrame, new_ids: set[str], run_id: str) -> int:
     """Send only new, evidence-backed events and persist successfully sent notifications."""
     c = cfg()
