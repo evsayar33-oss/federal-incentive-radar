@@ -289,3 +289,10 @@ PYTHONPATH=src pytest -q tests
 `src/radar/investments.py` bunları 5/20/60 işlem günü ufuklarında ölçer. Bir kategori ancak `config/sources.yaml` →
 `corp_invest.gate` içindeki tüm koşulları (örnek sayısı, isabet, ortalama getiri, çoklu test düzeltmesi, ileriye dönük sınav)
 geçerse 🟢 olur ve Telegram'a gider. Geçmişi doldurmak için "Geçmiş veri (backtest)" iş akışını çalıştırın.
+
+### Yatırım bölümü: keşif katmanı
+
+Ana kategori testi sonuç vermediğinde `investments.build_subgroups` alt grupları dener: şirket büyüklüğü (S&P 500 ağırlığı),
+yatırım tutarının şirket değerine oranı, 3 ve 60 günlük ufuk, uzun/kısa yön. Tüm testler birlikte BH ile düzeltilir ve
+`corp_invest.subgroups.cost_bps` işlem maliyeti düşülür. Kapıyı geçen grup yalnızca "aday" olur; keşiften sonraki yeni
+olaylarda (`confirm_n`) tekrar ederse "doğrulandı" olur. Sonuçlar `invest_subgroups` tablosunda; Telegram bildirimi yoktur.

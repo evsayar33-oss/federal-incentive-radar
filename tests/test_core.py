@@ -512,3 +512,35 @@ def test_invest_measure_end_to_end():
     ret = I.measure(ev, prices)
     assert len(ret) == 1 and ret.iloc[0]["ticker"] == "ACME" and np.isfinite(ret.iloc[0]["car_0_60"])
     assert I.build_evidence(ret).set_index("category").loc["plant", "status"] == "collecting"
+
+
+def _sub_returns(n, mean3, mean60, weight, seed=0):
+    import numpy as np
+    import pandas as pd
+    rng = np.random.default_rng(seed)
+    d = pd.date_range("2022-01-03", periods=n, freq="9D").strftime("%Y-%m-%d")
+    return pd.DataFrame({"event_id": [str(i) for i in range(n)], "ticker": [f"T{i}" for i in range(n)], "date": d,
+                         "category": "plant", "amount_usd": 1e9, "sp500_weight": weight,
+                         "car_0_3": mean3 + rng.normal(0, 0.01, n), "car_0_5": 0.0, "car_0_20": 0.0,
+                         "car_0_60": mean60 + rng.normal(0, 0.03, n)})
+
+
+def test_invest_subgroups_gate_and_confirmation():
+    import numpy as np
+    from radar import investments as I
+    # Küçük şirketlerde gerçek 60g etki, büyüklerde sıfır: yalnızca "küçük" aday olmalı, hemen doğrulanmamalı.
+    ret = _sub_returns(60, 0.0, 0.08, 0.0)
+    sub = I.build_subgroups(ret).set_index("key")
+    assert sub.loc["small|car_0_60|uzun", "status"] == "candidate"
+    assert sub.loc["small|car_0_60|kısa", "status"] != "candidate"
+    # Gürültü: hiçbir şey aday olmamalı (maliyet düşülüyor).
+    noise = I.build_subgroups(_sub_returns(60, 0.0, 0.0, 0.0, seed=3))
+    assert not noise["status"].isin(["candidate", "confirmed"]).any()
+    # Keşiften sonra yeni olaylar aynı etkiyle gelirse doğrulanır.
+    import pandas as pd
+    first = I.build_subgroups(ret)
+    more = _sub_returns(30, 0.0, 0.08, 0.0, seed=5)
+    more["date"] = pd.date_range("2030-01-03", periods=30, freq="9D").strftime("%Y-%m-%d")
+    more["ticker"] = [f"N{i}" for i in range(30)]
+    again = I.build_subgroups(pd.concat([ret, more], ignore_index=True), first).set_index("key")
+    assert again.loc["small|car_0_60|uzun", "status"] == "confirmed"
