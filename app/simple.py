@@ -89,6 +89,7 @@ def _invest(T) -> None:
                 "Durum": top["icon"] + " " + top["status_name"], "Grup": top["group_name"], "Ufuk": top["horizon"],
                 "Yön": top["direction"], "Haber": top["n"].astype(int), "Ort. (maliyetli)": top["mean"].map(D.pct),
                 "İsabet": top["hit"].map(lambda v: D.pct(v, signed=False)), "q": top["q"].round(3)}), hide_index=True)
+    _insider(T)
     if not sig.empty:
         st.markdown("#### Son yatırım haberleri")
         for r in sig.head(25).to_dict("records"):
@@ -96,6 +97,21 @@ def _invest(T) -> None:
                 st.markdown(f"{r['icon']} **[{str(r['title'])[:170]}]({r['url']})**" if r.get("url")
                             else f"{r['icon']} **{str(r['title'])[:170]}**")
                 st.caption(f"{r['date']} · {r['category_name']} · `{r['ticker']}` · {D.fmt_usd(r.get('amount_usd'))} · {r['status_name']}")
+
+
+def _insider(T) -> None:
+    ev = T("insider_evidence")
+    st.markdown("#### 🕵️ İçeriden alımlar (SEC Form 4)")
+    st.caption("Yöneticilerin kendi paralarıyla açık piyasadan hisse alması. Aynı kanıt kapıları uygulanır; veri SEC'te "
+               "üç ayda bir yayınlandığı için canlı sinyal gecikmelidir.")
+    if ev.empty:
+        st.info("Henüz içeriden alım kanıtı yok. Geçmiş veri çalışması sonrası oluşur.")
+        return
+    st.dataframe(pd.DataFrame({
+        "Durum": ev["icon"] + " " + ev["status_name"], "Tür": ev["category_name"], "Olay": ev["n"].astype(int),
+        "60 gün ort. getiri": ev["mean_car_60"].map(D.pct),
+        "Pozitif oran": ev["hit_60"].map(lambda v: D.pct(v, signed=False)), "Açıklama": ev["explain"]}),
+        hide_index=True)
 
 
 def _works(T) -> None:

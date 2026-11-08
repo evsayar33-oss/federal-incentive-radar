@@ -175,6 +175,13 @@ corp_invest:
     null_min_n: 30
     null_p: 0.5
 
+insider:                       # SEC Form 4 açık piyasa alımları (üç aylık veri setleri); kapılar corp_invest.gate ile aynı
+  enabled: true
+  min_tx_usd: 10000            # tek işlemde en az bu tutar (gürültüyü eler)
+  min_total_usd: 250000        # küme / CEO-CFO alımı toplamı
+  cluster_days: 10
+  cluster_min_insiders: 3
+
 prices:
   enabled: true
   history_period: "6y"       # kanıt motoru her olay için 250 gün öncesine bakar; 5 yıllık olay için 6+ yıl gerekir
