@@ -102,7 +102,7 @@ def backfill(years: float = 5.0, budget_minutes: float = 40.0) -> dict:
 
 def _ecfg() -> dict:
     return {"est_window": E.cfg()["est_window"], "min_est_obs": E.cfg()["min_est_obs"],
-            "windows": {"0_5": [0, 5], "0_20": [0, 20], "0_60": [0, 60]}}
+            "windows": {"0_3": [0, 3], "0_5": [0, 5], "0_20": [0, 20], "0_60": [0, 60]}}
 
 
 def _thin(ev: pd.DataFrame, gap_days: int) -> pd.DataFrame:
@@ -118,6 +118,13 @@ def _thin(ev: pd.DataFrame, gap_days: int) -> pd.DataFrame:
     return ev.loc[keep]
 
 
+def _weights() -> dict:
+    u = store.read("universe")
+    if u.empty or "sp500_weight" not in u:
+        return {}
+    return dict(zip(u["ticker"], pd.to_numeric(u["sp500_weight"], errors="coerce").fillna(0.0)))
+
+
 def measure(events: pd.DataFrame, prices: pd.DataFrame) -> pd.DataFrame:
     """Her olay için 5/20/60 günlük anormal getiri (piyasa modeli)."""
     if events is None or events.empty or prices is None or prices.empty:
@@ -128,6 +135,7 @@ def measure(events: pd.DataFrame, prices: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame()
     idx, m = rets.index, rets[bench].to_numpy()
     c = _ecfg()
+    wt = _weights()
     rows = []
     for r in events.to_dict("records"):
         t = str(r["tickers"]).split(",")[0].strip()
@@ -148,7 +156,7 @@ def measure(events: pd.DataFrame, prices: pd.DataFrame) -> pd.DataFrame:
         except ValueError:
             cat = "other"
         rows.append({"event_id": r["event_id"], "ticker": t, "date": d.date().isoformat(), "d": d,
-                     "category": cat, "amount_usd": r.get("amount_usd"), **{k: v for k, v in ab.items() if k.startswith("car_")}})
+                     "category": cat, "amount_usd": r.get("amount_usd"), "sp500_weight": wt.get(t, 0.0), **{k: v for k, v in ab.items() if k.startswith("car_")}})
     out = pd.DataFrame(rows)
     return _thin(out, int(cfg()["gate"]["min_gap_days"])).drop(columns="d") if not out.empty else out
 
@@ -158,6 +166,8 @@ def _stats(g: pd.DataFrame, gate: dict) -> dict:
     clip = gate["clip_car"]
     for col in ("car_0_5", "car_0_20", "car_0_60"):
         g[col] = g[col].clip(-clip, clip)
+    if "car_0_3" not in g:
+        g["car_0_3"] = np.nan
     cl = g.groupby("date").agg(c5=("car_0_5", "mean"), c20=("car_0_20", "mean"), c60=("car_0_60", "mean")).reset_index()
     cl = cl.sort_values("date")
     n = len(cl)
@@ -264,6 +274,11 @@ def refresh(prices: pd.DataFrame | None = None) -> pd.DataFrame:
         store.write("invest_returns", ret)
     ev = build_evidence(ret)
     store.write("invest_evidence", ev)
+    sub = build_subgroups(ret, store.read("invest_subgroups"))
+    store.write("invest_subgroups", sub)
+    if len(sub):
+        log.info("Alt grup keşfi: %d test, %d aday, %d doğrulanmış", len(sub), int((sub["status"] == "candidate").sum()),
+                 int((sub["status"] == "confirmed").sum()))
     store.write("invest_signals", signals(events, ev))
     log.info("Büyük yatırım kanıtı: %d kategori, %d kanıtlı", len(ev), int((ev["status"] == "proven").sum()) if len(ev) else 0)
     return ev
@@ -275,3 +290,73 @@ def tickers(limit: int = 600) -> list[str]:
         return []
     t = ev.sort_values("date", ascending=False)["tickers"].astype(str).str.split(",").str[0]
     return list(dict.fromkeys(x.strip() for x in t if x.strip()))[:limit]
+
+
+# ---------------------------------------------------------------- keşif katmanı (alt gruplar)
+# Ana kategori testi sonuç vermedi. Burada büyüklük / göreli tutar / kısa ufuk / düşüş yönü ayrı ayrı denenir.
+# Çok sayıda test yapıldığı için: (1) tüm testler birlikte BH ile düzeltilir, (2) işlem maliyeti düşülür,
+# (3) kapıyı geçen grup yalnızca "aday" olur; keşiften SONRAKİ yeni olaylarda tekrar ederse "doğrulandı" olur.
+
+SUB_COLS = ["key", "group", "group_name", "horizon", "direction", "n", "mean", "hit", "p", "q", "oos_n", "oos_hit",
+            "oos_mean", "status", "status_name", "icon", "explain", "first_pass", "confirm_n", "asof"]
+SUB_STATUS = {"confirmed": "Doğrulandı", "candidate": "Aday (yeni veriyle doğrulanmalı)", "no_effect": "Etkisiz",
+              "unclear": "Belirsiz", "collecting": "Veri birikiyor", "promising": "Umut verici"}
+HORIZONS = {"car_0_3": "3 gün", "car_0_60": "60 gün"}
+
+
+def _groups(ret: pd.DataFrame, scfg: dict) -> list[tuple[str, str, pd.DataFrame]]:
+    big = ret["sp500_weight"] >= scfg["large_weight"]
+    rel = (ret["amount_usd"] / (ret["sp500_weight"].clip(lower=1e-6) / 100 * scfg["index_cap_usd"]))
+    out = [("all", "Tümü", ret), ("large", "Büyük şirket (S&P 500 ağırlığı yüksek)", ret[big]),
+           ("small", "Küçük / orta şirket", ret[~big]),
+           ("rel_big", f"Tutar şirket değerinin ≥%{scfg['rel_big'] * 100:.0f}'i", ret[big & (rel >= scfg["rel_big"])]),
+           ("rel_small", "Tutar şirkete göre küçük", ret[big & (rel < scfg["rel_big"])])]
+    for c, g in ret.groupby("category"):
+        out.append((f"cat:{c}", CATEGORY_NAMES.get(c, c), g))
+        out.append((f"cat:{c}|small", CATEGORY_NAMES.get(c, c) + " · küçük/orta", g[g["sp500_weight"] < scfg["large_weight"]]))
+    return out
+
+
+def build_subgroups(ret: pd.DataFrame, prev: pd.DataFrame | None = None) -> pd.DataFrame:
+    gate, scfg = cfg()["gate"], cfg()["subgroups"]
+    if ret is None or ret.empty or "car_0_3" not in ret:
+        return pd.DataFrame(columns=SUB_COLS)
+    cost = scfg["cost_bps"] / 1e4
+    prev_pass = {}
+    if prev is not None and not prev.empty and "first_pass" in prev:
+        prev_pass = {k: v for k, v in zip(prev["key"], prev["first_pass"]) if isinstance(v, str) and v}
+    rows = []
+    for gkey, gname, g in _groups(ret, scfg):
+        for hcol, hname in HORIZONS.items():
+            for direction, sign in (("uzun", 1), ("kısa", -1)):
+                x = g.copy()
+                # _stats/classify 60g sütununu okur: işaretli ve maliyetli getiriyi oraya koyuyoruz
+                x["car_0_60"] = sign * x[hcol] - cost
+                x["car_0_5"] = x["car_0_20"] = x["car_0_60"]
+                rows.append({"key": f"{gkey}|{hcol}|{direction}", "group": gkey, "group_name": gname,
+                             "horizon": hname, "direction": direction, **_stats(x, gate), "_x": x})
+    ev = pd.DataFrame(rows)
+    ev["q"] = E._bh(ev["p"])   # tüm denenen testler birlikte düzeltilir
+    today = date.today().isoformat()
+    status, first, cn, expl = [], [], [], []
+    for r in ev.to_dict("records"):
+        st = classify({**r, "mean_car_60": r["mean_car_60"], "hit_60": r["hit_60"]}, gate)
+        fp, n2 = prev_pass.get(r["key"], ""), 0
+        if st == "proven":
+            fp = fp or today
+            fresh = r["_x"][r["_x"]["date"].astype(str) > fp]
+            fs = _stats(fresh, gate) if len(fresh) else {"n": 0}
+            n2 = fs["n"]
+            ok = n2 >= scfg["confirm_n"] and fs["mean_car_60"] > 0 and fs["hit_60"] >= gate["oos_hit"]
+            st = "confirmed" if ok else "candidate"
+        elif fp:
+            fp = ""   # kapıdan düştü: aday durumu sıfırlanır
+        status.append(st); first.append(fp); cn.append(n2)
+        expl.append(f"{r['n']} haber; {r['horizon']} sonunda piyasaya göre {r['direction']} yönde işaretli ortalama "
+                    f"{r['mean_car_60'] * 100:+.1f}% (maliyet düşülmüş), %{r['hit_60'] * 100:.0f} isabet." if r["n"] else "Veri yok.")
+    ev["status"], ev["first_pass"], ev["confirm_n"], ev["explain"] = status, first, cn, expl
+    ev = ev.rename(columns={"mean_car_60": "mean", "hit_60": "hit"})
+    ev["status_name"] = ev["status"].map(SUB_STATUS)
+    ev["icon"] = ev["status"].map({"confirmed": "🟢", "candidate": "🟡", "promising": "🟡", "no_effect": "⚫"}).fillna("⚪")
+    ev["asof"] = today
+    return ev[SUB_COLS].sort_values(["status", "q"]).reset_index(drop=True)

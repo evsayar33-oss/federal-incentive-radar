@@ -78,6 +78,17 @@ def _invest(T) -> None:
     if (ev["status"] == "proven").sum() == 0:
         st.info("Henüz hiçbir yatırım türü kanıt eşiğini geçmedi; bu bir hata değil. Sistem örnek topluyor ve "
                 "yalnızca kanıtlanan türler Telegram'a bildirilir.")
+    sub = T("invest_subgroups")
+    if not sub.empty:
+        with st.expander("🔬 Keşif: büyüklük, kısa ufuk ve düşüş yönü (yalnızca bilgi)"):
+            st.caption("Ana test sonuç vermediği için alt gruplar da denendi. Çok test yapıldığından hepsi birlikte "
+                       "düzeltilir, işlem maliyeti düşülür. Kapıyı geçen grup ancak 🟡 aday olur; keşiften sonraki yeni "
+                       "olaylarda da tutarsa 🟢 doğrulanır. 'kısa' = hisse düşüyor (kaçınma sinyali).")
+            top = sub.sort_values("q").head(15)
+            st.dataframe(pd.DataFrame({
+                "Durum": top["icon"] + " " + top["status_name"], "Grup": top["group_name"], "Ufuk": top["horizon"],
+                "Yön": top["direction"], "Haber": top["n"].astype(int), "Ort. (maliyetli)": top["mean"].map(D.pct),
+                "İsabet": top["hit"].map(lambda v: D.pct(v, signed=False)), "q": top["q"].round(3)}), hide_index=True)
     if not sig.empty:
         st.markdown("#### Son yatırım haberleri")
         for r in sig.head(25).to_dict("records"):
