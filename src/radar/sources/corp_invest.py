@@ -84,6 +84,12 @@ def parse_rss(xml_text: str, query: str, universe_matcher: Matcher | None, min_u
     return rows
 
 
+def query_hash() -> str:
+    import hashlib
+    qs = "|".join(sorted(sources()["corp_invest"]["queries"]))
+    return hashlib.md5(qs.encode()).hexdigest()[:10]
+
+
 def _matcher() -> Matcher | None:
     uni = store.read("universe")
     return Matcher(uni) if not uni.empty else None
