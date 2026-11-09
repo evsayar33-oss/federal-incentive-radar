@@ -11,6 +11,8 @@ from __future__ import annotations
 import json
 import logging
 import time
+import warnings
+import zlib
 from datetime import date, timedelta
 
 import numpy as np
@@ -151,8 +153,35 @@ def _weights() -> dict:
     return dict(zip(u["ticker"], pd.to_numeric(u["sp500_weight"], errors="coerce").fillna(0.0)))
 
 
-def measure(events: pd.DataFrame, prices: pd.DataFrame, lag: int | None = None) -> pd.DataFrame:
-    """Her olay için 5/20/60 günlük anormal getiri (piyasa modeli)."""
+def _controls(t: str, k0: int, rets: pd.DataFrame, m: np.ndarray, c: dict, pools: dict, prices_px, min_px: float,
+              wt: dict, seed: str, n_ctl: int, n_min: int) -> dict | None:
+    """Aynı büyüklük sınıfından (S&P 500 içi / dışı) rastgele hisselerin aynı günlerdeki ortalama anormal getirisi."""
+    pool = pools["large" if wt.get(t, 0.0) >= 0.0001 else "small"]
+    if not pool:
+        return None
+    rng = np.random.default_rng(zlib.crc32(seed.encode()))
+    acc: list[dict] = []
+    for j in rng.permutation(len(pool))[:n_ctl * 4]:
+        u = pool[j]
+        if u == t:
+            continue
+        if min_px and prices_px is not None and u in prices_px and prices_px[u].iloc[min(k0, len(prices_px) - 1)] < min_px:
+            continue
+        a = _abnormal(rets[u].to_numpy(), m, k0, c)
+        if a is not None:
+            acc.append(a)
+        if len(acc) >= n_ctl:
+            break
+    if len(acc) < n_min:
+        return None
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        return {k: float(np.nanmean([a[k] for a in acc])) for k in acc[0] if k.startswith("car_")}
+
+
+def measure(events: pd.DataFrame, prices: pd.DataFrame, lag: int | None = None, control: bool | None = None) -> pd.DataFrame:
+    """Her olay için 3/5/20/60 günlük anormal getiri (piyasa modeli). control açıkken getiri, aynı büyüklük
+    sınıfındaki rastgele hisselerin getirisine göre FAZLALIKTIR (küçük hisselerin genel zayıflığı ayıklanır)."""
     if events is None or events.empty or prices is None or prices.empty:
         return pd.DataFrame()
     bench = sources()["benchmark"]
@@ -168,6 +197,14 @@ def measure(events: pd.DataFrame, prices: pd.DataFrame, lag: int | None = None) 
         pp = prices.assign(close=pd.to_numeric(prices["close"], errors="coerce"), date=pd.to_datetime(prices["date"], errors="coerce"))
         prices_px = pp.dropna(subset=["close", "date"]).pivot_table(index="date", columns="ticker", values="close",
                                                                     aggfunc="last").reindex(idx).ffill()
+    use_ctl = bool(cfg().get("matched_control", True)) if control is None else control
+    pools: dict = {"large": [], "small": []}
+    if use_ctl:
+        ok = rets.notna().sum()
+        for u in rets.columns:
+            if u != bench and ok[u] > 400:
+                pools["large" if wt.get(u, 0.0) >= 0.0001 else "small"].append(u)
+    n_ctl, n_min = int(cfg().get("control_n", 12)), int(cfg().get("control_min", 8))
     rows = []
     for r in events.to_dict("records"):
         t = str(r["tickers"]).split(",")[0].strip()
@@ -186,12 +223,19 @@ def measure(events: pd.DataFrame, prices: pd.DataFrame, lag: int | None = None) 
             ab = _abnormal(rets[t].to_numpy(), m, k0, c)
         if ab is None:
             continue
+        raw = {}
+        if use_ctl:
+            ctl = _controls(t, k0, rets, m, c, pools, prices_px if min_px else None, min_px, wt, str(r["event_id"]), n_ctl, n_min)
+            if ctl is None:
+                continue
+            raw = {f"raw_{k}": v for k, v in ab.items() if k.startswith("car_")}
+            ab = {k: (ab[k] - ctl[k]) if k.startswith("car_") else ab[k] for k in ab}
         try:
             cat = json.loads(r.get("extra") or "{}").get("category", "other")
         except ValueError:
             cat = "other"
         rows.append({"event_id": r["event_id"], "ticker": t, "date": d.date().isoformat(), "d": d,
-                     "category": cat, "amount_usd": r.get("amount_usd"), "sp500_weight": wt.get(t, 0.0), **{k: v for k, v in ab.items() if k.startswith("car_")}})
+                     "category": cat, "amount_usd": r.get("amount_usd"), "sp500_weight": wt.get(t, 0.0), **{k: v for k, v in ab.items() if k.startswith("car_")}, **raw})
     out = pd.DataFrame(rows)
     return _thin(out, int(cfg()["gate"]["min_gap_days"])).drop(columns="d") if not out.empty else out
 
