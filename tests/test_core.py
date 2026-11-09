@@ -624,5 +624,5 @@ def test_basket_picks_past_growth_and_uses_placebo():
     prices = pd.concat(frames)
     ev = pd.DataFrame([{"group": "fed:x", "sector": "Industrials", "date": days[500].date().isoformat(), "ticker": "fed:x|Industrials"}])
     ret = B.measure(ev, prices, sectors)
-    assert len(ret) == 1 and np.isfinite(ret.iloc[0]["car_0_60"]) and abs(ret.iloc[0]["car_0_60"]) < 0.5   # haber etkisi yok → fark ≈ 0
+    assert len(ret) == 5 and ret["car_0_60"].abs().max() < 0.5   # haber etkisi yok → fark ≈ 0
     assert B.build(pd.concat([ret] * 3, ignore_index=True)).shape[0] >= 2

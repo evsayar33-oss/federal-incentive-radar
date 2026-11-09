@@ -88,7 +88,15 @@ def measure(events: pd.DataFrame, prices: pd.DataFrame, sectors: dict) -> pd.Dat
     px = prices.assign(close=pd.to_numeric(prices["close"], errors="coerce"), date=pd.to_datetime(prices["date"], errors="coerce"))
     px = px.dropna(subset=["close", "date"]).pivot_table(index="date", columns="ticker", values="close", aggfunc="last")
     px = px.reindex(idx).ffill(limit=5)
-    mom = px.shift(int(c["skip_days"])) / px.shift(int(c["mom_days"])) - 1   # 12-1 ay ivmesi, yalnızca geçmiş
+    # Seçim kuralları (hepsi yalnızca olaydan ÖNCEKİ veriyle). Tüm kurallar tek ailede birlikte düzeltilir.
+    scores = {
+        "mom12": px.shift(int(c["skip_days"])) / px.shift(int(c["mom_days"])) - 1,   # 12-1 ay ivmesi
+        "mom6": px.shift(5) / px.shift(126) - 1,                                      # 6 ay ivmesi
+        "high52": px / px.rolling(252, min_periods=200).max() - 1,                   # 52 hafta zirvesine yakınlık
+        "lowvol": -rets.rolling(126, min_periods=100).std(),                         # düşük oynaklık (kalite vekili)
+        "sector": None,                                                              # seçimsiz: sektörden rastgele sepet
+    }
+    selectors = [x for x in c["selectors"] if x in scores]
     ok = rets.notna().sum()
     pools: dict[str, list[str]] = {}
     for t in rets.columns:
@@ -99,15 +107,22 @@ def measure(events: pd.DataFrame, prices: pd.DataFrame, sectors: dict) -> pd.Dat
     min_px, top_n = float(c["min_price"]), int(c["top_n"])
     wins = [f"car_{w}" for w in ec["windows"]]
 
-    def basket(sec: str, k0: int) -> dict | None:
+    def basket(sec: str, k0: int, sel: str) -> dict | None:
         pool = pools.get(sec, [])
         if len(pool) < top_n * 3 or k0 < 260 or k0 >= len(idx):
             return None
-        sc = mom.iloc[k0 - 1][pool]
-        sc = sc[(px.iloc[k0 - 1][pool] >= min_px) & sc.notna()]
-        if len(sc) < top_n * 2:
-            return None
-        picks = list(sc.sort_values(ascending=False).index[:top_n])
+        liquid = px.iloc[k0 - 1][pool] >= min_px
+        if sel == "sector":   # haber günü tohumlu rastgele sepet: sektörün genel tepkisini ölçer
+            cand = [t for t in pool if liquid[t]]
+            if len(cand) < top_n * 2:
+                return None
+            picks = list(np.random.default_rng(k0).permutation(cand)[:top_n])
+        else:
+            sc = scores[sel].iloc[k0 - 1][pool]
+            sc = sc[liquid & sc.notna()]
+            if len(sc) < top_n * 2:
+                return None
+            picks = list(sc.sort_values(ascending=False).index[:top_n])
         acc = []
         with np.errstate(all="ignore"):
             for t in picks:
@@ -126,34 +141,42 @@ def measure(events: pd.DataFrame, prices: pd.DataFrame, sectors: dict) -> pd.Dat
     rows = []
     for r in events.to_dict("records"):
         k0 = int(idx.searchsorted(pd.Timestamp(r["date"])))
-        real = basket(r["sector"], k0)
-        if real is None:
-            continue
         rng = np.random.default_rng(zlib.crc32(f"{r['group']}|{r['sector']}|{r['date']}".encode()))
         blocked = ev_days[r["sector"]]
-        plc = []
-        for k in rng.permutation(np.arange(260, max(261, len(idx) - 70)))[:60]:
-            if any(abs(int(k) - b) < 40 for b in blocked):
+        # Plasebo günleri olayın ±1 yılı içinden: piyasa rejimi / küçük hisse eğilimi aynı kalsın
+        span = int(c.get("placebo_span_days", 250))
+        lo, hi = max(260, k0 - span), min(len(idx) - 70, k0 + span)
+        cand_days = [int(k) for k in rng.permutation(np.arange(lo, max(lo + 1, hi))) if not any(abs(int(k) - b) < 40 for b in blocked)][:60]
+        for sel in selectors:
+            real = basket(r["sector"], k0, sel)
+            if real is None:
                 continue
-            b = basket(r["sector"], int(k))
-            if b is not None and np.isfinite(b["car_0_60"]):
-                plc.append(b)
-            if len(plc) >= int(c["placebo_n"]):
-                break
-        if len(plc) < 2:
-            continue
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", RuntimeWarning)
-            ctl = {k: float(np.nanmean([b[k] for b in plc])) for k in wins}
-        rows.append({"group": r["group"], "sector": r["sector"], "date": r["date"],
-                     **{k: real[k] - ctl[k] for k in wins}, **{f"raw_{k}": real[k] for k in wins}})
+            plc = []
+            for k in cand_days:
+                b = basket(r["sector"], k, sel)
+                if b is not None and np.isfinite(b["car_0_60"]):
+                    plc.append(b)
+                if len(plc) >= int(c["placebo_n"]):
+                    break
+            if len(plc) < 2:
+                continue
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", RuntimeWarning)
+                ctl = {k: float(np.nanmean([b[k] for b in plc])) for k in wins}
+            rows.append({"group": f"{r['group']}@{sel}", "selector": sel, "sector": r["sector"], "date": r["date"],
+                         **{k: real[k] - ctl[k] for k in wins}, **{f"raw_{k}": real[k] for k in wins}})
     return pd.DataFrame(rows)
 
 
+SEL_NAMES = {"mom12": "12 ay ivme", "mom6": "6 ay ivme", "high52": "52 hf zirve", "lowvol": "düşük oynaklık", "sector": "sektör geneli"}
+
+
 def _name(g: str) -> str:
+    g, _, sel = g.partition("@")
+    suffix = f" [{SEL_NAMES.get(sel, sel)}]" if sel else ""
     kind, _, rest = g.partition(":")
     pre = {"fed": "Federal haber", "invest": "Büyük yatırım", "insider": "İçeriden alım"}.get(kind, kind)
-    return f"{pre} · " + ("tümü" if rest == "all" else I.CATEGORY_NAMES.get(rest, rest))
+    return f"{pre} · " + ("tümü" if rest == "all" else I.CATEGORY_NAMES.get(rest, rest)) + suffix
 
 
 def build(ret: pd.DataFrame) -> pd.DataFrame:
@@ -161,13 +184,14 @@ def build(ret: pd.DataFrame) -> pd.DataFrame:
     if ret is None or ret.empty:
         return pd.DataFrame(columns=COLS)
     groups = [("all", ret)] + [(k, g) for k, g in ret.groupby("group")]
-    groups += [(f"{k}:all", g) for k, g in ret.assign(k=ret["group"].str.split(":").str[0]).groupby("k")]
+    groups += [(f"{k}:all@{sel}", g) for (k, sel), g in ret.assign(k=ret["group"].str.split(":").str[0]).groupby(["k", "selector"])]
+    groups += [(f"all@{sel}", g) for sel, g in ret.groupby("selector")]
     rows = [{"group": k, **I._stats(g.assign(sp500_weight=0.0), gate)} for k, g in groups]
     ev = pd.DataFrame(rows)
     ev["q"] = E._bh(ev["p"])
     ev["status"] = [I.classify(r, gate) for r in ev.to_dict("records")]
     ev["key"] = ev["group"]
-    ev["group_name"] = ev["group"].map(lambda g: "Tümü" if g == "all" else _name(g))
+    ev["group_name"] = ev["group"].map(lambda g: "Tümü" if g == "all" else (f"Tümü [{SEL_NAMES.get(g.split('@')[1], '')}]" if g.startswith("all@") else _name(g)))
     ev["status_name"] = ev["status"].map(I.STATUS_NAMES)
     ev["icon"] = ev["status"].map(I.ICONS)
     ev["explain"] = [(f"{r['n']} olay; haberden sonra sektörün en güçlü büyüme sepeti, haber olmayan günlere göre 60 günde "
