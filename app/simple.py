@@ -67,7 +67,9 @@ def _invest(T) -> None:
         st.info("Henüz kanıt oluşmadı. Geçmiş veri yüklemesi ve fiyatlar sonrası ilk kapanış/haftalık çalışmada oluşur.")
         return
     show = pd.DataFrame({
-        "Durum": ev["icon"] + " " + ev["status_name"], "Yatırım türü": ev["category_name"],
+        "Durum": [f"{i} {n}" + (" (doğrulanmamış aday)" if c == "no" else "") for i, n, c in
+                  zip(ev["icon"], ev["status_name"], ev.get("confirmed", pd.Series([""] * len(ev))))],
+        "Yatırım türü": ev["category_name"],
         "Haber sayısı": ev["n"].astype(int),
         "60 gün ort. getiri": ev["mean_car_60"].map(D.pct),
         "Pozitif oran": ev["hit_60"].map(lambda v: D.pct(v, signed=False)),

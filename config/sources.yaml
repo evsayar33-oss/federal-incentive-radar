@@ -135,6 +135,7 @@ corp_invest:
   enabled: true
   min_usd: 1000000000          # 1 milyar $ ve üstü
   signal_days: 30
+  confirm_n: 12                # 'proven' ancak keşiften sonra olgunlaşan bu kadar yeni olayda da tutarsa doğrulanır
   matched_control: true        # getiri = olay hissesi − aynı büyüklük sınıfından rastgele hisseler (küçük hisse eğilimini ayıklar)
   control_n: 12
   control_min: 8

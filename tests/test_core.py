@@ -653,3 +653,23 @@ def test_trade_breakout_noise_not_proven():
     assert len(ret) > 20
     ev = T.build(ret)
     assert not (ev["status"] == "proven").any()
+
+
+def test_invest_confirmation_flow():
+    import numpy as np
+    import pandas as pd
+    from radar import investments as I
+    ret = _inv_returns(60, 0.06, 0.04)
+    first = I.build_evidence(ret)
+    r = first.set_index("category").loc["plant"]
+    assert r["status"] == "proven" and r["confirmed"] == "no" and "DOĞRULANMAMIŞ" in r["explain"]
+    rng = np.random.default_rng(9)
+    def more(mean):
+        m = _inv_returns(20, mean, 0.04, seed=11)
+        m["date"] = pd.date_range("2035-01-01", periods=20, freq="7D").date.astype(str)
+        m["event_id"] = [f"n{i}" for i in range(20)]
+        return pd.concat([ret, m], ignore_index=True)
+    ok = I.build_evidence(more(0.06), first).set_index("category").loc["plant"]
+    assert ok["status"] == "proven" and ok["confirmed"] == "yes"
+    bad = I.build_evidence(more(-0.05), first).set_index("category").loc["plant"]
+    assert bad["status"] != "proven"

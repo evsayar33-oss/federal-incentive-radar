@@ -30,7 +30,7 @@ STATUS_NAMES = {"proven": "Kanıtlandı", "promising": "Umut verici", "no_effect
                 "unclear": "Belirsiz", "collecting": "Veri birikiyor"}
 ICONS = {"proven": "🟢", "promising": "🟡", "no_effect": "⚫", "unclear": "⚪", "collecting": "⚪"}
 STAT_COLS = ["key", "category", "category_name", "n", "mean_car_5", "mean_car_20", "mean_car_60", "hit_60", "p",
-             "q", "oos_n", "oos_hit", "oos_mean", "status", "status_name", "icon", "explain", "asof"]
+             "q", "oos_n", "oos_hit", "oos_mean", "status", "status_name", "icon", "explain", "asof", "first_pass", "confirm_n", "confirmed"]
 
 
 def cfg() -> dict:
@@ -297,7 +297,7 @@ def _explain(r: dict, status: str) -> str:
     return f"⚪ Henüz {r['n']} örnek var; hüküm için daha çok örnek gerekiyor."
 
 
-def build_evidence(ret: pd.DataFrame) -> pd.DataFrame:
+def build_evidence(ret: pd.DataFrame, prev: pd.DataFrame | None = None) -> pd.DataFrame:
     gate = cfg()["gate"]
     if ret is None or ret.empty:
         return pd.DataFrame(columns=STAT_COLS)
@@ -312,7 +312,44 @@ def build_evidence(ret: pd.DataFrame) -> pd.DataFrame:
     ev["icon"] = ev["status"].map(ICONS)
     ev["explain"] = [_explain(r, r["status"]) for r in ev.to_dict("records")]
     ev["asof"] = date.today().isoformat()
+    _confirm(ev, ret, prev, gate)
     return ev.reindex(columns=STAT_COLS + [c for c in ev.columns if c not in STAT_COLS])
+
+
+def _confirm(ev: pd.DataFrame, ret: pd.DataFrame, prev: pd.DataFrame | None, gate: dict) -> None:
+    """Keşif sonrası doğrulama: 'proven' ilk geçtiği günden (first_pass) SONRA olgunlaşan yeni olaylarda da tutmalı.
+    Tutana kadar 'doğrulanmamış aday'dır. Kapıdan düşen kategorinin tarihi sıfırlanır."""
+    need = int(cfg().get("confirm_n", 12))
+    first = {}
+    if prev is not None and not prev.empty and "first_pass" in prev:
+        first = {k: v for k, v in zip(prev["category"], prev["first_pass"]) if isinstance(v, str) and v}
+    fp, cn, ok = [], [], []
+    for r in ev.to_dict("records"):
+        c, f, n2, good = r["category"], "", 0, ""
+        if r["status"] == "proven":
+            f = first.get(c, date.today().isoformat())
+            g = ret if c == "all" else ret[ret["category"] == c]
+            fresh = g[g["date"].astype(str) > f]
+            n2 = int(fresh["car_0_60"].notna().sum())
+            good = "no"
+            if n2 >= need:
+                fs = _stats(fresh, gate)
+                good = "yes" if fs["mean_car_60"] > 0 and fs["hit_60"] >= gate["oos_hit"] else "failed"
+        fp.append(f); cn.append(n2); ok.append(good)
+    ev["first_pass"], ev["confirm_n"], ev["confirmed"] = fp, cn, ok
+    for i, r in ev.iterrows():
+        if r["confirmed"] == "failed":
+            ev.at[i, "status"] = "unclear"
+            ev.at[i, "status_name"] = I_STATUS["unclear"]
+            ev.at[i, "icon"] = ICONS["unclear"]
+            ev.at[i, "explain"] = "⚪ Keşiften sonraki yeni olaylarda tekrarlanmadı; kanıt geçersiz sayıldı."
+            ev.at[i, "first_pass"] = ""
+        elif r["confirmed"] == "no":
+            ev.at[i, "explain"] = (f"🟡 DOĞRULANMAMIŞ ADAY. " + r["explain"].lstrip("🟢 ") +
+                                   f" Keşiften sonra {r['confirm_n']}/{need} yeni olay olgunlaştı; doğrulama bekleniyor.")
+
+
+I_STATUS = STATUS_NAMES
 
 
 def signals(events: pd.DataFrame, ev: pd.DataFrame) -> pd.DataFrame:
@@ -338,6 +375,7 @@ def signals(events: pd.DataFrame, ev: pd.DataFrame) -> pd.DataFrame:
     s["icon"] = s["status"].map(ICONS)
     s["category_name"] = s["category"].map(lambda c: CATEGORY_NAMES.get(c, c))
     s["explain"] = [stat[c]["explain"] if c in stat else "⚪ Henüz kanıt yok." for c in cats]
+    s["confirmed"] = [stat[c].get("confirmed", "") if c in stat else "" for c in cats]
     s["ticker"] = s["tickers"].astype(str).str.split(",").str[0]
     return s.sort_values("date", ascending=False).reset_index(drop=True)
 
@@ -351,7 +389,7 @@ def refresh(prices: pd.DataFrame | None = None) -> pd.DataFrame:
     ret = measure(events, prices)
     if not ret.empty:
         store.write("invest_returns", ret)
-    ev = build_evidence(ret)
+    ev = build_evidence(ret, store.read("invest_evidence"))
     store.write("invest_evidence", ev)
     sub = build_subgroups(ret, store.read("invest_subgroups"))
     store.write("invest_subgroups", sub)
