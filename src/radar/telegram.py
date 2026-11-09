@@ -105,9 +105,11 @@ def notify_investments(ev: pd.DataFrame, sig: pd.DataFrame, run_id: str) -> int:
     sent = []
     for r in s.head(int(cfg().get("max_per_run", 8))).to_dict("records"):
         amt = f"${float(r['amount_usd']) / 1e9:.1f} milyar" if r.get("amount_usd") == r.get("amount_usd") else ""
+        warn = "\n⚠️ <b>Doğrulanmamış aday:</b> kanıt henüz yeni olaylarda test edilmedi, tesadüf olabilir. Yatırım tavsiyesi değildir." \
+            if str(r.get("confirmed", "")) == "no" else ""
         text = (f"{r['icon']} <b>Büyük yatırım · {html.escape(str(r['category_name']))}</b>\n"
                 f"{html.escape(str(r['title'])[:160])}\n🎯 <code>{html.escape(str(r['ticker']))}</code> {amt}\n"
-                f"{html.escape(str(r['explain']))}" + (f"\n{r['url']}" if r.get("url") else ""))
+                f"{html.escape(str(r['explain']))}" + warn + (f"\n{r['url']}" if r.get("url") else ""))
         if send(text):
             sent.append({"event_id": r["event_id"], "sent_at": run_id, "ticker": r["ticker"], "date": r["date"]})
     if sent:
