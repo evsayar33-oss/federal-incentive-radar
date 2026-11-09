@@ -189,11 +189,13 @@ insider:                       # SEC Form 4 açık piyasa alımları (üç aylı
 
 basket:                        # büyüme sepeti testi: haber, alandaki en güçlü büyüme hisselerini yükseltiyor mu?
   enabled: true
+  selectors: [mom12, mom6, high52, lowvol, sector]   # hepsi aynı ailede birlikte düzeltilir; 'sector' = seçimsiz kontrol
   top_n: 5                     # sektörün en güçlü N büyüme hissesi (12-1 ay getiri ivmesi, yalnızca olay öncesi veri)
   mom_days: 252
   skip_days: 21
   entry_lag: 2
   min_price: 5
+  placebo_span_days: 250        # plasebo günleri olayın ± bu kadar işlem günü içinden (rejim farkını ayıklar)
   placebo_n: 4                 # aynı sektörde haber olmayan rastgele günlerde aynı kuralla sepet (kontrol)
   max_federal: 700             # federal olaylardan rastgele örnek (hız)
 
