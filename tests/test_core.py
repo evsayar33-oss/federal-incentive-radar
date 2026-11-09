@@ -626,3 +626,30 @@ def test_basket_picks_past_growth_and_uses_placebo():
     ret = B.measure(ev, prices, sectors)
     assert len(ret) == 5 and ret["car_0_60"].abs().max() < 0.5   # haber etkisi yok → fark ≈ 0
     assert B.build(pd.concat([ret] * 3, ignore_index=True)).shape[0] >= 2
+
+
+def test_trade_position_size_and_montecarlo():
+    import numpy as np
+    from radar import trade as T
+    p = T.position_size(100.0, 95.0, equity=5000, risk_pct=0.01, max_pos_pct=0.2)
+    assert p["shares"] == 10 and p["risk_usd"] <= 50 and p["position_usd"] <= 1000   # 50$ risk / 5$ → 10 adet
+    assert T.position_size(100.0, 101.0)["shares"] == 0
+    mc = T.monte_carlo(np.random.default_rng(0).normal(0.0, 0.1, 200), n_sims=500)
+    assert mc["mc_dd95"] > 0 and mc["mc_p05"] < 0
+
+
+def test_trade_breakout_noise_not_proven():
+    import numpy as np
+    import pandas as pd
+    from radar import trade as T
+    rng = np.random.default_rng(7)
+    days = pd.bdate_range("2019-01-02", periods=1200)
+    frames = [pd.DataFrame({"date": days.strftime("%Y-%m-%d"), "ticker": "SPY", "close": 100 * np.cumprod(1 + rng.normal(0, .008, len(days)))})]
+    sectors = {}
+    for i in range(40):
+        t = f"R{i}"; sectors[t] = "Industrials"
+        frames.append(pd.DataFrame({"date": days.strftime("%Y-%m-%d"), "ticker": t, "close": 40 * np.cumprod(1 + rng.normal(0.0003, .015, len(days)))}))
+    ret = T.measure(pd.concat(frames), sectors, None)
+    assert len(ret) > 20
+    ev = T.build(ret)
+    assert not (ev["status"] == "proven").any()

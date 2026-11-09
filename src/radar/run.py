@@ -18,7 +18,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from . import __version__, alerts, autolabel, basket, diagnostics, evidence, insiders, investments, learn, scoring, store, telegram
+from . import __version__, alerts, autolabel, basket, trade, diagnostics, evidence, insiders, investments, learn, scoring, store, telegram
 from .classify import Classifier, train
 from .sources import fallbacks
 from .entity import Matcher, normalize
@@ -382,6 +382,7 @@ def cmd_slot(args) -> None:
                 try:
                     insiders.refresh()
                     basket.refresh()
+                    trade.refresh()
                 except Exception as exc:
                     log.warning("Ek kanıt katmanları: %s", exc)
             except Exception as exc:
@@ -490,6 +491,10 @@ def weekly_learning(status: dict) -> None:
         status["basket_evidence"] = {"ok": True, **({} if bk.empty else bk["status"].value_counts().to_dict())}
     except Exception as exc:
         status["basket_evidence"] = {"ok": False, "error": str(exc)[:300]}
+    try:
+        trade.refresh()
+    except Exception as exc:
+        status["trade_evidence"] = {"ok": False, "error": str(exc)[:300]}
     telegram.weekly_summary(ev)
     state["history"] = (state.get("history", []) + [{"date": date.today().isoformat(),
                         "calibration": state["calibration"], "n_program_eff": len(state["program_efficacy"])}])[-104:]
@@ -541,6 +546,11 @@ def cmd_history(args) -> None:
         status["basket_evidence"] = {"ok": True, **({} if bk.empty else bk["status"].value_counts().to_dict())}
     except Exception as exc:
         status["basket_evidence"] = {"ok": False, "error": str(exc)[:300]}
+    try:
+        tr = trade.refresh()
+        status["trade_evidence"] = {"ok": True, **({} if tr.empty else tr["status"].value_counts().to_dict())}
+    except Exception as exc:
+        status["trade_evidence"] = {"ok": False, "error": str(exc)[:300]}
     if not ev.empty:
         sig = evidence.annotate(store.read("events"), ev)
         if not sig.empty:

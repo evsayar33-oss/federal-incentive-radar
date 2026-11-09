@@ -199,6 +199,23 @@ basket:                        # büyüme sepeti testi: haber, alandaki en güç
   placebo_n: 4                 # aynı sektörde haber olmayan rastgele günlerde aynı kuralla sepet (kontrol)
   max_federal: 700             # federal olaylardan rastgele örnek (hız)
 
+trade:                         # uzun vadeli kırılım stratejisi: önce geçmişte kanıtla, kanıtlanırsa işlem planı üret
+  enabled: true
+  lookback: 252                # 52 hafta zirvesi kırılımı
+  horizons: [60, 120]          # işlem günü tutma süresi
+  entry_lag: 2
+  cost_bps: 30
+  min_price: 5
+  placebo_span: 250
+  placebo_n: 8
+  news_days: 30                # kırılımdan önceki bu kadar günde sektörde büyük olay = "haberli"
+  risk_per_trade: 0.02         # Monte Carlo: işlem başına hesap payı
+  equity: 5000                 # işlem planı örnek hesap büyüklüğü
+  risk_pct: 0.01               # işlem başına en fazla bu kadar kayıp (hesap %)
+  max_position_pct: 0.20       # tek pozisyon üst sınırı (risk yöneticisi)
+  stop_vol_mult: 2.0           # stop = giriş − 2 × aylık oynaklık
+  target_mult: 2.0             # hedef = risk × 2
+
 prices:
   enabled: true
   history_period: "6y"       # kanıt motoru her olay için 250 gün öncesine bakar; 5 yıllık olay için 6+ yıl gerekir

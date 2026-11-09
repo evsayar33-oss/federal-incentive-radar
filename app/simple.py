@@ -91,6 +91,7 @@ def _invest(T) -> None:
                 "İsabet": top["hit"].map(lambda v: D.pct(v, signed=False)), "q": top["q"].round(3)}), hide_index=True)
     _insider(T)
     _basket(T)
+    _trade(T)
     if not sig.empty:
         st.markdown("#### Son yatırım haberleri")
         for r in sig.head(25).to_dict("records"):
@@ -127,6 +128,25 @@ def _basket(T) -> None:
         "Durum": ev["icon"] + " " + ev["status_name"], "Grup": ev["group_name"], "Olay": ev["n"].astype(int),
         "60 gün fark": ev["mean_car_60"].map(D.pct), "Pozitif oran": ev["hit_60"].map(lambda v: D.pct(v, signed=False)),
         "q": ev["q"].round(3)}), hide_index=True)
+
+
+def _trade(T) -> None:
+    ev, pl = T("trade_evidence"), T("trade_plans")
+    st.markdown("#### 📈 Uzun vadeli kırılım stratejisi")
+    st.caption("52 haftalık zirve kırılımı, 60/120 gün tutma. Kural geçmişte kanıtlanmadan işlem planı üretilmez. "
+               "Plan yalnızca bilgidir, otomatik emir yoktur; yatırım tavsiyesi değildir.")
+    if ev.empty:
+        st.info("Henüz sonuç yok. Geçmiş veri çalışması sonrası oluşur.")
+        return
+    st.dataframe(pd.DataFrame({
+        "Durum": ev["icon"] + " " + ev["status_name"], "Grup": ev["group_name"], "Gün": ev["horizon"].astype(int),
+        "Olay": ev["n"].astype(int), "Kontrol-ayarlı": ev["mean_car_60"].map(D.pct), "Piyasaya göre ham": ev["raw_mean"].map(D.pct),
+        "MC kötü senaryo (%5)": ev["mc_p05"].map(D.pct), "MC en kötü düşüş (%95)": ev["mc_dd95"].map(lambda v: D.pct(v, signed=False)),
+        "q": ev["q"].round(3)}), hide_index=True)
+    if pl.empty:
+        st.info("Kanıtlanmış kural olmadığı için işlem planı yok. Bu bir hata değil.")
+    else:
+        st.dataframe(pl, hide_index=True)
 
 
 def _works(T) -> None:
