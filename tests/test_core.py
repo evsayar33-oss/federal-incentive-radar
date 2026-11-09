@@ -509,7 +509,7 @@ def test_invest_measure_end_to_end():
     d = days[300].date().isoformat()
     ev = schema.frame([schema.event("corp_invest", "1", 7, d, "Acme announces $2 billion plant", tickers="ACME",
                                     amount_usd=2e9, extra={"category": "plant"})])
-    ret = I.measure(ev, prices)
+    ret = I.measure(ev, prices, control=False)
     assert len(ret) == 1 and ret.iloc[0]["ticker"] == "ACME" and np.isfinite(ret.iloc[0]["car_0_60"])
     assert I.build_evidence(ret).set_index("category").loc["plant", "status"] == "collecting"
 
@@ -587,3 +587,42 @@ def test_invest_abnormal_has_no_alpha_artifact():
     cars = [I._abnormal(y, m, 400, c)["car_0_60"] for _ in range(1)]
     assert abs(cars[0]) < 0.12     # alfa taşınsaydı ≈ +0.24 olurdu
     assert I._ecfg(2)["windows"]["0_3"] == [2, 5]
+
+
+def test_invest_matched_control_removes_group_drift():
+    import numpy as np
+    import pandas as pd
+    from radar import investments as I, schema
+    rng = np.random.default_rng(2)
+    days = pd.bdate_range("2023-01-02", periods=500)
+    f = lambda drift: 50 * np.cumprod(1 + drift + rng.normal(0, 0.01, len(days)))
+    frames = [pd.DataFrame({"date": days.strftime("%Y-%m-%d"), "ticker": "SPY", "close": f(0.0)})]
+    for t in ["ACME"] + [f"C{i}" for i in range(20)]:   # hepsi aynı zayıf trendde: olayın kendi etkisi yok
+        frames.append(pd.DataFrame({"date": days.strftime("%Y-%m-%d"), "ticker": t, "close": f(-0.002)}))
+    prices = pd.concat(frames)
+    d = days[300].date().isoformat()
+    ev = schema.frame([schema.event("corp_invest", "1", 7, d, "x", tickers="ACME", amount_usd=2e9, extra={"category": "plant"})])
+    raw = I.measure(ev, prices, control=False).iloc[0]["car_0_60"]
+    ex = I.measure(ev, prices, control=True).iloc[0]["car_0_60"]
+    assert raw < -0.05 and abs(ex) < abs(raw) / 2
+
+
+def test_basket_picks_past_growth_and_uses_placebo():
+    import numpy as np
+    import pandas as pd
+    from radar import basket as B
+    rng = np.random.default_rng(4)
+    days = pd.bdate_range("2021-01-04", periods=900)
+    spy = 100 * np.cumprod(1 + rng.normal(0, 0.008, len(days)))
+    frames = [pd.DataFrame({"date": days.strftime("%Y-%m-%d"), "ticker": "SPY", "close": spy})]
+    sectors = {}
+    for i in range(30):
+        t = f"S{i}"
+        sectors[t] = "Industrials"
+        frames.append(pd.DataFrame({"date": days.strftime("%Y-%m-%d"), "ticker": t,
+                                    "close": 30 * np.cumprod(1 + 0.0005 * (i / 10) + rng.normal(0, 0.01, len(days)))}))
+    prices = pd.concat(frames)
+    ev = pd.DataFrame([{"group": "fed:x", "sector": "Industrials", "date": days[500].date().isoformat(), "ticker": "fed:x|Industrials"}])
+    ret = B.measure(ev, prices, sectors)
+    assert len(ret) == 1 and np.isfinite(ret.iloc[0]["car_0_60"]) and abs(ret.iloc[0]["car_0_60"]) < 0.5   # haber etkisi yok → fark ≈ 0
+    assert B.build(pd.concat([ret] * 3, ignore_index=True)).shape[0] >= 2

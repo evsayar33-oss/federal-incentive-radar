@@ -304,3 +304,8 @@ Olaylar: 10 gün içinde 3+ yöneticinin toplu alımı ve CEO/CFO'nun ≥$250k a
 (ileriye bakış yok). Ölçüm ve kanıt kapıları yatırım bölümüyle aynıdır (`corp_invest.gate`, alt grup keşfi dahil);
 sonuçlar `insider_*` tablolarında, arayüzde "Büyük yatırımlar" sekmesindedir. Geçmiş veri ve haftalık çalışma çeyrekleri
 indirir. Telegram bildirimi yoktur.
+
+### Eşleşmiş kontrol ve büyüme sepeti
+
+- **Eşleşmiş kontrol:** Yatırım ve içeriden alım olaylarında getiri, aynı günlerde aynı büyüklük sınıfından (S&P 500 içi/dışı) rastgele 12 hissenin getirisine göre fazlalık olarak ölçülür (`corp_invest.matched_control`). Küçük hisselerin genel zayıflığı sonuca karışmaz.
+- **Büyüme sepeti (`basket.py`):** Haberin olduğu sektörde, olay öncesi verilerle (12-1 ay ivmesi) seçilen en güçlü 5 hissenin haberden sonraki getirisi, aynı sektörde haber olmayan günlerdeki aynı kuralla seçilmiş sepetle karşılaştırılır. Federal haber, büyük yatırım ve içeriden alım için ayrı ayrı çalışır; kanıt kapıları aynıdır (`corp_invest.gate`). Tablo: `basket_evidence`. Tümü ücretsiz fiyat verisiyle çalışır.

@@ -90,6 +90,7 @@ def _invest(T) -> None:
                 "Yön": top["direction"], "Haber": top["n"].astype(int), "Ort. (maliyetli)": top["mean"].map(D.pct),
                 "İsabet": top["hit"].map(lambda v: D.pct(v, signed=False)), "q": top["q"].round(3)}), hide_index=True)
     _insider(T)
+    _basket(T)
     if not sig.empty:
         st.markdown("#### Son yatırım haberleri")
         for r in sig.head(25).to_dict("records"):
@@ -112,6 +113,20 @@ def _insider(T) -> None:
         "60 gün ort. getiri": ev["mean_car_60"].map(D.pct),
         "Pozitif oran": ev["hit_60"].map(lambda v: D.pct(v, signed=False)), "Açıklama": ev["explain"]}),
         hide_index=True)
+
+
+def _basket(T) -> None:
+    ev = T("basket_evidence")
+    st.markdown("#### 🌱 Büyüme sepeti testi")
+    st.caption("Haberin olduğu sektörde, olay öncesi verilerle seçilen en güçlü 5 büyüme hissesi (12-1 ay ivme) haberden "
+               "sonra, aynı sektörde haber olmayan günlere göre 60 günde ne yaptı? Tüm kanıt kapıları uygulanır.")
+    if ev.empty:
+        st.info("Henüz sonuç yok. Geçmiş veri çalışması sonrası oluşur.")
+        return
+    st.dataframe(pd.DataFrame({
+        "Durum": ev["icon"] + " " + ev["status_name"], "Grup": ev["group_name"], "Olay": ev["n"].astype(int),
+        "60 gün fark": ev["mean_car_60"].map(D.pct), "Pozitif oran": ev["hit_60"].map(lambda v: D.pct(v, signed=False)),
+        "q": ev["q"].round(3)}), hide_index=True)
 
 
 def _works(T) -> None:
