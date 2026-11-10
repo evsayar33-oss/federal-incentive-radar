@@ -217,6 +217,10 @@ trade:                         # uzun vadeli kırılım stratejisi: önce geçmi
   stop_vol_mult: 2.0           # stop = giriş − 2 × aylık oynaklık
   target_mult: 2.0             # hedef = risk × 2
 
+research:                      # ortak keşif kapısı: bütün yatırım hipotezlerine tek FDR ailesi
+  global_q: 0.10               # tüm araştırma kolları birlikte düzeltildikten sonraki üst sınır
+  confirm_n: 12                # keşiften sonra olgunlaşması gereken bağımsız olay sayısı
+
 prices:
   enabled: true
   history_period: "6y"       # kanıt motoru her olay için 250 gün öncesine bakar; 5 yıllık olay için 6+ yıl gerekir
@@ -249,4 +253,3 @@ quality:
   review_queue_warn: 50        # bu sayıdan fazla çözülmemiş belirsiz eşleşme → uyarı
   auto_none_below_score: 90    # bundan düşük benzerlikli ve ilk kelimesi uyuşmayan adaylar otomatik "şirket yok"
   stale_price_days: 5          # fiyat verisi bu kadar günden eskiyse uyarı
-

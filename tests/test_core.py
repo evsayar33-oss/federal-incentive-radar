@@ -211,11 +211,51 @@ def test_benjamini_hochberg():
     assert abs(q.iloc[0] - 0.04) < 1e-9 and abs(q.iloc[1] - 0.0533333) < 1e-6 and q.iloc[3] == 0.5 and q.isna().iloc[4]
 
 
+def test_research_registry_corrects_across_families():
+    import pandas as pd
+    from radar.research import build_registry
+    evidence = pd.DataFrame([{"key": f"k{i}", "p": 0.5, "q": 0.5, "n_clusters": 20, "status": "unclear"}
+                             for i in range(99)])
+    investment = pd.DataFrame([{"category": "plant", "p": 0.01, "q": 0.01, "n": 45, "status": "proven",
+                                "confirmed": "yes"}])
+    out = build_registry({"evidence": evidence, "invest_evidence": investment}, asof="2030-01-01")
+    plant = out[(out["family"] == "invest_evidence") & (out["key"] == "plant")].iloc[0]
+    assert plant["local_q"] == 0.01
+    assert plant["global_q"] > 0.1 and plant["status"] == "filtered"
+
+
+def test_research_registry_forward_confirms_trade_candidates():
+    import pandas as pd
+    from radar.research import build_registry
+    dates = pd.bdate_range("2030-01-02", periods=12).date.astype(str)
+    trade = pd.DataFrame([{"key": "all|60", "p": 0.001, "q": 0.001, "n": 30, "status": "proven"}])
+    returns = pd.DataFrame({"date": dates, "news": False, "car_h60": 0.03, "raw_h60": 0.04})
+    previous = pd.DataFrame([{"family": "trade_evidence", "key": "all|60", "first_pass": "2030-01-01"}])
+    out = build_registry({"trade_evidence": trade}, {"trade_returns": returns}, previous, "2030-02-01")
+    candidate = out.iloc[0]
+    assert candidate["status"] == "confirmed" and candidate["confirm_n"] == 12
+
+
+def test_research_registry_forward_confirms_basket_candidates():
+    import pandas as pd
+    from radar.research import build_registry
+    dates = pd.bdate_range("2030-01-02", periods=12).date.astype(str)
+    basket = pd.DataFrame([{"key": "all@mom12", "p": 0.001, "q": 0.001, "n": 30, "status": "proven"}])
+    returns = pd.DataFrame({"date": dates, "group": "fed:semiconductors@mom12", "selector": "mom12",
+                            "car_0_60": 0.03})
+    previous = pd.DataFrame([{"family": "basket_evidence", "key": "all@mom12", "first_pass": "2030-01-01"}])
+    out = build_registry({"basket_evidence": basket}, {"basket_returns": returns}, previous, "2030-02-01")
+    candidate = out.iloc[0]
+    assert candidate["status"] == "confirmed" and candidate["confirm_n"] == 12
+
+
 def test_telegram_gate_and_format():
     from datetime import date
     import pandas as pd
     from radar import store, telegram
     today = date.today().isoformat()
+    store.write("research_registry", pd.DataFrame([{"family": "evidence", "key": "semiconductors|sec_8k|direct",
+                                                     "status": "confirmed"}]))
     base = {"date": today, "status": "proven", "effect": 0.03, "rank": 5, "n_clusters": 20, "url": "",
             "program": "semiconductors", "program_name": "Yarı iletken", "kind_name": "8-K", "role": "direct",
             "role_name": "Şirketin kendi hissesi", "evidence_key": "semiconductors|sec_8k|direct",

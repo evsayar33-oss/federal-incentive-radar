@@ -274,10 +274,22 @@ def expert_view() -> None:
         evx = T("evidence")
         if not evx.empty:
             lv = st.multiselect("Seviye", ["program_kind", "kind", "program", "role"], default=["program_kind", "kind"])
-            cols = [c for c in ["icon", "key", "level", "status", "n_obs", "n_clusters", "mean_car", "median_car", "post_mean",
+            view = evx[evx["level"].isin(lv)].copy()
+            registry = T("research_registry")
+            global_rows = registry[registry["family"] == "evidence"] if not registry.empty else pd.DataFrame()
+            status_map = dict(zip(global_rows["key"].astype(str), global_rows["status"])) if not global_rows.empty else {}
+            q_map = dict(zip(global_rows["key"].astype(str), global_rows["global_q"])) if not global_rows.empty else {}
+            view["local_status"] = view["status"]
+            names = {"confirmed": "Doğrulandı", "candidate": "Aday · yeni veri", "filtered": "Çoklu testte elendi",
+                     "failed": "Doğrulama başarısız", "no_effect": "Etkisiz", "collecting": "Veri birikiyor",
+                     "unclear": "Belirsiz", "suspended": "Askıda"}
+            view["research_status"] = [names.get(status_map.get(str(k), ""), "Henüz ortak doğrulama yok") for k in view["key"]]
+            view["global_q"] = [q_map.get(str(k), float("nan")) for k in view["key"]]
+            cols = [c for c in ["icon", "key", "level", "local_status", "research_status", "global_q", "n_obs", "n_clusters", "mean_car", "median_car", "post_mean",
                                 "post_sd", "prob_dir", "t", "p", "q", "consistency", "oos_n", "oos_hit", "oos_signed",
                                 "live_n", "live_hit", "first_date", "last_date"] if c in evx.columns]
-            st.dataframe(evx[evx["level"].isin(lv)][cols], hide_index=True)
+            cols = [c for c in cols if c in view.columns]
+            st.dataframe(view[cols], hide_index=True)
             eh = T("evidence_history")
             if not eh.empty:
                 st.markdown("**Kanıt geçmişi** (anahtar başına örnek sayısı zamanla)")

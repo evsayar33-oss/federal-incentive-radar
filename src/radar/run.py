@@ -18,7 +18,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from . import __version__, alerts, autolabel, basket, trade, diagnostics, evidence, insiders, investments, learn, scoring, store, telegram
+from . import __version__, alerts, autolabel, basket, trade, diagnostics, evidence, insiders, investments, learn, research, scoring, store, telegram
 from .classify import Classifier, train
 from .sources import fallbacks
 from .entity import Matcher, normalize
@@ -378,13 +378,18 @@ def cmd_slot(args) -> None:
             try:
                 evidence.refresh()
                 run_status["evidence"] = {"ok": True}
-                telegram.notify_investments(investments.refresh(), store.read("invest_signals"), run_id)
+                investments.refresh()
                 try:
                     insiders.refresh()
                     basket.refresh()
                     trade.refresh()
                 except Exception as exc:
                     log.warning("Ek kanıt katmanları: %s", exc)
+                registry = research.refresh()
+                run_status["research"] = {"hypotheses": len(registry),
+                                          "confirmed": int((registry["status"] == "confirmed").sum()) if not registry.empty else 0}
+                trade.refresh_plans()
+                telegram.notify_investments(store.read("invest_evidence"), store.read("invest_signals"), run_id)
             except Exception as exc:
                 log.error("Kanıt motoru: %s", exc)
                 run_status["evidence"] = {"ok": False, "error": str(exc)[:300]}
@@ -495,6 +500,10 @@ def weekly_learning(status: dict) -> None:
         trade.refresh()
     except Exception as exc:
         status["trade_evidence"] = {"ok": False, "error": str(exc)[:300]}
+    registry = research.refresh()
+    status["research"] = {"hypotheses": len(registry),
+                          "confirmed": int((registry["status"] == "confirmed").sum()) if not registry.empty else 0}
+    trade.refresh_plans()
     telegram.weekly_summary(ev)
     state["history"] = (state.get("history", []) + [{"date": date.today().isoformat(),
                         "calibration": state["calibration"], "n_program_eff": len(state["program_efficacy"])}])[-104:]
@@ -551,6 +560,10 @@ def cmd_history(args) -> None:
         status["trade_evidence"] = {"ok": True, **({} if tr.empty else tr["status"].value_counts().to_dict())}
     except Exception as exc:
         status["trade_evidence"] = {"ok": False, "error": str(exc)[:300]}
+    registry = research.refresh()
+    status["research"] = {"hypotheses": len(registry),
+                          "confirmed": int((registry["status"] == "confirmed").sum()) if not registry.empty else 0}
+    trade.refresh_plans()
     if not ev.empty:
         sig = evidence.annotate(store.read("events"), ev)
         if not sig.empty:
