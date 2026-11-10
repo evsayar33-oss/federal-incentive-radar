@@ -200,6 +200,22 @@ basket:                        # büyüme sepeti testi: haber, alandaki en güç
   placebo_n: 4                 # aynı sektörde haber olmayan rastgele günlerde aynı kuralla sepet (kontrol)
   max_federal: 700             # federal olaylardan rastgele örnek (hız)
 
+sector_confluence:             # 365 günde aynı sektörde teşvik + büyük yatırım haberinin kesişimi
+  enabled: true
+  pair_days: 365               # iki kaynak arasındaki azami takvim günü
+  cooldown_days: 120           # aynı sektörde örtüşen pozisyonları önle
+  selectors: [mom12, mom6, high52, lowvol, sector]
+  top_n: 5
+  horizons: [20, 60, 120]      # sabit çıkış günleri; SMA çıkışı da 120 güne kadar test edilir
+  sma_days: 50
+  sma_max_horizon: 120
+  entry_lag: 2
+  cost_bps: 30                 # gidiş-dönüş maliyeti
+  min_price: 5
+  max_universe_tickers: 600    # sektör başına dengeli fiyat evreni örneklemi
+  placebo_span_days: 252       # aynı sektör ve yakın piyasa dönemi kontrolü
+  placebo_n: 4
+
 trade:                         # uzun vadeli kırılım stratejisi: önce geçmişte kanıtla, kanıtlanırsa işlem planı üret
   enabled: true
   lookback: 252                # 52 hafta zirvesi kırılımı

@@ -26,9 +26,10 @@ FAMILIES = {
     "insider_subgroups": ("insider_subgroups", "key"),
     "basket_evidence": ("basket_evidence", "key"),
     "trade_evidence": ("trade_evidence", "key"),
+    "sector_confluence_evidence": ("sector_confluence_evidence", "key"),
 }
 COUNT_COLS = ("n", "n_clusters")
-EFFECT_COLS = ("post_mean", "mean_car_60", "mean")
+EFFECT_COLS = ("post_mean", "mean_car_60", "mean_alpha_sector", "mean")
 HIT_COLS = ("consistency", "hit_60", "hit", "oos_hit")
 
 
@@ -112,19 +113,25 @@ def _trade_fresh(key: str, after: str, returns: pd.DataFrame) -> tuple[pd.DataFr
     return frame, f"car_h{horizon}"
 
 
-def _fresh_stats(family: str, key: str, after: str, returns: dict[str, pd.DataFrame]) -> tuple[int, float, float, float]:
+def _fresh_stats(family: str, key: str, after: str,
+                 returns: dict[str, pd.DataFrame]) -> tuple[int, float, float, float, float]:
     frame = pd.DataFrame()
     raw_col = ""
+    extra_col = ""
     if family == "basket_evidence":
         frame = _basket_fresh(key, after, returns.get("basket_returns", pd.DataFrame()))
         value_col = "car_0_60"
     elif family == "trade_evidence":
         frame, value_col = _trade_fresh(key, after, returns.get("trade_returns", pd.DataFrame()))
         raw_col = value_col.replace("car_", "raw_")
+    elif family == "sector_confluence_evidence":
+        frame = returns.get("sector_confluence_returns", pd.DataFrame())
+        frame = frame[(frame["key"].astype(str) == key) & (frame["date"].astype(str) > after)] if not frame.empty else frame
+        value_col, raw_col, extra_col = "alpha_sector", "raw_return", "excess_spy"
     else:
-        return 0, np.nan, np.nan, np.nan
+        return 0, np.nan, np.nan, np.nan, np.nan
     if frame.empty or value_col not in frame:
-        return 0, np.nan, np.nan, np.nan
+        return 0, np.nan, np.nan, np.nan, np.nan
     x = pd.to_numeric(frame[value_col], errors="coerce")
     valid = frame.assign(car_0_60=x, car_0_5=x, car_0_20=x).dropna(subset=["car_0_60"])
     stats = I._stats(valid, sources()["corp_invest"]["gate"])
@@ -133,7 +140,10 @@ def _fresh_stats(family: str, key: str, after: str, returns: dict[str, pd.DataFr
     raw_mean = np.nan
     if raw_col and raw_col in frame:
         raw_mean = float(pd.to_numeric(frame[raw_col], errors="coerce").groupby(frame["date"]).mean().mean())
-    return n, mean, hit, raw_mean
+    extra_mean = np.nan
+    if extra_col and extra_col in frame:
+        extra_mean = float(pd.to_numeric(frame[extra_col], errors="coerce").groupby(frame["date"]).mean().mean())
+    return n, mean, hit, raw_mean, extra_mean
 
 
 def build_registry(frames: dict[str, pd.DataFrame], returns: dict[str, pd.DataFrame] | None = None,
@@ -182,17 +192,20 @@ def build_registry(frames: dict[str, pd.DataFrame], returns: dict[str, pd.DataFr
             result = "candidate"
             if not fp:
                 fp = today
-            count, mean, hit, raw_mean = _fresh_stats(family, key, fp, ret)
+            count, mean, hit, raw_mean, extra_mean = _fresh_stats(family, key, fp, ret)
             if count >= conf_n:
-                raw_ok = family != "trade_evidence" or (np.isfinite(raw_mean) and raw_mean > 0)
-                done = "yes" if mean > 0 and hit >= sources()["corp_invest"]["gate"]["oos_hit"] and raw_ok else "failed"
+                raw_ok = family not in {"trade_evidence", "sector_confluence_evidence"} or (
+                    np.isfinite(raw_mean) and raw_mean > 0)
+                bench_ok = family != "sector_confluence_evidence" or (np.isfinite(extra_mean) and extra_mean > 0)
+                done = "yes" if (mean > 0 and hit >= sources()["corp_invest"]["gate"]["oos_hit"]
+                                 and raw_ok and bench_ok) else "failed"
                 result = "confirmed" if done == "yes" else "failed"
             else:
                 done = "no"
         statuses.append(result)
         first_pass.append(fp)
         native_n = r["_native_confirm_n"]
-        confirms.append(count if family in {"basket_evidence", "trade_evidence"} else
+        confirms.append(count if family in {"basket_evidence", "trade_evidence", "sector_confluence_evidence"} else
                         int(native_n) if np.isfinite(native_n) else 0)
         confirmed.append(done)
     rows["status"], rows["first_pass"], rows["confirm_n"], rows["confirmed"] = statuses, first_pass, confirms, confirmed
@@ -204,7 +217,8 @@ def build_registry(frames: dict[str, pd.DataFrame], returns: dict[str, pd.DataFr
 def refresh() -> pd.DataFrame:
     """Refresh the shared registry after every research engine has written its results."""
     frames = {table: store.read(table) for table, _ in FAMILIES.values()}
-    returns = {name: store.read(name) for name in ("basket_returns", "trade_returns")}
+    returns = {name: store.read(name) for name in
+               ("basket_returns", "trade_returns", "sector_confluence_returns")}
     result = build_registry(frames, returns, store.read("research_registry"))
     store.write("research_registry", result)
     return result

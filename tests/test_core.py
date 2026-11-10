@@ -249,6 +249,93 @@ def test_research_registry_forward_confirms_basket_candidates():
     assert candidate["status"] == "confirmed" and candidate["confirm_n"] == 12
 
 
+def test_sector_confluence_pairs_events_within_one_year_and_cooldown():
+    import pandas as pd
+    from radar.sector_confluence import pair_events
+    events = pd.DataFrame([
+        {"source": "federal", "sector": "Energy", "date": "2023-01-01"},
+        {"source": "investment", "sector": "Energy", "date": "2023-12-30"},
+        {"source": "federal", "sector": "Energy", "date": "2024-01-01"},
+        {"source": "investment", "sector": "Energy", "date": "2024-05-01"},
+        {"source": "federal", "sector": "Materials", "date": "2022-01-01"},
+        {"source": "investment", "sector": "Materials", "date": "2023-02-01"},
+    ])
+    paired = pair_events(events, max_gap_days=365, cooldown_days=120)
+    assert list(paired["date"]) == ["2023-12-30", "2024-05-01"]
+    assert paired["sector"].tolist() == ["Energy", "Energy"]
+
+
+def test_sector_confluence_exit_and_missing_price_handling():
+    import numpy as np
+    from radar.sector_confluence import _exit_index, _portfolio
+    close = np.array([10.0, 10.0, 9.0, 8.0, 7.0])
+    sma = np.array([8.0, 8.0, 10.0, 9.0, 8.0])
+    assert _exit_index(1, "fixed20", close, sma, 3) == 4
+    assert _exit_index(1, "sma50", close, sma, 3) == 3
+    prices = np.array([
+        [100, 100, 100, 100, 100, 100],
+        [100, 100, 100, 100, 100, 100],
+        [110, np.nan, 110, 110, 110, 110],
+        [110, np.nan, 110, 110, 110, 110],
+    ])
+    result = _portfolio([0, 1, 2, 3, 4], 1, "fixed2", prices, np.full_like(prices, np.nan),
+                        bench=5, sector_etf=4, cost=0, max_horizon=2)
+    assert result is not None
+    assert np.isclose(result["raw_return"], 0.1)
+
+
+def test_sector_confluence_measure_builds_selector_exit_hypotheses(monkeypatch):
+    import numpy as np
+    import pandas as pd
+    from radar import sector_confluence
+    dates = pd.bdate_range("2022-01-03", periods=800)
+    rng = np.random.default_rng(42)
+    returns = rng.normal(0.0004, 0.015, size=(800, 12))
+    closes = {
+        "SPY": 400 * np.cumprod(1 + rng.normal(0.0003, 0.01, len(dates))),
+        "XLK": 150 * np.cumprod(1 + rng.normal(0.0004, 0.012, len(dates))),
+    }
+    closes.update({f"T{i}": 40 * np.cumprod(1 + returns[:, i]) for i in range(12)})
+    prices = pd.DataFrame(closes, index=dates.date.astype(str)).rename_axis("date").reset_index()
+    events = pd.DataFrame([{"event_id": "event-1", "sector": "Information Technology",
+                            "date": dates[400].date().isoformat(),
+                            "federal_date": dates[390].date().isoformat(),
+                            "investment_date": dates[400].date().isoformat()}])
+    monkeypatch.setattr(sector_confluence, "cfg", lambda: {
+        "selectors": ["mom12", "sector"], "top_n": 3, "horizons": [20],
+        "sma_days": 50, "sma_max_horizon": 60, "entry_lag": 2, "min_price": 5,
+        "cost_bps": 30, "placebo_span_days": 100, "placebo_n": 2,
+    })
+    sectors = {f"T{i}": "Information Technology" for i in range(12)}
+    measured = sector_confluence.measure(events, prices.melt(
+        id_vars="date", var_name="ticker", value_name="close"), sectors)
+    evidence = sector_confluence.build(measured)
+    assert set(evidence["key"]) == {"mom12|fixed20", "mom12|sma50", "sector|fixed20", "sector|sma50"}
+    assert (evidence["n"] == 1).all()
+
+
+def test_research_registry_forward_confirms_sector_confluence_and_requires_spy_excess():
+    import pandas as pd
+    from radar.research import build_registry
+    dates = pd.bdate_range("2030-01-02", periods=12).date.astype(str)
+    evidence = pd.DataFrame([{"key": "mom12|fixed60", "p": 0.001, "q": 0.001,
+                              "n": 30, "status": "proven", "mean_alpha_sector": 0.03,
+                              "hit_60": 0.7}])
+    returns = pd.DataFrame({"key": "mom12|fixed60", "date": dates, "alpha_sector": 0.03,
+                            "raw_return": 0.04, "excess_spy": 0.02})
+    previous = pd.DataFrame([{"family": "sector_confluence_evidence", "key": "mom12|fixed60",
+                              "first_pass": "2030-01-01"}])
+    out = build_registry({"sector_confluence_evidence": evidence},
+                         {"sector_confluence_returns": returns}, previous, "2030-02-01")
+    candidate = out.iloc[0]
+    assert candidate["status"] == "confirmed" and candidate["confirm_n"] == 12
+
+    returns["excess_spy"] = -0.01
+    out = build_registry({"sector_confluence_evidence": evidence},
+                         {"sector_confluence_returns": returns}, previous, "2030-02-01")
+    assert out.iloc[0]["status"] == "failed"
+
+
 def test_telegram_gate_and_format():
     from datetime import date
     import pandas as pd

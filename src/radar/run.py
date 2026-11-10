@@ -18,7 +18,10 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from . import __version__, alerts, autolabel, basket, trade, diagnostics, evidence, insiders, investments, learn, research, scoring, store, telegram
+from . import (
+    __version__, alerts, autolabel, basket, trade, diagnostics, evidence, insiders,
+    investments, learn, research, scoring, sector_confluence, store, telegram,
+)
 from .classify import Classifier, train
 from .sources import fallbacks
 from .entity import Matcher, normalize
@@ -254,6 +257,21 @@ def price_tickers(extra_limit: int | None = None) -> list[str]:
     base = list(cfg["sector_etfs"].values()) + [cfg["benchmark"]]
     exp = store.read("company_exposure")
     extra = exp["ticker"].dropna().astype(str).head(extra_limit or cfg["prices"]["max_extra_tickers"]).tolist() if not exp.empty else []
+    universe = store.read("universe")
+    universe_limit = int(cfg.get("sector_confluence", {}).get("max_universe_tickers", 0))
+    if universe_limit and not universe.empty and {"ticker", "sector"}.issubset(universe.columns):
+        by_sector = [group["ticker"].dropna().astype(str).drop_duplicates().sort_values().tolist()
+                     for _, group in universe.groupby("sector", sort=True)]
+        selected = []
+        for offset in range(max((len(group) for group in by_sector), default=0)):
+            for group in by_sector:
+                if offset < len(group):
+                    selected.append(group[offset])
+                    if len(selected) == universe_limit:
+                        break
+            if len(selected) == universe_limit:
+                break
+        extra += selected
     # Kanıt motoru için: doğrudan olayı olan tüm şirketler (en yeni olaylar önce).
     ev = store.read("events")
     if not ev.empty:
@@ -385,6 +403,14 @@ def cmd_slot(args) -> None:
                     trade.refresh()
                 except Exception as exc:
                     log.warning("Ek kanıt katmanları: %s", exc)
+                try:
+                    confluence = sector_confluence.refresh()
+                    run_status["sector_confluence"] = {
+                        "ok": True, "events": len(store.read("sector_confluence_events")),
+                        "strategies": len(confluence)}
+                except Exception as exc:
+                    run_status["sector_confluence"] = {"ok": False, "error": str(exc)[:300]}
+                    log.error("Teşvik + yatırım kesişimi: %s", exc)
                 registry = research.refresh()
                 run_status["research"] = {"hypotheses": len(registry),
                                           "confirmed": int((registry["status"] == "confirmed").sum()) if not registry.empty else 0}
@@ -500,6 +526,12 @@ def weekly_learning(status: dict) -> None:
         trade.refresh()
     except Exception as exc:
         status["trade_evidence"] = {"ok": False, "error": str(exc)[:300]}
+    try:
+        confluence = sector_confluence.refresh()
+        status["sector_confluence"] = {"ok": True, "events": len(store.read("sector_confluence_events")),
+                                       "strategies": len(confluence)}
+    except Exception as exc:
+        status["sector_confluence"] = {"ok": False, "error": str(exc)[:300]}
     registry = research.refresh()
     status["research"] = {"hypotheses": len(registry),
                           "confirmed": int((registry["status"] == "confirmed").sum()) if not registry.empty else 0}
@@ -514,8 +546,15 @@ def weekly_learning(status: dict) -> None:
 def cmd_history(args) -> None:
     """Geçmiş veriyle kanıt tablosunu doldurur (backtest). Adımlar: olaylar → SIC → fiyatlar → kanıt."""
     from . import history
-    from .sources import prices
+    from .sources import etf_holdings, prices
     status: dict = {}
+    try:
+        universe = etf_holdings.fetch_universe()
+        if len(universe) > 100:
+            store.write("universe", universe)
+        status["universe"] = {"ok": True, "tickers": len(universe)}
+    except Exception as exc:
+        status["universe"] = {"ok": False, "error": str(exc)[:300]}
     try:
         status["history"] = history.run(years=args.years, budget_minutes=args.budget)
     except Exception as exc:
@@ -560,6 +599,12 @@ def cmd_history(args) -> None:
         status["trade_evidence"] = {"ok": True, **({} if tr.empty else tr["status"].value_counts().to_dict())}
     except Exception as exc:
         status["trade_evidence"] = {"ok": False, "error": str(exc)[:300]}
+    try:
+        confluence = sector_confluence.refresh()
+        status["sector_confluence"] = {"ok": True, "events": len(store.read("sector_confluence_events")),
+                                       "strategies": len(confluence)}
+    except Exception as exc:
+        status["sector_confluence"] = {"ok": False, "error": str(exc)[:300]}
     registry = research.refresh()
     status["research"] = {"hypotheses": len(registry),
                           "confirmed": int((registry["status"] == "confirmed").sum()) if not registry.empty else 0}

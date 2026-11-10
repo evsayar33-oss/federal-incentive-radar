@@ -310,6 +310,19 @@ indirir. Telegram bildirimi yoktur.
 - **Eşleşmiş kontrol:** Yatırım ve içeriden alım olaylarında getiri, aynı günlerde aynı büyüklük sınıfından (S&P 500 içi/dışı) rastgele 12 hissenin getirisine göre fazlalık olarak ölçülür (`corp_invest.matched_control`). Küçük hisselerin genel zayıflığı sonuca karışmaz.
 - **Büyüme sepeti (`basket.py`):** Haberin olduğu sektörde, olay öncesi verilerle (12-1 ay ivmesi) seçilen en güçlü 5 hissenin haberden sonraki getirisi, aynı sektörde haber olmayan günlerdeki aynı kuralla seçilmiş sepetle karşılaştırılır. Federal haber, büyük yatırım ve içeriden alım için ayrı ayrı çalışır; kanıt kapıları aynıdır (`corp_invest.gate`). Tablo: `basket_evidence`. Tümü ücretsiz fiyat verisiyle çalışır.
 
+### Teşvik + büyük yatırım kesişimi (`sector_confluence.py`)
+
+Federal teşvik ve büyük şirket yatırımı olaylarını aynı sektörde, aralarında en fazla 365 takvim günü olacak şekilde
+eşleştirir. İkinci olaydan sonra iki işlem günü bekleyerek giriş varsayar; 12-1 ay/6 ay momentum, 52 hafta zirvesine
+yakınlık, düşük oynaklık (temel kalite değil, yalnızca vekil) ve rastgele sektör hisseleri kontrolünü; sabit 20/60/120
+işlem günü çıkışları ile SMA50/azami 120 gün çıkışını karşılaştırır. Her kombinasyon `sector_confluence_evidence`
+olarak ortak `research_registry` çoklu-test ailesine girer. Adaylar, en az 12 yeni ve olgunlaşmış olayda pozitif ham
+getiri ve pozitif SPY-üstü getiri göstermeden doğrulanmış sayılmaz.
+
+Hisse evreni ücretsiz ETF/SEC listesinden gelir; fiyatlar için her sektörden dengeli, en fazla
+`sector_confluence.max_universe_tickers` sembol alınır. Bugünkü sektör sınıfları ve mevcut evren geçmişe uygulanabildiği
+için survivorship ve sınıflandırma yanlılığı kalır; bu sonuçlar yatırım tavsiyesi veya kâr garantisi değildir.
+
 ### Uzun vadeli kırılım stratejisi (`trade.py`)
 
 Gün içi işlem asistanlarının uzun vadeli (günlük mum, 60/120 gün tutma) karşılığı; ücretsiz fiyat verisiyle çalışır.
