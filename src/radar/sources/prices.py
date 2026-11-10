@@ -190,7 +190,7 @@ def fetch(tickers: list[str], period: str = "3y") -> pd.DataFrame:
         except Exception as exc:
             if _is_rate_limit(exc):
                 yahoo_rate_limited = True
-                log.warning(
+                log.info(
                     "Yahoo Chart hız sınırına ulaştı; kalan yedek fiyat istekleri durduruldu"
                 )
                 break
