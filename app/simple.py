@@ -81,6 +81,7 @@ def _invest(T) -> None:
                "doğrulamayı geçen hipotez Telegram sinyali olabilir.")
     if ev.empty:
         st.info("Henüz kanıt oluşmadı. Geçmiş veri yüklemesi ve fiyatlar sonrası ilk kapanış/haftalık çalışmada oluşur.")
+        _sector_confluence(T)
         return
     final = {}
     if not registry.empty:
@@ -145,6 +146,7 @@ def _invest(T) -> None:
     _insider(T)
     _basket(T)
     _trade(T)
+    _sector_confluence(T)
     if not sig.empty:
         st.markdown("#### Son yatırım haberleri")
         for r in sig.head(25).to_dict("records"):
@@ -213,6 +215,38 @@ def _trade(T) -> None:
         st.info("Kanıtlanmış kural olmadığı için işlem planı yok. Bu bir hata değil.")
     else:
         st.dataframe(pl, hide_index=True)
+
+
+def _sector_confluence(T) -> None:
+    ev = T("sector_confluence_evidence")
+    final = _research_family(T, "sector_confluence_evidence")
+    status_map = dict(zip(final["key"].astype(str), final["status"])) if not final.empty else {}
+    q_map = dict(zip(final["key"].astype(str), final["global_q"])) if not final.empty else {}
+    confirm_map = dict(zip(final["key"].astype(str), final["confirm_n"])) if not final.empty else {}
+    st.markdown("#### 🏛️ Teşvik + büyük yatırım sektör kesişimi")
+    st.caption("Aynı sektördeki teşvik ve büyük yatırım haberleri en fazla 365 gün arayla gelince, iki işlem günü "
+               "sonra sektördeki büyüme/kalite vekili hisselere girildiği varsayılır. Sabit 20/60/120 gün ve SMA50 çıkışları "
+               "karşılaştırılır; sonuçlar sektör ETF'i, SPY ve yakın dönem plasebosuna göre ölçülür. Bu araştırma "
+               "testidir; temel kalite ölçümü, yatırım tavsiyesi veya otomatik emir değildir.")
+    if ev.empty:
+        st.info("Henüz eşleşen olay veya ölçülebilir sonuç yok. Geçmiş veri çalışması ve fiyat havuzu gereklidir.")
+        return
+    status_labels = {"confirmed": "Doğrulandı", "candidate": "Aday · yeni olay bekleniyor",
+                     "filtered": "Çoklu testte elendi", "failed": "İleri doğrulama başarısız"}
+    top = ev.sort_values("q", na_position="last").head(20)
+    st.dataframe(pd.DataFrame({
+        "Ortak durum": [status_labels.get(status_map.get(str(k), ""), "Henüz ortak doğrulama yok") for k in top["key"]],
+        "Seçim": top["selector"].map({
+            "mom12": "12-1 ay ivme", "mom6": "6 ay ivme", "high52": "52 hf zirve",
+            "lowvol": "Düşük oynaklık (vekil)", "sector": "Rastgele sektör kontrolü"}),
+        "Çıkış": top["exit_rule"], "Olay": top["n"].astype(int),
+        "Sektör üstü": top["mean_alpha_sector"].map(D.pct),
+        "SPY üstü": top["mean_excess_spy"].map(D.pct), "Ham": top["mean_raw"].map(D.pct),
+        "Pozitif oran": top["raw_hit"].map(lambda v: D.pct(v, signed=False)),
+        "Yerel q": top["q"].round(3),
+        "Genel q": [q_map.get(str(k), float("nan")) for k in top["key"]],
+        "Yeni olay": [f"{int(confirm_map.get(str(k), 0))}/12" for k in top["key"]],
+    }), hide_index=True)
 
 
 def _works(T) -> None:
