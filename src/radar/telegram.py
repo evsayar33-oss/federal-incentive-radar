@@ -93,12 +93,19 @@ def format_signal(r: dict) -> str:
 
 def notify_investments(ev: pd.DataFrame, sig: pd.DataFrame, run_id: str) -> int:
     """Yalnızca kanıtlanmış kategorideki, yeni büyük yatırım haberlerini bildirir."""
+    from .research import confirmed_keys
+
     c = sources().get("corp_invest", {})
     allowed = set(c.get("notify_statuses", ["proven"])) & {"proven", "promising"}
     if sig is None or sig.empty or not enabled():
         return 0
     fresh = (date.today() - timedelta(days=int(c.get("max_event_age_days", 3)))).isoformat()
     s = sig[sig["status"].isin(allowed) & (sig["date"].astype(str) >= fresh)]
+    if "category" not in s:
+        return 0
+    s = s[s["category"].astype(str).isin(confirmed_keys("invest_evidence"))]
+    if s.empty:
+        return 0
     old = store.read("invest_notified")
     if not old.empty:
         s = s[~s["event_id"].astype(str).isin(set(old["event_id"].astype(str)))]
@@ -119,6 +126,8 @@ def notify_investments(ev: pd.DataFrame, sig: pd.DataFrame, run_id: str) -> int:
 
 def notify(signals: pd.DataFrame, new_ids: set[str], run_id: str) -> int:
     """Send only new, evidence-backed events and persist successfully sent notifications."""
+    from .research import confirmed_keys
+
     c = cfg()
     if signals is None or signals.empty or not new_ids:
         return 0
@@ -126,6 +135,11 @@ def notify(signals: pd.DataFrame, new_ids: set[str], run_id: str) -> int:
     fresh = (date.today() - timedelta(days=c.get("max_event_age_days", 3))).isoformat()
     s = signals[signals["event_id"].astype(str).isin(new_ids) & signals["status"].isin(allowed)
                 & (signals["date"].astype(str) >= fresh)]
+    if "evidence_key" not in s:
+        return 0
+    s = s[s["evidence_key"].astype(str).isin(confirmed_keys("evidence"))]
+    if s.empty:
+        return 0
     if "link_ok" in s.columns:
         s = s[s["link_ok"].astype(str).str.lower() != "false"]
     if c.get("min_abs_effect"):
@@ -162,13 +176,18 @@ def notify(signals: pd.DataFrame, new_ids: set[str], run_id: str) -> int:
 
 def weekly_summary(ev: pd.DataFrame) -> bool:
     """Weekly summary of evidence-backed event types and signal calibration."""
+    from . import store
+
     if not enabled() or not cfg().get("weekly_summary", True):
         return False
     lines = ["<b>📡 Haftalık rapor: etki yaratan haber türleri</b>"]
     if ev is not None and not ev.empty:
-        top = ev[ev["status"].isin(["proven", "promising"]) & ev["level"].isin(["program_kind", "kind"])].head(8)
+        registry = store.read("research_registry")
+        allowed = set(registry.loc[(registry["family"] == "evidence") & (registry["status"] == "confirmed"), "key"].astype(str)) \
+            if not registry.empty else set()
+        top = ev[ev["key"].astype(str).isin(allowed) & ev["level"].isin(["program_kind", "kind"])].head(8)
         if top.empty:
-            lines.append("Bu hafta etkisi kanıtlanan haber türü yok. Sistem veri topluyor.")
+            lines.append("Tüm araştırma kollarındaki çoklu test düzeltmesi ve ileri doğrulama kapısını geçen haber türü yok.")
         for r in top.to_dict("records"):
             lines.append(f"{E.STATUS_ICON[r['status']]} {html.escape(_key_label(r))}: "
                          f"{'+' if r['post_mean'] > 0 else '−'}{_pct(r['post_mean'])} ({r['n_clusters']} olay)")

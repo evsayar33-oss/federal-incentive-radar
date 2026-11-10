@@ -177,7 +177,11 @@ def position_size(entry: float, stop: float, equity: float | None = None, risk_p
 
 def plans(prices: pd.DataFrame, ev: pd.DataFrame, sectors: dict, news: pd.DataFrame | None) -> pd.DataFrame:
     """Bugünkü kırılımlar için işlem planı. Yalnızca kanıtlanmış (proven) kural varsa üretilir."""
+    from .research import confirmed_keys
+
     if ev is None or ev.empty or not (ev["status"] == "proven").any():
+        return pd.DataFrame()
+    if not set(ev.loc[ev["status"] == "proven", "key"].astype(str)) & confirmed_keys("trade_evidence"):
         return pd.DataFrame()
     pan = _panel(prices)
     if pan is None:
@@ -213,6 +217,16 @@ def refresh(prices: pd.DataFrame | None = None) -> pd.DataFrame:
         store.write("trade_returns", ret)
     ev = build(ret)
     store.write("trade_evidence", ev)
-    store.write("trade_plans", plans(prices, ev, sectors, news))
+    store.write("trade_plans", pd.DataFrame())
     log.info("Kırılım stratejisi: %d grup, %d kanıtlı", len(ev), int((ev["status"] == "proven").sum()) if len(ev) else 0)
     return ev
+
+
+def refresh_plans(prices: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Rebuild plans after the shared research registry has applied the global gate."""
+    prices = store.read("prices") if prices is None else prices
+    ev = store.read("trade_evidence")
+    sectors = BK.sector_map()
+    plans_df = plans(prices, ev, sectors, BK.event_frame(sectors))
+    store.write("trade_plans", plans_df)
+    return plans_df

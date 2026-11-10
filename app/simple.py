@@ -20,6 +20,14 @@ LEGEND = ("🟢 **Kanıtlandı**: geçmişte bu tür haber hisseleri belirgin ve
           "⚫ **Etkisiz**: çok örnek var, etki yok. Bu haberleri önemsemeyebilirsiniz.  \n"
           "⚪ **Belirsiz / veri birikiyor**: henüz hüküm yok.  \n"
           "🟠 **Askıda**: geçmişte kanıtlıydı ama son canlı sinyaller tutmadı.")
+RESEARCH_NAMES = {"confirmed": "Doğrulandı", "candidate": "Aday · yeni veri", "filtered": "Çoklu testte elendi",
+                  "failed": "Doğrulama başarısız", "no_effect": "Etkisiz", "collecting": "Veri birikiyor",
+                  "unclear": "Belirsiz", "suspended": "Askıda"}
+
+
+def _research_family(T, family: str) -> pd.DataFrame:
+    registry = T("research_registry")
+    return registry[registry["family"] == family] if not registry.empty else pd.DataFrame()
 
 
 def _card(r: dict) -> None:
@@ -47,6 +55,13 @@ def _today(T, sig: pd.DataFrame) -> None:
     days = c1.select_slider("Dönem", options=[3, 7, 14, 30], value=14, format_func=lambda d: f"Son {d} gün")
     show_all = c2.toggle("Kanıtsız haberleri de göster", value=False)
     feed = D.signal_feed(sig, days=days, only_strong=not show_all)
+    registry = T("research_registry")
+    confirmed = set(registry.loc[(registry["family"] == "evidence") & (registry["status"] == "confirmed"), "key"].astype(str)) \
+        if not registry.empty else set()
+    if "evidence_key" in feed:
+        feed = feed[feed["evidence_key"].astype(str).isin(confirmed)]
+    else:
+        feed = feed.iloc[0:0]
     if feed.empty:
         st.info("Bu dönemde **kanıtlı veya umut verici** bir haber yok. Bu normaldir: sistem bir haber türünü ancak "
                 "yeterli örnek birikip ileriye dönük testi de geçince öne çıkarır. Yeni sinyal olduğunda Telegram "
@@ -59,38 +74,74 @@ def _today(T, sig: pd.DataFrame) -> None:
 
 def _invest(T) -> None:
     ev, sig = T("invest_evidence"), T("invest_signals")
+    registry = T("research_registry")
     st.subheader("Büyük şirket yatırımları")
-    st.caption("Büyük şirketlerin (1 milyar $ ve üstü) yatırım duyuruları. Bir yatırım türü ancak geçmişte hissesini "
-               "60 işlem günü sonunda piyasadan (SPY) iyi performansa taşıdığı, yüksek isabetle ve ileriye dönük "
-               "sınavla kanıtlanırsa 🟢 olur.")
+    st.caption("Büyük şirketlerin (1 milyar $ ve üstü) yatırım duyuruları. Sonuçlar tüm araştırma kollarıyla birlikte "
+               "çoklu test düzeltmesinden geçer; yerel başarı yetmez. Yalnızca ortak kapıyı ve keşif sonrası ileri "
+               "doğrulamayı geçen hipotez Telegram sinyali olabilir.")
     if ev.empty:
         st.info("Henüz kanıt oluşmadı. Geçmiş veri yüklemesi ve fiyatlar sonrası ilk kapanış/haftalık çalışmada oluşur.")
         return
+    final = {}
+    if not registry.empty:
+        rows = registry[registry["family"] == "invest_evidence"]
+        final = dict(zip(rows["key"].astype(str), rows["status"]))
+    global_names = {"confirmed": "Ortak testten geçti", "candidate": "Aday · yeni veri bekleniyor",
+                    "filtered": "Çoklu test düzeltmesinde elendi", "failed": "İleri doğrulama başarısız"}
     show = pd.DataFrame({
-        "Durum": [f"{i} {n}" + (" (doğrulanmamış aday)" if c == "no" else "") for i, n, c in
-                  zip(ev["icon"], ev["status_name"], ev.get("confirmed", pd.Series([""] * len(ev))))],
+        "Ortak araştırma durumu": [global_names.get(final.get(str(k), ""), "Henüz doğrulanmadı")
+                                   for k in ev["category"]],
         "Yatırım türü": ev["category_name"],
         "Haber sayısı": ev["n"].astype(int),
         "60 gün ort. getiri": ev["mean_car_60"].map(D.pct),
         "Pozitif oran": ev["hit_60"].map(lambda v: D.pct(v, signed=False)),
         "İleriye dönük isabet": [f"{D.pct(h, signed=False)} ({int(n)})" if n and n == n else "-"
                                  for h, n in zip(ev["oos_hit"], ev["oos_n"])],
+        "Genel q": [float(registry[(registry["family"] == "invest_evidence") &
+                                    (registry["key"].astype(str) == str(k))]["global_q"].iloc[0])
+                    if not registry.empty and ((registry["family"] == "invest_evidence") &
+                                               (registry["key"].astype(str) == str(k))).any() else float("nan")
+                    for k in ev["category"]],
         "Açıklama": ev["explain"]})
     st.dataframe(show, hide_index=True)
-    if (ev["status"] == "proven").sum() == 0:
+    if not any(v == "confirmed" for v in final.values()):
         st.info("Henüz hiçbir yatırım türü kanıt eşiğini geçmedi; bu bir hata değil. Sistem örnek topluyor ve "
                 "yalnızca kanıtlanan türler Telegram'a bildirilir.")
+    if not registry.empty:
+        with st.expander("🔬 Otomatik araştırma kayıt defteri"):
+            st.caption("Tüm araştırma kolları tek Benjamini–Hochberg ailesinde düzeltilir. Yerel testte iyi görünen "
+                       "sonuçlar, ortak düzeltmeyi ve gerekli ileri doğrulamayı geçmeden kanıt/sinyal sayılmaz.")
+            label = {"evidence": "Federal haber", "invest_evidence": "Büyük yatırım",
+                     "invest_subgroups": "Yatırım alt grubu", "insider_evidence": "İçeriden alım",
+                     "insider_subgroups": "İçeriden alım alt grubu", "basket_evidence": "Büyüme sepeti",
+                     "trade_evidence": "Kırılım stratejisi"}
+            states = {"confirmed": "Doğrulandı", "candidate": "Aday · yeni veri", "filtered": "Çoklu testte elendi",
+                      "failed": "Doğrulama başarısız", "no_effect": "Etkisiz", "collecting": "Veri birikiyor",
+                      "unclear": "Belirsiz", "suspended": "Askıda"}
+            top = registry.sort_values("global_q").head(40)
+            st.dataframe(pd.DataFrame({
+                "Araştırma kolu": top["family"].map(label).fillna(top["family"]),
+                "Hipotez": top["key"], "Sonuç": top["status"].map(states).fillna(top["status"]),
+                "Olay": top["n"].astype(int), "Etki": top["effect"].map(D.pct),
+                "Genel q": top["global_q"].round(3),
+                "Yeni olay": top["confirm_n"].astype(int),
+            }), hide_index=True)
     sub = T("invest_subgroups")
     if not sub.empty:
+        final_sub = _research_family(T, "invest_subgroups")
+        final_map = dict(zip(final_sub["key"].astype(str), final_sub["status"])) if not final_sub.empty else {}
+        q_map = dict(zip(final_sub["key"].astype(str), final_sub["global_q"])) if not final_sub.empty else {}
         with st.expander("🔬 Keşif: büyüklük, kısa ufuk ve düşüş yönü (yalnızca bilgi)"):
             st.caption("Ana test sonuç vermediği için alt gruplar da denendi. Çok test yapıldığından hepsi birlikte "
                        "düzeltilir, işlem maliyeti düşülür. Kapıyı geçen grup ancak 🟡 aday olur; keşiften sonraki yeni "
                        "olaylarda da tutarsa 🟢 doğrulanır. 'kısa' = hisse düşüyor (kaçınma sinyali).")
             top = sub.sort_values("q").head(15)
             st.dataframe(pd.DataFrame({
-                "Durum": top["icon"] + " " + top["status_name"], "Grup": top["group_name"], "Ufuk": top["horizon"],
+                "Ortak durum": [RESEARCH_NAMES.get(final_map.get(str(k), ""), "Henüz ortak doğrulama yok") for k in top["key"]],
+                "Grup": top["group_name"], "Ufuk": top["horizon"],
                 "Yön": top["direction"], "Haber": top["n"].astype(int), "Ort. (maliyetli)": top["mean"].map(D.pct),
-                "İsabet": top["hit"].map(lambda v: D.pct(v, signed=False)), "q": top["q"].round(3)}), hide_index=True)
+                "İsabet": top["hit"].map(lambda v: D.pct(v, signed=False)), "Yerel q": top["q"].round(3),
+                "Genel q": [q_map.get(str(k), float("nan")) for k in top["key"]]}), hide_index=True)
     _insider(T)
     _basket(T)
     _trade(T)
@@ -105,6 +156,9 @@ def _invest(T) -> None:
 
 def _insider(T) -> None:
     ev = T("insider_evidence")
+    final = _research_family(T, "insider_evidence")
+    status_map = dict(zip(final["key"].astype(str), final["status"])) if not final.empty else {}
+    q_map = dict(zip(final["key"].astype(str), final["global_q"])) if not final.empty else {}
     st.markdown("#### 🕵️ İçeriden alımlar (SEC Form 4)")
     st.caption("Yöneticilerin kendi paralarıyla açık piyasadan hisse alması. Aynı kanıt kapıları uygulanır; veri SEC'te "
                "üç ayda bir yayınlandığı için canlı sinyal gecikmelidir.")
@@ -112,14 +166,19 @@ def _insider(T) -> None:
         st.info("Henüz içeriden alım kanıtı yok. Geçmiş veri çalışması sonrası oluşur.")
         return
     st.dataframe(pd.DataFrame({
-        "Durum": ev["icon"] + " " + ev["status_name"], "Tür": ev["category_name"], "Olay": ev["n"].astype(int),
+        "Ortak durum": [RESEARCH_NAMES.get(status_map.get(str(k), ""), "Henüz ortak doğrulama yok") for k in ev["category"]],
+        "Tür": ev["category_name"], "Olay": ev["n"].astype(int),
         "60 gün ort. getiri": ev["mean_car_60"].map(D.pct),
-        "Pozitif oran": ev["hit_60"].map(lambda v: D.pct(v, signed=False)), "Açıklama": ev["explain"]}),
+        "Pozitif oran": ev["hit_60"].map(lambda v: D.pct(v, signed=False)),
+        "Genel q": [q_map.get(str(k), float("nan")) for k in ev["category"]], "Açıklama": ev["explain"]}),
         hide_index=True)
 
 
 def _basket(T) -> None:
     ev = T("basket_evidence")
+    final = _research_family(T, "basket_evidence")
+    status_map = dict(zip(final["key"].astype(str), final["status"])) if not final.empty else {}
+    q_map = dict(zip(final["key"].astype(str), final["global_q"])) if not final.empty else {}
     st.markdown("#### 🌱 Büyüme sepeti testi")
     st.caption("Haberin olduğu sektörde, olay öncesi verilerle seçilen en güçlü 5 büyüme hissesi (12-1 ay ivme) haberden "
                "sonra, aynı sektörde haber olmayan günlere göre 60 günde ne yaptı? Tüm kanıt kapıları uygulanır.")
@@ -127,24 +186,29 @@ def _basket(T) -> None:
         st.info("Henüz sonuç yok. Geçmiş veri çalışması sonrası oluşur.")
         return
     st.dataframe(pd.DataFrame({
-        "Durum": ev["icon"] + " " + ev["status_name"], "Grup": ev["group_name"], "Olay": ev["n"].astype(int),
+        "Ortak durum": [RESEARCH_NAMES.get(status_map.get(str(k), ""), "Henüz ortak doğrulama yok") for k in ev["key"]],
+        "Grup": ev["group_name"], "Olay": ev["n"].astype(int),
         "60 gün fark": ev["mean_car_60"].map(D.pct), "Pozitif oran": ev["hit_60"].map(lambda v: D.pct(v, signed=False)),
-        "q": ev["q"].round(3)}), hide_index=True)
+        "Yerel q": ev["q"].round(3), "Genel q": [q_map.get(str(k), float("nan")) for k in ev["key"]]}), hide_index=True)
 
 
 def _trade(T) -> None:
     ev, pl = T("trade_evidence"), T("trade_plans")
+    final = _research_family(T, "trade_evidence")
+    status_map = dict(zip(final["key"].astype(str), final["status"])) if not final.empty else {}
+    q_map = dict(zip(final["key"].astype(str), final["global_q"])) if not final.empty else {}
     st.markdown("#### 📈 Uzun vadeli kırılım stratejisi")
-    st.caption("52 haftalık zirve kırılımı, 60/120 gün tutma. Kural geçmişte kanıtlanmadan işlem planı üretilmez. "
-               "Plan yalnızca bilgidir, otomatik emir yoktur; yatırım tavsiyesi değildir.")
+    st.caption("52 haftalık zirve kırılımı, 60/120 gün tutma. Ortak çoklu test ve keşif sonrası doğrulama geçilmeden "
+               "işlem planı üretilmez. Plan yalnızca bilgidir, otomatik emir yoktur; yatırım tavsiyesi değildir.")
     if ev.empty:
         st.info("Henüz sonuç yok. Geçmiş veri çalışması sonrası oluşur.")
         return
     st.dataframe(pd.DataFrame({
-        "Durum": ev["icon"] + " " + ev["status_name"], "Grup": ev["group_name"], "Gün": ev["horizon"].astype(int),
+        "Ortak durum": [RESEARCH_NAMES.get(status_map.get(str(k), ""), "Henüz ortak doğrulama yok") for k in ev["key"]],
+        "Grup": ev["group_name"], "Gün": ev["horizon"].astype(int),
         "Olay": ev["n"].astype(int), "Kontrol-ayarlı": ev["mean_car_60"].map(D.pct), "Piyasaya göre ham": ev["raw_mean"].map(D.pct),
         "MC kötü senaryo (%5)": ev["mc_p05"].map(D.pct), "MC en kötü düşüş (%95)": ev["mc_dd95"].map(lambda v: D.pct(v, signed=False)),
-        "q": ev["q"].round(3)}), hide_index=True)
+        "Yerel q": ev["q"].round(3), "Genel q": [q_map.get(str(k), float("nan")) for k in ev["key"]]}), hide_index=True)
     if pl.empty:
         st.info("Kanıtlanmış kural olmadığı için işlem planı yok. Bu bir hata değil.")
     else:
@@ -159,20 +223,29 @@ def _works(T) -> None:
     if ev.empty:
         st.info("Kanıt tablosu henüz oluşmadı. Fiyat verisi geldikten sonra ilk kapanış veya haftalık çalışmada oluşur.")
         return
-    good = D.evidence_table(ev, ["proven", "promising", "suspended"])
+    registry = T("research_registry")
+    confirmed = set(registry.loc[(registry["family"] == "evidence") & (registry["status"] == "confirmed"), "key"].astype(str)) \
+        if not registry.empty else set()
+    shown = ev.copy()
+    local_candidates = shown["status"].isin(["proven", "promising", "suspended"])
+    rejected = local_candidates & ~shown["key"].astype(str).isin(confirmed)
+    shown.loc[rejected, "status"] = "unclear"
+    shown.loc[rejected, "status_name"] = "Belirsiz · ortak doğrulama geçmedi"
+    shown.loc[rejected, "icon"] = "⚪"
+    good = D.evidence_table(shown, ["proven", "promising", "suspended"])
     st.markdown("#### 🟢🟡 Etkisi görülen haber türleri")
     if good.empty:
         st.info("Henüz hiçbir haber türü kanıt eşiğini geçmedi. Sistem her gün yeni örnek topluyor.")
     else:
         st.dataframe(good, hide_index=True)
-    bad = D.evidence_table(ev, ["no_effect"])
+    bad = D.evidence_table(shown, ["no_effect"])
     st.markdown("#### ⚫ Etkisiz olduğu görülen haber türleri (önemsemeyebilirsiniz)")
     if bad.empty:
         st.caption("Henüz yok.")
     else:
         st.dataframe(bad.drop(columns=["İleriye dönük isabet"]), hide_index=True)
     with st.expander("⚪ Henüz hüküm verilemeyen türler"):
-        st.dataframe(D.evidence_table(ev, ["unclear", "collecting"]), hide_index=True)
+        st.dataframe(D.evidence_table(shown, ["unclear", "collecting"]), hide_index=True)
     qi = T("quality_issues")
     if not qi.empty:
         with st.expander(f"🛠️ Sistemin otomatik düzelttiği hatalar ({len(qi)})"):
@@ -283,9 +356,15 @@ def render(T, J, ctx: dict) -> None:
                 "türlerini** öne çıkarır.")
     ev, sig, nt = T("evidence"), T("event_signals"), T("notifications")
     k1, k2, k3 = st.columns(3)
-    nproven = int((ev["level"].isin(["program_kind", "kind"]) & (ev["status"] == "proven")).sum()) if not ev.empty else 0
+    registry = T("research_registry")
+    confirmed_keys = set(registry.loc[(registry["family"] == "evidence") & (registry["status"] == "confirmed"), "key"].astype(str)) \
+        if not registry.empty else set()
+    nproven = int((ev["level"].isin(["program_kind", "kind"]) & ev["key"].astype(str).isin(confirmed_keys)).sum()) \
+        if not ev.empty else 0
     k1.metric("Kanıtlanmış haber türü", nproven)
     strong = D.signal_feed(sig, days=7) if not sig.empty else sig
+    strong = strong[strong["evidence_key"].astype(str).isin(confirmed_keys)] \
+        if "evidence_key" in strong else strong.iloc[0:0]
     k2.metric("Son 7 günde güçlü sinyal", len(strong))
     sc = D.bot_scorecard(nt)
     k3.metric("Telegram bot isabeti", D.pct(sc["hit"], signed=False) if sc["hit"] is not None else "bekleniyor")

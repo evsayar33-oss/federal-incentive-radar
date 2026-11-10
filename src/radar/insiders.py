@@ -165,7 +165,7 @@ def refresh(prices: pd.DataFrame | None = None) -> pd.DataFrame:
     ret = I.measure(events, prices, lag=int(cfg().get("entry_lag", 2)))
     if not ret.empty:
         store.write("insider_returns", ret)
-    ev = I.build_evidence(ret)
+    ev = I.build_evidence(ret, store.read("insider_evidence"))
     if not ev.empty:
         ev["explain"] = ev["explain"].str.replace("yatırım haberi", "içeriden alım olayı", regex=False)
     store.write("insider_evidence", ev)

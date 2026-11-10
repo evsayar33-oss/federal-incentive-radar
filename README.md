@@ -317,3 +317,12 @@ Sinyal: 52 hafta zirvesi kırılımı. Getiri piyasaya (SPY) göre, maliyet dü�
 Hayatta kalma yanlılığına karşı çift kapı: piyasaya göre ham getiri de eşiği geçmeli. "Kırılım + sektörde büyük haber"
 ayrı test edilir. Monte Carlo geçmiş işlem getirilerinden kötü senaryo ve en kötü düşüşü gösterir. Kural `proven`
 olmadan işlem planı (giriş/stop/hedef/adet; sabit risk %1, tek pozisyon ≤%20) üretilmez. Otomatik emir yoktur.
+
+### Ortak otomatik araştırma kapısı
+
+Haftalık, kapanış ve geçmiş veri çalışmaları tüm araştırma kollarındaki p-değerlerini `research_registry` tablosunda
+tek bir Benjamini–Hochberg ailesinde birleştirir. Yerel bir testte "kanıtlandı" görünen sonuç, ortak q ≤ 0,10
+kapısını ve ilgili araştırma kolunda keşif sonrası doğrulamayı geçmeden Telegram sinyali olmaz. Federal haber motorunun
+kendi walk-forward ve canlı geri besleme testleri korunur; yatırım, içeriden alım, sepet ve kırılım adayları yeni
+olaylarla ileriye dönük doğrulanır. Araştırma ve fiyat verileri ücretsiz kaynaklarla çalışır; otomatik emir verilmez.
+Bu süreç avantaj bulmayı garanti etmez; hiçbir hipotez kapıları geçmezse sistem sinyal üretmez.
