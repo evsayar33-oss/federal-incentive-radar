@@ -60,6 +60,8 @@ def test_event_feed_keeps_timestamp_and_separates_event_families():
         "Information Technology": "XLK", "Utilities": "XLU"
     })
     assert set(feed["event_family"]) == {"federal_award", "policy_regulatory", "corporate_capex"}
+    award = feed.loc[feed["event_id"] == "award-1"].iloc[0]
+    assert award["timestamp_quality"] == "action_date_proxy"
     capex = feed.loc[feed["event_id"] == "capex-1"].iloc[0]
     assert capex["known_at"] == "2026-10-25T12:30:00Z"
     assert capex["timestamp_quality"] == "exact_utc"
