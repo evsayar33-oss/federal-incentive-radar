@@ -75,3 +75,16 @@ def test_radar_first_seen_timestamp_is_normalized_to_utc():
     from radar.run import _first_seen_utc
     local = timezone(timedelta(hours=-5))
     assert _first_seen_utc(datetime(2026, 11, 12, 9, 45, tzinfo=local)) == "2026-11-12T14:45:00Z"
+
+
+def test_legacy_et_run_id_is_recovered_as_utc_first_seen():
+    from radar.event_feed import build_feed
+    events = pd.DataFrame([{
+        "event_id": "legacy-live-award", "source": "usaspending", "relevant": True,
+        "tickers": "INTC", "date": "2026-11-12",
+        "known_at": "2026-11-12T09:45_open", "program": "semiconductors",
+    }])
+    feed = build_feed(events, pd.DataFrame(), pd.DataFrame(), {})
+    row = feed.iloc[0]
+    assert row["known_at"] == "2026-11-12T14:45:00Z"
+    assert row["timestamp_quality"] == "first_seen_utc"
