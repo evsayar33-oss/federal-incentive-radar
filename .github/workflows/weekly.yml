@@ -39,5 +39,7 @@ jobs:
       - run: pip install -r requirements-etl.txt
       - run: bash .github/scripts/data_branch.sh setup
       - run: python -m radar.run weekly
+      - name: Olay bazlı araştırma akışını dışa aktar
+        run: python -m radar.event_feed
       - if: always()
         run: bash .github/scripts/data_branch.sh publish
