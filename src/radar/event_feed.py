@@ -44,7 +44,7 @@ def _extra(value) -> dict:
 
 def _known_at(value, event_date) -> tuple[str, str]:
     raw = str(value or "").strip()
-    legacy_run = re.fullmatch(r"(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2})_(?:open|midday|close)", raw)
+    legacy_run = re.fullmatch(r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})_(?:open|midday|close)", raw)
     if legacy_run:
         # Older Radar builds stored the ET run_id in known_at. Recover its
         # actual instant rather than treating it as UTC or discarding it.
