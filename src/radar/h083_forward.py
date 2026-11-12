@@ -296,7 +296,7 @@ def evidence_gate(results: pd.DataFrame,now: datetime) -> pd.DataFrame:
         stress=pd.to_numeric(valid.net_return_stress,errors="coerce").to_numpy(dtype=float)
         p=1.
         lower=float("nan")
-        if len(xs)>=MIN_MONTHS and np.isfinite(xs).all() and xs.std(ddof=1)>0:
+        if len(xs)>=MIN_MONTHS and np.isfinite(xs).all() and xs.std(ddof=1)>1e-6:
             p=float(stats.ttest_1samp(xs,0,alternative="greater").pvalue)
             lower=_bootstrap_lower(xs)
         consecutive=(len(part)>=MIN_MONTHS and len(valid)==len(part) and
@@ -414,8 +414,33 @@ def format_monthly_telegram(new: pd.DataFrame, gate: pd.DataFrame,
                   f"BH q={float(gate_row.bh_q):.3f}",
                   f"Sıradaki varsayımsal açılış: {esc(str(row['entry_session']))}",
                   f"Haberle ilişkili izleme hisseleri: {esc(', '.join(_parse_members(row)) or 'koşulu geçen yok')}"]
+        for event in json.loads(row["events_json"])[:5]:
+            lines.append(
+                f"• <code>{esc(str(event['ticker']))}</code> "
+                f"— haber: {esc(str(event['event_family']))} / {esc(str(event['category']))}"
+            )
+            url=str(event.get("source_url",""))
+            if url.startswith("https://") and len(url)<=220:
+                lines.append(f"  Kaynak: {esc(url)}")
         if approved:
-            lines.append("✅ <b>Bilgilendirme işlem planı etkin.</b> Gerçek açılış bilinmiyor; emir gönderilmedi.")
+            ready=plans[(plans.rule.eq(rule)) &
+                        (plans.side.eq("BUY_NEXT_OPEN")) &
+                        (plans.target_session.eq(row["entry_session"]))]
+            if ready.empty:
+                lines.append("⚠️ Kağıt doğrulama var; fiyat eksikliği nedeniyle işlem planı YOK.")
+            else:
+                lines.append("✅ <b>İLERİ KAĞIT TESTİNDE DOĞRULANMIŞ BİLGİ PLANI</b>")
+                for item in ready.to_dict("records"):
+                    qty=int(item["estimated_whole_shares"])
+                    lines.append(
+                        f"📋 <code>{esc(str(item['ticker']))}</code>: "
+                        f"{esc(str(item['target_session']))} NYSE açılışında "
+                        f"azami 1.990$ varsayımsal alış · "
+                        f"son kapanış {float(item['indicative_last_close']):.2f}$ · "
+                        f"tahmini {qty} tam adet · "
+                        f"çıkış {esc(str(item['exit_session']))} NYSE açılışı."
+                    )
+                lines.append("Açılış fiyatı ve gerçek gerçekleşme bilinmiyor; broker emri YOK.")
         else:
             lines.append("⛔ <b>AL/SAT SİNYALİ DEĞİL.</b> Henüz onaylı işlem planı yok.")
         lines.append("")
@@ -490,7 +515,7 @@ def run(now_utc: datetime | None = None) -> dict:
     store.write("h083_forward_gates",gate)
     store.write("h083_action_plans",plans)
     report={
-        "generated_utc":pd.Timestamp(now).tz_convert("UTC").isoformat(),
+        "ok":True,"generated_utc":pd.Timestamp(now).tz_convert("UTC").isoformat(),
         "last_complete_nyse_session":str(today.date()),"catalog_styles":44,
         "news_families":3,"monitor_rules":list(RULES),
         "research_approved_styles":0,

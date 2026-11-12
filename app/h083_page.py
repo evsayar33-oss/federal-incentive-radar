@@ -45,6 +45,13 @@ def render(T,J) -> None:
     approved=int(gate["validated_for_info_plans"].astype(str).str.lower().isin(["true","1"]).sum()) if (
         not gate.empty and "validated_for_info_plans" in gate) else 0
     c.metric("İleri kağıt testinde doğrulanan",approved)
+    if status.get("ok") is False:
+        st.error("H083 ileri izleme son çalışmasında hata oluştu. İşlem planları durduruldu; geçmiş tablolar güncel kabul edilmez.")
+    if status.get("last_complete_nyse_session"):
+        age=(pd.Timestamp.now(tz="America/New_York").normalize().tz_localize(None)-
+             pd.Timestamp(status["last_complete_nyse_session"])).days
+        if age>7:
+            st.warning("H083 verileri 7 günden eski. Kaynağı ve GitHub Actions durumunu kontrol edin.")
     if status:
         st.caption(
             f"Son ayrı ileri izleme çalışması: {status.get('last_complete_nyse_session','-')} "
@@ -151,14 +158,22 @@ def render(T,J) -> None:
             "hisse, alım/çıkış yönü, hedef NYSE seansı, önceki kapanış referansı, "
             "üst tutar, tahmini adet, olay türü ve kaynak URL."
         )
-        if plans.empty or approved==0:
-            st.info("Henüz ileriye dönük doğrulanmış H083 kuralı yok. Bu nedenle onaylı AL/SAT planı yok.")
+        active=plans.copy()
+        if not active.empty:
+            today=pd.Timestamp.now(tz="America/New_York").date().isoformat()
+            active=active[active.target_session.astype(str)>=today]
+            allowed_rules=set(gate.loc[
+                gate.validated_for_info_plans.astype(str).str.lower().isin(["true","1"]),
+                "rule"].astype(str)) if not gate.empty else set()
+            active=active[active.rule.isin(allowed_rules)]
+        if active.empty or status.get("ok") is False:
+            st.info("Şu anda doğrulanmış ve güncel H083 bilgilendirme işlem planı yok.")
         else:
             cols=[x for x in ["rule","ticker","side","target_session","exit_session",
                               "max_notional_usd","indicative_last_close",
                               "estimated_whole_shares","event_family","source_url",
-                              "expected_order_status"] if x in plans]
-            st.dataframe(plans[cols].sort_values("target_session",ascending=False).head(100),
+                              "expected_order_status"] if x in active]
+            st.dataframe(active[cols].sort_values("target_session",ascending=True).head(100),
                          hide_index=True,use_container_width=True,
                          column_config={"source_url":st.column_config.LinkColumn("Kaynak")})
         st.caption(

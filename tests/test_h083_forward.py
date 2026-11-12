@@ -156,14 +156,15 @@ def _results(n=24,with_bad=False):
     for rule in F.RULES:
         for month in pd.period_range("2027-01",periods=n,freq="M"):
             bad=(with_bad and month==pd.Period("2028-04","M"))
+            net=.03+.0004*(month.month%4)
             rows.append({
                 "cohort_id":f"{rule}-{month}","rule":rule,
                 "entry_month":str(month),"signal_session":"2026-12-31",
                 "entry_session":"2027-01-04","exit_session":"2027-02-01",
-                "n_positions":5,"net_return":.03 if not bad else np.nan,
+                "n_positions":5,"net_return":net if not bad else np.nan,
                 "spy_net_return":.005 if not bad else np.nan,
-                "excess_vs_spy":.025 if not bad else np.nan,
-                "net_return_stress":.026 if not bad else np.nan,
+                "excess_vs_spy":net-.005 if not bad else np.nan,
+                "net_return_stress":net-.004 if not bad else np.nan,
                 "complete":not bad,"failure":"MISSING" if bad else "",
                 "closed_at_utc":"2030-01-01T00:00Z",
             })
@@ -221,3 +222,35 @@ def test_two_dashboard_sources_compile():
     root=Path(__file__).resolve().parents[1]
     for name in ("app/h083_page.py","app/simple.py","app/streamlit_app.py"):
         ast.parse((root/name).read_text(encoding="utf-8"))
+
+
+def test_wrong_dst_cron_slot_does_not_publish():
+    schedule=pd.DataFrame(
+        {"market_close":[pd.Timestamp("2026-11-30T21:00:00Z")]},
+        index=[pd.Timestamp("2026-11-30")],
+    )
+    allow,why=F._active_session(
+        datetime(2026,11,30,21,20,tzinfo=timezone.utc),
+        pd.Timestamp("2026-11-30"),schedule)
+    assert not allow and why=="OUTSIDE_17_ET_AFTERCLOSE_SLOT"
+    ok,why=F._active_session(
+        datetime(2026,11,30,22,20,tzinfo=timezone.utc),
+        pd.Timestamp("2026-11-30"),schedule)
+    assert ok and why=="AFTER_NYSE_CLOSE"
+
+
+def test_exchange_calendar_reads_real_nyse_holidays():
+    today,schedule,index=F._calendar(datetime(2026,11,26,23,tzinfo=timezone.utc))
+    assert pd.Timestamp("2026-11-26") not in index # Thanksgiving
+    assert pd.Timestamp("2026-11-27") in index
+
+
+def test_report_labels_trade_plan_as_information_not_execution():
+    c=_cohorts()
+    text=F.format_monthly_telegram(c,F.evidence_gate(_results(24),NOW),
+                                   F.create_plans(pd.Timestamp("2026-11-30"),NOW,c,
+                                   _watch(),_bars(),F.evidence_gate(_results(24),NOW),
+                                   pd.DataFrame(columns=F.PLAN_COLS)))
+    assert "Gerçek" not in text or "gerçek" in text.lower()
+    assert "broker emri YOK" in text
+    assert "EXIT" not in text or "çıkış" in text
