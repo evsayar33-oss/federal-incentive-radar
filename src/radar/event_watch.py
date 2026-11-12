@@ -68,7 +68,7 @@ def eligible_events(feed: pd.DataFrame, now_utc: datetime) -> pd.DataFrame:
     known = pd.to_datetime(work["known_at"], errors="coerce", utc=True, format="mixed")
     # Never promote a date proxy; date_only is an explicitly known event date.
     explicit = work["timestamp_quality"].isin({"exact_utc", "first_seen_utc"})
-    has_zone = work["known_at"].astype(str).str.contains(r"(Z|[+-]\d{2}:?\d{2})$", regex=True, na=False)
+    has_zone = work["known_at"].astype(str).str.contains(r"(?:Z|[+-]\d{2}:?\d{2})$", regex=True, na=False)
     work = work.loc[(~explicit) | (has_zone & known.notna() & known.le(now))].copy()
     work["evidence_scope"] = np.where(
         work["timestamp_quality"].eq("first_seen_utc"), "FORWARD_ONLY", "SOURCE_DATED"
