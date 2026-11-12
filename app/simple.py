@@ -403,7 +403,7 @@ def render(T, J, ctx: dict) -> None:
     sc = D.bot_scorecard(nt)
     k3.metric("Telegram bot isabeti", D.pct(sc["hit"], signed=False) if sc["hit"] is not None else "bekleniyor")
     tabs = st.tabs(["🔔 Bugün", "✅ İşe yarayan haberler", "🏭 Büyük yatırımlar", "🔎 Hisse sorgula", "🤖 Telegram",
-                    "❓ Nasıl okunur?"])
+                    "❓ Nasıl okunur?", "🔬 H083: Haber & İşlem"])
     with tabs[0]:
         _today(T, sig)
     with tabs[1]:
@@ -417,18 +417,6 @@ def render(T, J, ctx: dict) -> None:
     with tabs[5]:
         _guide()
 
-    with st.expander("🔬 H083 — Hisse izleme adayları (doğrulanmış alım sinyali değil)", expanded=False):
-        watch = T("event_watch_candidates")
-        status = J("event_watch_status")
-        st.caption("Geçmiş araştırma: düşük-beta ve ATR sıkışması. SPY'a karşı alpha kanıtlanmadı; "
-                   "bunlar yatırım tavsiyesi veya emir değildir.")
-        if status:
-            st.caption(f"Son gösterge seansı: {status.get('feature_asof', '-')} · "
-                       f"Değerlendirilen hisse: {status.get('eligible_tickers', 0)} · "
-                       f"İzleme adayı: {status.get('candidates', 0)}")
-        if watch.empty:
-            st.info("Geçmiş veri / kaynak saatleri veya likidite koşulları henüz yeterli olmayabilir.")
-        else:
-            fields = ["rule", "rank", "ticker", "beta126", "mom63", "dollar_volume20",
-                      "market_regime", "category", "event_date", "evidence_scope", "status"]
-            st.dataframe(watch[[c for c in fields if c in watch.columns]], hide_index=True)
+    with tabs[6]:
+        import h083_page
+        h083_page.render(T, J)

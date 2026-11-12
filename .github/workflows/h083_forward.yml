@@ -1,0 +1,48 @@
+name: H083 — NYSE after-close forward research and conditional paper plans
+
+# Run at 17:20 NY time; two UTC cron expressions for DST.
+# The Python guard skips the incorrect UTC slot, holidays and pre-close runs.
+on:
+  schedule:
+    - cron: "20 21 * * 1-5"  # 17:20 EDT
+    - cron: "20 22 * * 1-5"  # 17:20 EST
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: radar-data
+  cancel-in-progress: false
+
+jobs:
+  forward-paper-watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      PYTHONPATH: src
+      RADAR_STORE: store
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RUN_LABEL: h083-forward
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-etl.txt
+      - name: Install existing ETL dependencies and NYSE calendar
+        run: |
+          python -m pip install -r requirements-etl.txt
+          python -m pip install 'pandas_market_calendars>=4.4,<6'
+      - name: Mount historical Radar tables from data branch
+        run: bash .github/scripts/data_branch.sh setup
+      - name: Refresh as-observed event/ticker feed
+        run: python -m radar.event_feed
+      - name: Freeze prospective monthly decisions; capture fills; evaluate evidence; notify
+        run: python -m radar.h083_forward
+      - name: Publish audited research tables
+        if: always()
+        run: bash .github/scripts/data_branch.sh publish

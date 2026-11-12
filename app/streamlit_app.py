@@ -77,7 +77,7 @@ def expert_view() -> None:
     st.caption(f"Son çalışma: **{ctx.get('run_id', '-')}** · sürüm {ctx.get('version', '-')} · "
                "Kaynaklar: Federal Register, Congress.gov, USAspending (hibe, kredi, sözleşme), Grants.gov, SEC EDGAR, "
                f"Treasury DTS, FRED, BEA, GDELT/Google News · Yayılma: {ctx.get('spillover', '-')}")
-    tabs = st.tabs(["Özet", "Boru hattı", "Sektörler", "Şirketler", "Ödemeler", "Uyarılar", "Model karnesi", "Kanıt motoru", "Etiketleme"])
+    tabs = st.tabs(["Özet", "Boru hattı", "Sektörler", "Şirketler", "Ödemeler", "Uyarılar", "Model karnesi", "Kanıt motoru", "Etiketleme", "H083 · Haber & İşlem"])
 
     # ---------------------------------------------------------------- 1. ÖZET
     with tabs[0]:
@@ -303,18 +303,6 @@ def expert_view() -> None:
             st.dataframe(er.sort_values("date", ascending=False).head(300), hide_index=True)
 
 
-        with st.expander("H083 araştırma izleme adayları — kârlı olay/işlem kanıtı değil", expanded=False):
-            watch = T("event_watch_candidates")
-            watch_state = J("event_watch_status")
-            st.caption("H083 aylık düşük-beta ve ATR sıkışması hisse seçim kuralları; "
-                       "üretim onayı veya otomatik alım/satım yok.")
-            if watch_state:
-                st.json(watch_state, expanded=False)
-            if not watch.empty:
-                st.dataframe(watch, hide_index=True)
-            else:
-                st.info("Geçerli izleme adayı veya fiyat verisi henüz bulunamadı.")
-
     # ---------------------------------------------------------------- 9. ETİKETLEME
     with tabs[8]:
         st.subheader("Etiketleme — sisteme öğretin")
@@ -381,6 +369,11 @@ def expert_view() -> None:
                     st.error(res)
             st.download_button("⬇️ Etiketleri indir (jsonl)", "\n".join(json.dumps(x, ensure_ascii=False) for x in new_labels),
                                file_name="labels_new.jsonl")
+
+
+    with tabs[9]:
+        import h083_page
+        h083_page.render(T, J)
 
 
 if mode.startswith("🟢"):
