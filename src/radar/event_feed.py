@@ -25,8 +25,11 @@ def _truthy(value) -> bool:
 
 
 def _tickers(value) -> list[str]:
+    if value is None or pd.isna(value):
+        return []
     return list(dict.fromkeys(
-        x.strip().upper() for x in str(value or "").split(",") if x.strip()
+        x.strip().upper() for x in str(value).split(",")
+        if x.strip() and x.strip().lower() != "nan"
     ))
 
 
