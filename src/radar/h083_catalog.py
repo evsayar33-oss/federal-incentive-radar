@@ -42,12 +42,30 @@ EVENT_STYLES = [
     ("plant_trend",(5,20),"Fabrika yatırımı ile fiyat trendini birleştirme."),
 ]
 ATR_EXITS = [
-    ("baseline","atr_bracket","ATR tabanlı stop ve kâr alma eşikleri."),
-    ("baseline","atr_trail","ATR tabanlı takip eden stop."),
-    ("breakout_20","atr_bracket","20 günlük kırılım + ATR stop/hedef."),
-    ("pullback_rsi2","atr_bracket","RSI2 geri çekilme + ATR stop/hedef."),
-    ("risk_on","atr_trail","Risk-on rejimi + ATR takip stopu."),
+    ("baseline","atr_bracket","Girişten -2×ATR14 stop / +3×ATR14 hedef; aynı mumda stop önce."),
+    ("baseline","atr_trail","-2×ATR14 başlangıç stopu; kapanıştan sonra stop yalnız ertesi seansa yükselir."),
+    ("breakout_20","atr_bracket","20 günlük kırılım; girişten -2×ATR stop / +3×ATR hedef."),
+    ("pullback_rsi2","atr_bracket","RSI2<10 geri çekilme; girişten -2×ATR stop / +3×ATR hedef."),
+    ("risk_on","atr_trail","SPY SMA200 risk-on; -2×ATR takip stopu."),
 ]
+
+# These are frozen H083 study entry rules, *not* currently deployed Radar triggers.
+EVENT_ENTRY = {
+    "baseline":"Haberin bilindiği ilk uygun NYSE açılışı (premarket haber aynı gün olabilir).",
+    "delay_3":"Haberin ilk uygun açılışından üç işlem seansı sonra açılış.",
+    "confirmation":"İlk uygun gün yükseliş kapanışı/mum teyidi varsa sonraki açılış.",
+    "breakout_20":"Haberi izleyen en fazla 10 seansta önceki 20g zirvesi üstü kapanış → ertesi açılış.",
+    "pullback_rsi2":"En fazla 10 seansta RSI(2)<10 olursa ertesi açılış.",
+    "dip_3d":"En fazla 10 seansta üç günlük düşüş >%4 olursa ertesi açılış.",
+    "momentum_20":"Olaydan önceki 20 seans pozitif fiyat getirisi varsa ilk uygun açılış.",
+    "trend_50":"Önceki kapanış SMA50 üstünde, SMA50 yükseliyorsa ilk uygun açılış.",
+    "low_beta":"Önceki 126g SPY betası 0–1 ise ilk uygun açılış.",
+    "liquid_5m":"Önceki 20g ortalama dolar hacmi ≥5M$ ise ilk uygun açılış.",
+    "risk_on":"SPY önceki kapanışı SMA200 üstündeyse ilk uygun açılış.",
+    "sector_rs":"Sektör ETF'i son 20g SPY'dan güçlüyse ilk uygun açılış.",
+    "plant":"Yalnız fabrika yatırımı duyurusu; ilk uygun açılış.",
+    "plant_trend":"Yalnız fabrika yatırımı ve yükselen SMA50; ilk uygun açılış.",
+}
 ROTATIONS = [
     ("weekly_3m_mom","Haftalık","3 aylık momentum liderleri.",False),
     ("weekly_trend_50","Haftalık","50 günlük trend liderleri.",False),
@@ -68,13 +86,13 @@ def catalog() -> pd.DataFrame:
         for hold in horizons:
             rows.append({"track":"HABER SONRASI","rule":f"{name}/{hold}/time",
                          "family":"Tüm uygun kaynak haberler" if not name.startswith("plant") else "corporate_capex/plant",
-                         "logic":meaning,"entry":"Haber sonrası gözlenebilir kapanış → sonraki uygun açılış",
+                         "logic":meaning,"entry":EVENT_ENTRY[name],
                          "exit":f"{hold} işlem günü","monitoring":"RESEARCH_ONLY",
                          "certified_alpha":False})
     for name,exit_type,meaning in ATR_EXITS:
         rows.append({"track":"HABER SONRASI","rule":f"{name}/20/{exit_type}",
                      "family":"Tüm uygun kaynak haberler","logic":meaning,
-                     "entry":"Haber sonrası gözlenebilir kapanış → sonraki uygun açılış",
+                     "entry":EVENT_ENTRY[name],
                      "exit":exit_type,"monitoring":"RESEARCH_ONLY","certified_alpha":False})
     for name,freq,meaning,watched in ROTATIONS:
         rows.append({"track":"HİSSE ROTASYONU","rule":name,"family":"Olayla ilişkilendirilmiş hisse evreni",
