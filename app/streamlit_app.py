@@ -302,6 +302,19 @@ def expert_view() -> None:
             st.markdown("**Olay başına anormal getiriler** (son 300)")
             st.dataframe(er.sort_values("date", ascending=False).head(300), hide_index=True)
 
+
+        with st.expander("H083 araştırma izleme adayları — kârlı olay/işlem kanıtı değil", expanded=False):
+            watch = T("event_watch_candidates")
+            watch_state = J("event_watch_status")
+            st.caption("H083 aylık düşük-beta ve ATR sıkışması hisse seçim kuralları; "
+                       "üretim onayı veya otomatik alım/satım yok.")
+            if watch_state:
+                st.json(watch_state, expanded=False)
+            if not watch.empty:
+                st.dataframe(watch, hide_index=True)
+            else:
+                st.info("Geçerli izleme adayı veya fiyat verisi henüz bulunamadı.")
+
     # ---------------------------------------------------------------- 9. ETİKETLEME
     with tabs[8]:
         st.subheader("Etiketleme — sisteme öğretin")
