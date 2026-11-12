@@ -115,3 +115,30 @@ def test_no_future_event_date():
     future = _feed()
     future.loc[0, "event_date"] = "2026-11-13"
     assert eligible_events(future, NOW).empty
+
+
+def test_runner_clears_stale_candidates_when_feed_is_unavailable(tmp_path, monkeypatch):
+    import radar.event_watch as watch
+    from datetime import datetime as ActualDateTime
+
+    class AfterCloseClock(ActualDateTime):
+        @classmethod
+        def now(cls, tz=None):
+            return ActualDateTime(2026, 11, 12, 22, 0, tzinfo=timezone.utc)
+
+    observed = {}
+    monkeypatch.setattr(watch, "datetime", AfterCloseClock)
+    monkeypatch.setattr(watch, "store_dir", lambda: tmp_path)
+    monkeypatch.setattr(watch.store, "write", lambda name, data: observed.setdefault(name, data))
+    monkeypatch.setattr(watch.store, "save_json", lambda name, obj: observed.setdefault(name, obj))
+    assert watch.run() == 0
+    assert observed["event_watch_candidates"].empty
+    assert observed["event_watch_status"]["ok"] is False
+
+
+def test_both_dashboard_views_are_syntactically_valid():
+    import ast
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    for path in ("app/simple.py", "app/streamlit_app.py"):
+        ast.parse((root / path).read_text(encoding="utf-8"))
