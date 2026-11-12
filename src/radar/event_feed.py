@@ -6,6 +6,7 @@ with a directly matched listed ticker and preserves source timestamps when known
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -43,6 +44,12 @@ def _extra(value) -> dict:
 
 def _known_at(value, event_date) -> tuple[str, str]:
     raw = str(value or "").strip()
+    legacy_run = re.fullmatch(r"(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2})_(?:open|midday|close)", raw)
+    if legacy_run:
+        # Older Radar builds stored the ET run_id in known_at. Recover its
+        # actual instant rather than treating it as UTC or discarding it.
+        ts = pd.Timestamp(legacy_run.group(1)).tz_localize("America/New_York").tz_convert("UTC")
+        return ts.strftime("%Y-%m-%dT%H:%M:%SZ"), "exact_utc"
     if raw and raw.lower() not in {"nan", "nat", "none"}:
         ts = pd.to_datetime(raw, utc=True, errors="coerce")
         if not pd.isna(ts) and ("T" in raw or " " in raw):
