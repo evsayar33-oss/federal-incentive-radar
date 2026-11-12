@@ -262,16 +262,16 @@ def run() -> int:
     if et.time() < time(16, 0):
         print("[event-watch] pre-close skip; no update")
         return 0
-    feed_path = store_dir() / "event_trade_feed.csv"
-    if not feed_path.exists():
-        raise FileNotFoundError(f"Event feed missing: {feed_path}")
-    feed = pd.read_csv(feed_path, low_memory=False)
-    eligible = eligible_events(feed, now)
-    # Deterministic and transparent cap; most recently observed source events first.
-    eligible = eligible.sort_values(["event_date", "_known_sort", "ticker"], ascending=False)
-    capped = eligible.head(MAX_TICKERS)
-    universe = ["SPY"] + sorted(capped["ticker"].unique().tolist())
     try:
+        feed_path = store_dir() / "event_trade_feed.csv"
+        if not feed_path.exists():
+            raise FileNotFoundError(f"Event feed missing: {feed_path}")
+        feed = pd.read_csv(feed_path, low_memory=False)
+        eligible = eligible_events(feed, now)
+        # Deterministic and transparent cap; most recently observed source events first.
+        eligible = eligible.sort_values(["event_date", "_known_sort", "ticker"], ascending=False) if not eligible.empty else eligible
+        capped = eligible.head(MAX_TICKERS)
+        universe = ["SPY"] + sorted(capped["ticker"].unique().tolist())
         bars = download_daily_bars(universe)
         result, audit, status = evaluate_watch(capped, bars, now)
         status["universe_capped"] = int(max(0, len(eligible) - len(capped)))
