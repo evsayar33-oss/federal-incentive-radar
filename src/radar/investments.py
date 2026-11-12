@@ -48,7 +48,7 @@ def _store_events(df: pd.DataFrame) -> int:
     else:
         known = df["known_at"].fillna("").astype(str).str.strip()
         df["known_at"] = known.where(known != "", df["date"].astype(str))
-    store.upsert("invest_events", df, "event_id", keep="first")
+    store.upsert("invest_events", df, "event_id", keep="last")
     return len(df)
 
 
