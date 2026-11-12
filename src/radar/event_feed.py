@@ -78,6 +78,8 @@ def build_feed(
         # date. Only live Radar first-seen timestamps (exact UTC) are executable evidence.
         if source == "usaspending" and quality == "date_only":
             quality = "action_date_proxy"
+        elif source in {"usaspending", "federal_register", "congress"} and quality == "exact_utc":
+            quality = "first_seen_utc"
         amount = pd.to_numeric(row.get("amount_usd"), errors="coerce")
         for ticker in tickers:
             sector = sector_by_ticker.get(ticker, "")
