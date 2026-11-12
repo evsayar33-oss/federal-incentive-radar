@@ -293,6 +293,14 @@ def update_prices(prices_mod, period: str) -> None:
 
 # ---------------------------------------------------------------- işleme
 
+def _first_seen_utc(now_utc: datetime | None = None) -> str:
+    """UTC timestamp for the first time Radar observes a newly ingested event."""
+    now = now_utc or datetime.now(ZoneInfo("UTC"))
+    if now.tzinfo is None:
+        raise ValueError("now_utc must be timezone-aware")
+    return now.astimezone(ZoneInfo("UTC")).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def process(raw: pd.DataFrame, run_id: str, asof: date, slot: str, run_status: dict,
             write_ledger: bool) -> None:
     labels = load_labels()
@@ -301,7 +309,8 @@ def process(raw: pd.DataFrame, run_id: str, asof: date, slot: str, run_status: d
     old_ids = set(old["event_id"].astype(str)) if not old.empty else set()
     if raw is not None and not raw.empty:
         raw = raw.copy()
-        raw["known_at"] = raw["known_at"].replace("", None).fillna(run_id)
+        # run_id is America/New_York for logs; never reuse it as a UTC market timestamp.
+        raw["known_at"] = raw["known_at"].replace("", None).fillna(_first_seen_utc())
         if old_ids:  # ilk görülme zamanı korunur (geriye dönük test sızıntısını önler)
             first_seen = dict(zip(old["event_id"].astype(str), old["known_at"].astype(str)))
             raw["known_at"] = [first_seen.get(str(i), k) for i, k in zip(raw["event_id"], raw["known_at"])]

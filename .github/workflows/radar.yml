@@ -67,6 +67,8 @@ jobs:
             telegram-test) python -m radar.run telegram-test ;;
             *)         python -m radar.run slot --slot "$MODE" --force ;;
           esac
+      - name: Olay bazlı araştırma akışını dışa aktar
+        run: python -m radar.event_feed
       - name: Veriyi yayımla
         if: always()
         run: bash .github/scripts/data_branch.sh publish

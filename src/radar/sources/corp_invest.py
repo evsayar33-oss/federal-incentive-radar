@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 import re
 import xml.etree.ElementTree as ET
-from datetime import date, timedelta
+from datetime import date, timedelta, timezone
 from email.utils import parsedate_to_datetime
 
 import pandas as pd
@@ -73,13 +73,17 @@ def parse_rss(xml_text: str, query: str, universe_matcher: Matcher | None, min_u
         if not ticker:
             continue
         try:
-            d = parsedate_to_datetime(it.findtext("pubDate") or "").date().isoformat()
-        except (TypeError, ValueError):
+            published = parsedate_to_datetime(it.findtext("pubDate") or "")
+            if published.tzinfo is None:
+                published = published.replace(tzinfo=timezone.utc)
+            published_utc = published.astimezone(timezone.utc)
+        except (TypeError, ValueError, OverflowError):
             continue
         link = (it.findtext("link") or "").strip()
         rows.append(schema.event(
-            "corp_invest", link or title, 7, d, title, text=title, url=link, agency=publisher,
-            amount_usd=amount, amount_type="private_investment", recipient=company, tickers=ticker,
+            "corp_invest", link or title, 7, published_utc.date().isoformat(), title, text=title, url=link,
+            agency=publisher, amount_usd=amount, amount_type="private_investment", recipient=company,
+            tickers=ticker, known_at=published_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
             extra={"category": category(title), "query": query, "match": method, "kind": "corp_invest"}))
     return rows
 
