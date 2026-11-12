@@ -22,6 +22,10 @@ def render(T,J) -> None:
         "Radar'da yalnızca düşük-beta ve volatilite sıkışması izleniyor. "
         "Bunlar bugün için AL/SAT sinyali değildir."
     )
+    st.caption("H083 tarihsel örnek: aylık düşük beta net +%60,09 / maksimum düşüş -%16,62; "
+               "ATR sıkışması net +%51,75 / maksimum düşüş -%15,11; SPY net +%107,00. "
+               "Bu rakamlar daha önce görülmüş 2023–2026 backtest dönemine aittir; "
+               "hiçbiri SPY üstünlüğünü istatistiksel olarak kanıtlamaz.")
     st.caption(
         "Haber, hisse evrenine neden dahil edildiğini açıklar; o haberin getiri "
         "sağladığı anlamına gelmez. 2 izleme modeli, 44 araştırma stilinin tümü değildir."

@@ -397,6 +397,7 @@ def format_monthly_telegram(new: pd.DataFrame, gate: pd.DataFrame,
            "H083 kapsamı: 34 haber sonrası işlem varyasyonu + 10 hisse rotasyonu = 44 deney.",
            "3 haber ailesi: şirket büyük yatırımı; federal hibe/kredi/sözleşme; kanun/düzenleme.",
            "Haber seçime kaynak olabilir, tek başına fiyat etkisi veya kâr kanıtı değildir.",
+           "Tarihsel H083: düşük beta +%60,09, ATR sıkışması +%51,75, SPY +%107,00. İstatistiksel alpha KANITLANMADI.",
            "İzlemede yalnız 2 aylık yöntem: düşük beta ve volatilite sıkışması.",
            ""]
     for row in new.to_dict("records"):
@@ -444,6 +445,20 @@ def format_monthly_telegram(new: pd.DataFrame, gate: pd.DataFrame,
         else:
             lines.append("⛔ <b>AL/SAT SİNYALİ DEĞİL.</b> Henüz onaylı işlem planı yok.")
         lines.append("")
+    # Approved plan exits from a previous month remain due even if the research
+    # gate has subsequently been suspended. Never suppress an exit reminder.
+    upcoming=set(new.entry_session.astype(str))
+    if not plans.empty:
+        due=plans[plans.side.eq("EXIT_NEXT_MONTH_OPEN") &
+                  plans.target_session.astype(str).isin(upcoming)]
+        if not due.empty:
+            lines.append("<b>📤 Önceden planlanan çıkışlar (bilgi amaçlı)</b>")
+            for item in due.to_dict("records")[:10]:
+                lines.append(
+                    f"• <code>{esc(str(item['ticker']))}</code> "
+                    f"{esc(str(item['target_session']))} NYSE açılışında "
+                    f"önceden tanımlanmış kağıt pozisyon çıkışı; gerçek emir YOK."
+                )
     lines += ["Not: Tam nakit portföy 10.000$, örnek pozisyon 1.990$, Midas varsayımı "
               "1,50$ alış + 1,50$ satış ve yön başına 5 baz puan kayma.",
               "Kaynak/veri eksikliği ayları başarısız kabul edilir; geçmiş H083 kârları ileri kanıta eklenmez.",

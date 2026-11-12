@@ -254,3 +254,39 @@ def test_report_labels_trade_plan_as_information_not_execution():
     assert "Gerçek" not in text or "gerçek" in text.lower()
     assert "broker emri YOK" in text
     assert "EXIT" not in text or "çıkış" in text
+
+
+def test_full_month_end_runner_is_reproducible_without_network(tmp_path,monkeypatch):
+    import radar.h083_forward as module
+    feed=pd.DataFrame([{
+        "event_id":"capex:1","event_family":"corporate_capex",
+        "source":"corp_invest","ticker":"ACME","category":"plant",
+        "event_date":"2026-10-01","known_at":"2026-10-01T14:00:00Z",
+        "timestamp_quality":"exact_utc","url":"https://example.org/invest",
+    }])
+    feed.to_csv(tmp_path/"event_trade_feed.csv",index=False)
+    sch=pd.DataFrame({"market_close":[pd.Timestamp("2026-11-30T21:00:00Z")]},
+                     index=[pd.Timestamp("2026-11-30")])
+    saved={}
+    monkeypatch.setattr(module,"store_dir",lambda:tmp_path)
+    monkeypatch.setattr(module,"_calendar",lambda now:(pd.Timestamp("2026-11-30"),sch,_index()))
+    monkeypatch.setattr(module,"_active_session",lambda *args:(True,"MOCKED_AFTERCLOSE"))
+    monkeypatch.setattr(module.W,"download_daily_bars",lambda tickers,period:_bars())
+    monkeypatch.setattr(module.W,"evaluate_watch",
+        lambda *args,**kwargs:(_watch(),pd.DataFrame(columns=["ticker","reason"]),
+                              {"ok":True,"feature_asof":"2026-11-30"}))
+    monkeypatch.setattr(module.store,"read",lambda key:saved.get(key,pd.DataFrame()))
+    monkeypatch.setattr(module.store,"write",lambda key,val:saved.__setitem__(key,val.copy()))
+    monkeypatch.setattr(module.store,"save_json",lambda key,val:saved.__setitem__(key,val.copy()))
+    messages=[]
+    monkeypatch.setattr(module,"_notify",lambda *args:messages.append(1))
+    first=module.run(NOW)
+    assert first["cohorts_frozen_this_run"]==2
+    assert first["information_only"] and not first["broker_ordering"]
+    assert len(saved["h083_forward_cohorts"])==2
+    assert len(saved["h083_style_catalog"])==44
+    assert len(saved["h083_news_catalog"])==3
+    assert saved["h083_action_plans"].empty
+    second=module.run(NOW)
+    assert second["cohorts_frozen_this_run"]==0
+    assert len(saved["h083_forward_cohorts"])==2
