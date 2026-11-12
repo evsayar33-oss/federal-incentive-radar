@@ -290,3 +290,37 @@ def test_full_month_end_runner_is_reproducible_without_network(tmp_path,monkeypa
     second=module.run(NOW)
     assert second["cohorts_frozen_this_run"]==0
     assert len(saved["h083_forward_cohorts"])==2
+
+
+def test_long_telegram_bulletin_is_split_without_broken_html():
+    msg="\n".join(["<b>H083</b> aday · haber / kural / işlem"]*280)
+    chunks=F._telegram_chunks(msg)
+    assert len(chunks)>=2
+    assert all(len(x)<=3500 for x in chunks)
+    assert "\n".join(chunks)==msg
+
+
+def test_telegram_multipart_retries_only_unsent_part(monkeypatch):
+    import radar.telegram as TG
+    old=[]
+    calls=[]
+    monkeypatch.setattr(TG,"enabled",lambda:True)
+    def send(message):
+        calls.append(message)
+        return len(calls)!=2
+    monkeypatch.setattr(TG,"send",send)
+    monkeypatch.setattr(F,"format_monthly_telegram",
+                        lambda *args:"a"*2600+"\n"+"b"*2600)
+    monkeypatch.setattr(F,"_read",lambda name,cols:pd.DataFrame(old,columns=cols))
+    def upsert(name,new,key):
+        old.extend(new.to_dict("records"))
+    monkeypatch.setattr(F.store,"upsert",upsert)
+    cohort=_cohorts()
+    gate=F.evidence_gate(pd.DataFrame(columns=F.RESULT_COLS),NOW)
+    plans=pd.DataFrame(columns=F.PLAN_COLS)
+    F._notify(cohort,gate,plans,NOW)
+    assert len(old)==1
+    assert len(calls)==2
+    F._notify(cohort,gate,plans,NOW)
+    assert len(old)==2
+    assert len(calls)==3

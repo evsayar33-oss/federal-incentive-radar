@@ -466,22 +466,47 @@ def format_monthly_telegram(new: pd.DataFrame, gate: pd.DataFrame,
     return "\n".join(lines)
 
 
+def _telegram_chunks(message: str, limit: int = 3500) -> list[str]:
+    """Keep Telegram HTML lines whole; send limits include escaped markup."""
+    chunks=[]
+    current=[]
+    current_len=0
+    for line in message.split("\n"):
+        if len(line)>limit:
+            raise ValueError("Telegram report line exceeds safe HTML limit")
+        additional=len(line)+(1 if current else 0)
+        if current and current_len+additional>limit:
+            chunks.append("\n".join(current))
+            current=[]
+            current_len=0
+        current.append(line)
+        current_len+=len(line)+(1 if len(current)>1 else 0)
+    if current:
+        chunks.append("\n".join(current))
+    return chunks
+
+
 def _notify(new: pd.DataFrame, gates: pd.DataFrame, plans: pd.DataFrame, now:datetime):
     if new.empty:
         return
     from . import telegram
-    key="|".join(sorted(new.cohort_id.astype(str)))
+    base="|".join(sorted(new.cohort_id.astype(str)))
     sent=_read("h083_telegram_sent",["message_key","sent_utc"])
-    if key in set(sent.message_key.astype(str)):
-        return
     if not telegram.enabled():
         LOG.info("H083 monthly research bulletin ready; Telegram not configured")
         return
-    msg=format_monthly_telegram(new,gates,plans)
-    if telegram.send(msg):
-        store.upsert("h083_telegram_sent",pd.DataFrame([{
-            "message_key":key,"sent_utc":pd.Timestamp(now).tz_convert("UTC").isoformat()
-        }]),"message_key")
+    for part_no,body in enumerate(_telegram_chunks(format_monthly_telegram(new,gates,plans))):
+        key=f"{base}|part:{part_no}"
+        if key in set(sent.message_key.astype(str)):
+            continue
+        if telegram.send(body):
+            added=pd.DataFrame([{"message_key":key,
+                                "sent_utc":pd.Timestamp(now).tz_convert("UTC").isoformat()}])
+            store.upsert("h083_telegram_sent",added,"message_key")
+            sent=pd.concat([sent,added],ignore_index=True)
+        else:
+            # The next same-session scheduled retry resumes at the failed part.
+            break
 
 
 def run(now_utc: datetime | None = None) -> dict:
