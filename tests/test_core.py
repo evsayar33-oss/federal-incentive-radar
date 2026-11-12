@@ -473,13 +473,15 @@ def test_history_windows_resume_and_known_at():
     from radar import history, schema, store
     w = history.windows(date(2024, 1, 1), date(2024, 3, 31), 31)
     assert w[0][0] == date(2024, 1, 1) and w[-1][1] == date(2024, 3, 31) and all(a <= b for a, b in w)
-    calls = []
+    calls, created_ids = [], []
 
     def fake(src, a, b):
         calls.append((src, a))
-        return schema.frame([schema.event(src, f"{src}-{a}", 5, a.isoformat(), "Energy grant award",
-                                          text="grid resilience grant", amount_usd=5e7, amount_type="obligation",
-                                          recipient="CITY OF PHOENIX")])
+        row = schema.event(src, f"{src}-{a}", 5, a.isoformat(), "Energy grant award",
+                           text="grid resilience grant", amount_usd=5e7, amount_type="obligation",
+                           recipient="CITY OF PHOENIX")
+        created_ids.append(row["event_id"])
+        return schema.frame([row])
     old = history._fetch
     history._fetch = fake
     try:
@@ -490,8 +492,9 @@ def test_history_windows_resume_and_known_at():
         history._fetch = old
     assert s1["windows_done"] == n1 > 0 and s2["windows_done"] == 0 and len(calls) == n1
     ev = store.read("events")
-    h = ev[ev["event_id"].str.startswith("usaspending:")]
-    assert (h["known_at"].astype(str).str[:10] == h["date"].astype(str).str[:10]).all()   # olay tarihinde bilinirdi
+    h = ev[ev["event_id"].isin(created_ids)]
+    assert len(h) == len(created_ids)
+    assert (h["known_at"].astype(str).str[:10] == h["date"].astype(str).str[:10]).all()   # backfill olay tarihiyle eşleşir
 
 
 def test_telegram_backtest_note():
