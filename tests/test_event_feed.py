@@ -68,3 +68,10 @@ def test_event_feed_keeps_timestamp_and_separates_event_families():
     assert capex["timestamp_quality"] == "exact_utc"
     assert capex["sector_etf"] == "XLK"
     assert "ignore-1" not in set(feed["event_id"])
+
+
+def test_radar_first_seen_timestamp_is_normalized_to_utc():
+    from datetime import datetime, timedelta, timezone
+    from radar.run import _first_seen_utc
+    local = timezone(timedelta(hours=-5))
+    assert _first_seen_utc(datetime(2026, 11, 12, 9, 45, tzinfo=local)) == "2026-11-12T14:45:00Z"
