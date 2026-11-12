@@ -43,7 +43,11 @@ def _store_events(df: pd.DataFrame) -> int:
     if df is None or df.empty:
         return 0
     df = df.copy()
-    df["known_at"] = df["date"]
+    if "known_at" not in df.columns:
+        df["known_at"] = df["date"]
+    else:
+        known = df["known_at"].fillna("").astype(str).str.strip()
+        df["known_at"] = known.where(known != "", df["date"].astype(str))
     store.upsert("invest_events", df, "event_id", keep="first")
     return len(df)
 
