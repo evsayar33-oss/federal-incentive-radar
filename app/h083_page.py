@@ -67,7 +67,8 @@ def render(T,J) -> None:
                    "Ayrı ileri kağıt takip henüz başlamadı.")
     pages=st.tabs([
         "İşlem tarzları (44)", "Haber aileleri (3)", "Bugünkü izleme",
-        "İleriye dönük kâr/zarar karnesi", "Koşullu işlem planları"
+        "İleriye dönük kâr/zarar karnesi", "Koşullu işlem planları",
+        "Ekonomik İlişkiler ve Risk", "Karar Denetimi"
     ])
     with pages[0]:
         st.markdown(
@@ -185,4 +186,105 @@ def render(T,J) -> None:
             "Midas maliyeti 1,50 USD alış + 1,50 USD satış; 5 baz puan/yön kayma. "
             "Aylık kurallarda stop/TP tanımlı değildir; exit yeniden dengeleme açılışıdır. "
             "Telegram yalnızca bildirim gönderir, broker emri çalıştırmaz."
+        )
+
+    with pages[5]:
+        st.subheader("İlişki ağı, kanıt kalitesi ve net araştırma karnesi")
+        rel = T("economic_relationships")
+        economy = J("economic_intelligence_status") or {}
+        scorecard = T("h083_research_scorecard")
+        market = J("h083_market_regime") or {}
+        st.caption(
+            "Yatırımcı, doğrudan alıcı, tedarikçi ve ortak girişim tarafları ayrı tutulur. "
+            "Haber başlığı SEC belgesi veya bağlayıcı sözleşme değildir; tüm satırlar "
+            "birincil kaynak doğrulaması bekler. Dolaylı faydalanıcı varsayılmaz."
+        )
+        if economy:
+            a,b,c = st.columns(3)
+            a.metric("İlişki kaydı", economy.get("total_relationships", 0))
+            b.metric("Son yeni kayıt", economy.get("new_relationships", 0))
+            c.metric("Piyasa rejimi", market.get("regime", "UNKNOWN"))
+        if rel.empty:
+            st.info("İlk gözlemli ekonomik ilişki henüz yayımlanmadı.")
+        else:
+            fields = [x for x in [
+                "observed_at_utc", "published_at_utc", "source_company",
+                "source_role", "source_ticker", "target_company", "target_role",
+                "target_ticker", "relation", "amount_usd", "verification_status",
+                "source_url", "decision"
+            ] if x in rel.columns]
+            if fields:
+                st.dataframe(rel.sort_values("observed_at_utc", ascending=False)[fields].head(100),
+                             hide_index=True, use_container_width=True,
+                             column_config={"source_url": st.column_config.LinkColumn("Haber kaynağı")})
+        st.markdown("**H083: ileriye dönük net performans ve risk**")
+        st.caption(
+            "Net aylık portföy getirisi SPY ile karşılaştırılır. Aylık getiri, stop tanımı "
+            "olmayan H083 için R-multiple değildir. Bootstrap alt sınırı ve rejim "
+            "tanısaldır; kanıtı olmayan bir stratejiyi otomatik onaylamaz."
+        )
+        if scorecard.empty:
+            st.info("Tamamlanmış ileri kağıt testi veya yeni risk karnesi yok.")
+        else:
+            cols = [x for x in [
+                "rule", "closed_months", "invalid_months", "net_win_rate",
+                "net_mean_monthly", "mean_excess_vs_spy",
+                "excess_bootstrap_lower_95", "max_drawdown",
+                "stress_total_return", "regime", "performance_drift",
+                "research_decision", "reasons"
+            ] if x in scorecard.columns]
+            st.dataframe(scorecard[cols], hide_index=True, use_container_width=True)
+        if watch_status and not watch_status.get("data_coverage_ok", True):
+            st.error("H083 fiyat verisi kapsamı yetersiz: adaylar engellendi.")
+        elif watch_status and watch_status.get("ok") is False:
+            st.warning("H083 izleme verisi geçersiz veya eski; yeni kanıt kabul edilmez.")
+        if watch_status:
+            a,b,c = st.columns(3)
+            a.metric("Fiyat geçmişi bulunan", watch_status.get("priced_tickers", 0))
+            b.metric("Stratejiye likit", watch_status.get("liquid_tickers", 0))
+            c.metric("Olay evreni", watch_status.get("eligible_tickers", 0))
+            reasons = watch_status.get("exclusion_reasons", {})
+            if reasons:
+                st.caption("Dışlanma nedenleri: " + ", ".join(
+                    f"{k}: {v}" for k, v in sorted(reasons.items())))
+        if market:
+            st.caption("Piyasa rejimi: " + str(market.get("reason", "veri bekleniyor")) +
+                       " · volatilite stres oranı: " + str(market.get("stress_ratio", "—")))
+        st.warning("İlişkiler ve risk ekranı yalnızca araştırma amaçlıdır. Broker yetkisi YOK.")
+
+    with pages[6]:
+        st.subheader("Karar zinciri ve iş akışı doğrulaması")
+        from radar import decision_audit
+        audits = T("decision_audit")
+        head = J("decision_audit_head") or {}
+        attempts = T("h083_run_audit")
+        last_attempt = J("h083_last_attempt") or {}
+        if audits.empty:
+            st.info("İlk denetim kaydı henüz oluşturulmadı.")
+        elif not decision_audit.verify(audits):
+            st.error("KARAR ZİNCİRİ DOĞRULANAMADI. Tarihsel kararları güvenilir kabul etmeyin.")
+        else:
+            st.success(f"Mevcut veri anlık görüntüsünde {len(audits)} karar kaydı hash zinciriyle tutarlı.")
+            fields = [x for x in ["recorded_at_utc", "family", "decision",
+                                  "decision_id", "record_hash"] if x in audits]
+            st.dataframe(audits.tail(100).iloc[::-1][fields],
+                         hide_index=True, use_container_width=True)
+        if head:
+            st.caption("Son kayıt özeti: " + str(head.get("head_hash", "—"))[:24] +
+                       "… · sayısı: " + str(head.get("records", "—")))
+        if last_attempt:
+            st.caption(
+                "Son H083 denemesi: " + str(last_attempt.get("attempted_at_utc", "—")) +
+                " · " + str(last_attempt.get("state", "—")) +
+                " · neden: " + str(last_attempt.get("reason", "—"))
+            )
+        if not attempts.empty:
+            fields = [x for x in ["attempted_at_utc", "state", "reason",
+                                  "session", "counts_as_forward_month"] if x in attempts]
+            st.dataframe(attempts.tail(60).iloc[::-1][fields],
+                         hide_index=True, use_container_width=True)
+        st.caption(
+            "Başarılı GitHub Actions çalışması, tamamlanmış ileri test ayı değildir. "
+            "Hash zinciri, değiştirilebilir data dalı anlık görüntüsü içinde tutarlılık "
+            "denetimidir; harici değiştirilemez arşiv değildir."
         )
