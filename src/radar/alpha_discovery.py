@@ -25,6 +25,7 @@ HOLDOUT_START = pd.Timestamp("2025-02-01")  # One-month temporal embargo
 MIN_DEV = 40
 MIN_HOLDOUT = 40
 MIN_HOLDOUT_MONTHS = 12
+MIN_PROSPECTIVE = 60
 SEED = 20261113
 PRE_REGISTERED_AT = pd.Timestamp("2026-11-13T19:54:31Z")
 TIMESTAMP_PATTERN = re.compile(r"(?:Z|[+-]\d{2}:?\d{2})$", re.I)
@@ -47,6 +48,8 @@ SUMMARY_COLUMNS = [
     "holdout_mean_net", "holdout_hit_rate", "holdout_mean_excess",
     "holdout_excess_bootstrap_95_lower", "holdout_positive_month_p",
     "bh_q", "status", "reason", "preregistered_matured_n",
+    "prospective_months", "prospective_mean_excess", "prospective_lower_95",
+    "prospective_p", "prospective_bh_q", "prospective_evidence_status",
     "validated_alpha", "broker_authorized",
 ]
 
@@ -290,6 +293,12 @@ def summarize(trades: pd.DataFrame) -> pd.DataFrame:
         holdout = selection.loc[selection.stage.eq("HOLDOUT")]
         lower, p = _month_bootstrap(holdout)
         months = int(pd.to_datetime(holdout.entry_date).dt.to_period("M").nunique()) if len(holdout) else 0
+        prospective = holdout.loc[holdout.preregistered_observation.astype(bool)] if len(holdout) else holdout
+        prospective_months = (
+            int(pd.to_datetime(prospective.entry_date).dt.to_period("M").nunique())
+            if len(prospective) else 0
+        )
+        prospective_lower, prospective_p = _month_bootstrap(prospective)
         reasons = []
         if len(development) < MIN_DEV:
             reasons.append("INSUFFICIENT_DEVELOPMENT")
@@ -310,11 +319,16 @@ def summarize(trades: pd.DataFrame) -> pd.DataFrame:
             "holdout_mean_excess": float(holdout.net_excess_vs_spy.mean()) if len(holdout) else float("nan"),
             "holdout_excess_bootstrap_95_lower": lower,
             "holdout_positive_month_p": p,
-            "preregistered_matured_n": int(holdout.preregistered_observation.astype(bool).sum()) if len(holdout) else 0,
+            "preregistered_matured_n": len(prospective),
+            "prospective_months": prospective_months,
+            "prospective_mean_excess": float(prospective.net_excess_vs_spy.mean()) if len(prospective) else float("nan"),
+            "prospective_lower_95": prospective_lower,
+            "prospective_p": prospective_p,
             "_reasons": reasons,
         })
     q = _bh([r["holdout_positive_month_p"] for r in records])
-    for row, qv in zip(records, q):
+    prospective_q = _bh([r["prospective_p"] for r in records])
+    for row, qv, pq in zip(records, q, prospective_q):
         row["bh_q"] = qv
         if qv > 0.05:
             row["_reasons"].append("NO_FDR_SIGNIFICANCE")
@@ -322,6 +336,17 @@ def summarize(trades: pd.DataFrame) -> pd.DataFrame:
             "REJECTED_RETROSPECTIVE" if row["_reasons"] else "CANDIDATE_REQUIRES_PROSPECTIVE"
         )
         row["reason"] = "|".join(row.pop("_reasons")) or "RETROSPECTIVE_ONLY_PIT_UNIVERSE_NOT_VALIDATED"
+        row["prospective_bh_q"] = pq
+        if row["preregistered_matured_n"] < MIN_PROSPECTIVE or row["prospective_months"] < MIN_HOLDOUT_MONTHS:
+            row["prospective_evidence_status"] = "COLLECTING_PROSPECTIVE"
+        elif (math.isfinite(row["prospective_lower_95"])
+              and row["prospective_lower_95"] > 0
+              and row["prospective_mean_excess"] > 0
+              and pq <= 0.05):
+            row["prospective_evidence_status"] = "PROSPECTIVE_PAPER_CANDIDATE_NEEDS_EXTERNAL_AUDIT"
+        else:
+            row["prospective_evidence_status"] = "PROSPECTIVE_NO_VALIDATED_EDGE"
+        # External point-in-time constituent and execution proof is still missing.
         row["validated_alpha"] = False
         row["broker_authorized"] = False
     return pd.DataFrame(records, columns=SUMMARY_COLUMNS)
