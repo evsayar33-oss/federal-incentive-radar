@@ -309,6 +309,17 @@ def run() -> int:
     store.write("event_watch_candidates", result)
     store.write("event_watch_exclusions", audit)
     store.save_json("event_watch_status", status)
+    if not status.get("ok"):
+        try:
+            from . import research_notifications
+            research_notifications.warn_data_quality(
+                "H083_WATCH", str(status.get("reason") or status.get("error") or "WATCH_UNAVAILABLE"),
+                {"eligible": status.get("eligible_tickers", 0),
+                 "priced": status.get("priced_tickers", 0),
+                 "candidates": status.get("candidates", 0)},
+            )
+        except Exception as exc:
+            log.warning("H083 research warning unavailable: %s", type(exc).__name__)
     if len(result):
         history = result.assign(snapshot_date=et.date().isoformat())
         store.upsert("event_watch_history", history,
