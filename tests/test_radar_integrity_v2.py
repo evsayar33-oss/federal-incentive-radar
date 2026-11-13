@@ -254,3 +254,28 @@ def test_research_alert_deduplicates_and_never_labels_news_a_trade(tmp_path, mon
     assert N.notify_relationships(rel) == 0
     assert "DOĞRULANMAMIŞ" in sent[-1]
     assert "AL/SAT SİNYALİ DEĞİL" in sent[-1]
+
+
+def test_regime_fails_closed_on_missing_asof_session():
+    spy = _prices()
+    expected_next = spy.index[-1] + pd.offsets.BDay(1)
+    result = R.regime_snapshot(spy, expected_next)
+    assert result["regime"] == "UNKNOWN"
+    assert result["reason"] == "STALE_SPY_SESSION"
+
+
+def test_drawdown_includes_first_negative_month():
+    months = pd.DataFrame([{
+        "rule": "monthly_low_beta", "entry_month": "2026-01",
+        "complete": True, "net_return": -.20, "excess_vs_spy": -.21,
+        "net_return_stress": -.22, "n_positions": 2,
+    }])
+    gates = pd.DataFrame([{
+        "rule": "monthly_low_beta", "validated_for_info_plans": False,
+        "status": "COLLECTING_FORWARD",
+    }])
+    card = R.build_scorecard(months, gates,
+                             {"ok": True, "data_coverage_ok": True},
+                             {"regime": "RISK_ON"}, NOW)
+    assert card.iloc[0].max_drawdown == pytest.approx(-.20)
+    assert not card.broker_authorized.astype(bool).any()
