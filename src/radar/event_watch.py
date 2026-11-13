@@ -284,6 +284,28 @@ def run() -> int:
         status = {"ok": False, "watch_only": True, "candidates": 0,
                   "error": type(exc).__name__, "validated_alpha": False,
                   "decision": "NO_TRADE_AUTHORIZATION"}
+    # Preserve the research decision and its source-quality context before publishing.
+    # If the audit chain cannot be trusted, publish NO candidates.
+    try:
+        from . import decision_audit
+        decision_audit.record(
+            "H083_WATCH", "event_watch:" + now.isoformat(),
+            "WATCH_ONLY" if status.get("ok") else "BLOCK",
+            {"feature_asof": status.get("feature_asof", ""),
+             "eligible": status.get("eligible_tickers", 0),
+             "price_covered": status.get("priced_tickers", 0),
+             "candidates": status.get("candidates", 0),
+             "excluded": status.get("exclusion_reasons", {}),
+             "data_coverage_ok": status.get("data_coverage_ok", False)},
+            observed_at_utc=now,
+        )
+        status["decision_audit_ok"] = True
+    except Exception as audit_error:
+        log.error("H083 watch audit failed: %s", type(audit_error).__name__)
+        result = pd.DataFrame(columns=CANDIDATE_COLS)
+        status.update({"ok": False, "reason": "DECISION_AUDIT_UNAVAILABLE",
+                       "candidates": 0, "decision_audit_ok": False,
+                       "decision": "NO_TRADE_AUTHORIZATION"})
     store.write("event_watch_candidates", result)
     store.write("event_watch_exclusions", audit)
     store.save_json("event_watch_status", status)
