@@ -35,7 +35,7 @@ def _fixture():
 
 def test_true_first_seen_and_no_retroactive_rss():
     prices, feed = _fixture()
-    summary, trades, diagnostic = A.execute(prices, feed)
+    summary, trades, diagnostic, queue = A.execute(prices, feed)
     assert len(summary) == 5
     assert diagnostic["event_snapshot"]["private_rss_historical_replay_disabled"]
     assert diagnostic["event_snapshot"]["rejected"]["private_rss_proxy"] == 1
@@ -72,7 +72,7 @@ def test_economic_beneficiary_requires_prospective_first_seen():
          "target_ticker": "BBB", "relation": "STRATEGIC_INVESTMENT",
          "source_url": "https://example.org/article"},
     ])
-    summary, trades, diag = A.execute(prices, feed, relationships)
+    summary, trades, diag, queue = A.execute(prices, feed, relationships)
     direct = trades.loc[trades.hypothesis.eq("DIRECT_PRIVATE_RECIPIENT_20D")]
     assert len(direct) == 1
     assert direct.iloc[0]["ticker"] == "AAA"
@@ -97,3 +97,12 @@ def test_bh_correction_preserves_family_and_sparsity():
     assert len(diag) == len(A.PREDECLARED)
     assert (diag.bh_q == 1).all()
     assert not diag.validated_alpha.any()
+
+
+def test_preregistration_queue_does_not_retroactively_paper_trade():
+    prices, feed = _fixture()
+    summary, trades, diag, queue = A.execute(prices, feed)
+    assert queue.empty
+    assert diag["preregistered_matured_trades"] == 0
+    assert diag["prospective_first_seen_events"] == 0
+    assert not summary.validated_alpha.any()
