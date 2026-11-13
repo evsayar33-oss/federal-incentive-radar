@@ -107,6 +107,15 @@ def record_new(
              "primary_source_verified": False},
             observed_at_utc=now,
         )
+    review_count = 0
+    review_error = ""
+    if not additions.empty:
+        try:
+            from . import source_review
+            review_count = source_review.record_candidates(additions)
+        except Exception as exc:
+            review_error = type(exc).__name__
+            LOG.warning("Primary-source review candidates unavailable: %s", review_error)
     notices = 0
     if not additions.empty:
         try:
@@ -117,6 +126,8 @@ def record_new(
     report = {
         "ok": True,
         "research_notifications_sent": notices,
+        "sec_review_candidates": review_count,
+        "sec_review_error": review_error,
         "new_relationships": len(additions),
         "total_relationships": len(known) + len(additions),
         "pending_primary_verification": len(additions),
