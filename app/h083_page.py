@@ -259,6 +259,10 @@ def render(T,J) -> None:
             if reasons:
                 st.caption("Dışlanma nedenleri: " + ", ".join(
                     f"{k}: {v}" for k, v in sorted(reasons.items())))
+            detail_reasons = watch_status.get("exclusion_detail_reasons", {})
+            if detail_reasons:
+                st.caption("Veri kalite teşhisi: " + ", ".join(
+                    f"{k}: {v}" for k, v in sorted(detail_reasons.items())))
         if market:
             st.caption("Piyasa rejimi: " + str(market.get("reason", "veri bekleniyor")) +
                        " · volatilite stres oranı: " + str(market.get("stress_ratio", "—")))
