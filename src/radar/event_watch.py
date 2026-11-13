@@ -97,32 +97,16 @@ def _regular_bars(frame: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def download_daily_bars(tickers: list[str], period: str = "3y") -> dict[str, pd.DataFrame]:
-    """Isolated bounded Yahoo OHLCV source; never changes Radar core price store."""
-    import yfinance as yf
+LAST_PRICE_REPORT: dict = {}
 
-    result: dict[str, pd.DataFrame] = {}
-    for start in range(0, len(tickers), 15):
-        batch = tickers[start:start + 15]
-        yahoo = [t.replace(".", "-") for t in batch]
-        try:
-            data = yf.download(
-                yahoo, period=period, interval="1d", auto_adjust=True,
-                group_by="ticker", progress=False, threads=False,
-            )
-            if data is None or data.empty:
-                continue
-            for t, yt in zip(batch, yahoo):
-                try:
-                    part = data[yt] if isinstance(data.columns, pd.MultiIndex) else data
-                    clean = _regular_bars(part)
-                    if not clean.empty:
-                        result[t] = clean
-                except (KeyError, ValueError):
-                    continue
-        except Exception as exc:
-            log.warning("H083 OHLCV batch unavailable (%d symbols): %s", len(batch), str(exc)[:160])
-    return result
+
+def download_daily_bars(tickers: list[str], period: str = "3y") -> dict[str, pd.DataFrame]:
+    """Bounded per-symbol OHLCV with provider audit; never stitches prices."""
+    from .price_resilience import download_bars
+    global LAST_PRICE_REPORT
+    bars, report = download_bars(tickers, period)
+    LAST_PRICE_REPORT = report
+    return bars
 
 
 def features_asof(stock: pd.DataFrame, spy: pd.DataFrame, asof: pd.Timestamp) -> dict | None:
@@ -197,6 +181,8 @@ def evaluate_watch(
         }
     feature_at = valid_sessions[-1]
     qualified = {rule: [] for rule in RULES}
+    feature_covered = 0
+    liquid_count = 0
     for row in eligible.to_dict("records"):
         ticker = str(row["ticker"])
         if ticker not in bars:
@@ -206,10 +192,12 @@ def evaluate_watch(
         if feature is None:
             excluded.append({"ticker": ticker, "reason": "FEATURE_HISTORY_OR_LAST_PRICE_MISSING"})
             continue
+        feature_covered += 1
         liquid = np.isfinite(feature["dollar_volume20"]) and feature["dollar_volume20"] >= 5_000_000
         if not liquid:
             excluded.append({"ticker": ticker, "reason": "NOT_LIQUID_5M"})
             continue
+        liquid_count += 1
         common = {
             **feature,
             "ticker": ticker, "event_id": str(row.get("event_id", "")),
@@ -244,10 +232,13 @@ def evaluate_watch(
         "feature_asof": str(feature_at.date()),
         "generated_at_utc": pd.Timestamp(now_utc).isoformat(),
         "eligible_tickers": len(eligible),
-        "priced_tickers": len(eligible) - len(audit),
+        "priced_tickers": feature_covered,
+        "liquid_tickers": liquid_count,
         "excluded_tickers": len(audit), "candidates": len(result),
         "exclusion_reasons": {str(k): int(v) for k, v in audit.reason.value_counts().items()},
-        "data_coverage_ok": bool(len(eligible) == 0 or (len(eligible) - len(audit)) / len(eligible) >= 0.8),
+        # Liquidity is a strategy eligibility filter, not a price feed outage.
+        "data_coverage_pct": round(feature_covered / len(eligible), 4) if len(eligible) else 1.0,
+        "data_coverage_ok": bool(len(eligible) == 0 or feature_covered / len(eligible) >= 0.8),
         "decision": "WATCH_ONLY_NO_TRADE",
         "by_rule": {rule: int((result.rule == rule).sum()) for rule in RULES},
         "source_first_seen_forward_only": int(eligible["timestamp_quality"].eq("first_seen_utc").sum()) if len(eligible) else 0,
@@ -285,12 +276,14 @@ def run() -> int:
         bars = download_daily_bars(universe)
         result, audit, status = evaluate_watch(capped, bars, now)
         status["universe_capped"] = int(max(0, len(eligible) - len(capped)))
+        status["price_download"] = dict(LAST_PRICE_REPORT)
     except Exception as exc:
         log.exception("H083 watch research unavailable; publishing empty snapshot")
         result = pd.DataFrame(columns=CANDIDATE_COLS)
         audit = pd.DataFrame([{"ticker": "*", "reason": "RUNTIME_ERROR"}], columns=EXCLUSION_COLS)
         status = {"ok": False, "watch_only": True, "candidates": 0,
-                  "error": type(exc).__name__, "validated_alpha": False}
+                  "error": type(exc).__name__, "validated_alpha": False,
+                  "decision": "NO_TRADE_AUTHORIZATION"}
     store.write("event_watch_candidates", result)
     store.write("event_watch_exclusions", audit)
     store.save_json("event_watch_status", status)
