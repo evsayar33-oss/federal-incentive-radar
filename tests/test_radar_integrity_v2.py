@@ -279,3 +279,12 @@ def test_drawdown_includes_first_negative_month():
                              {"regime": "RISK_ON"}, NOW)
     assert card.iloc[0].max_drawdown == pytest.approx(-.20)
     assert not card.broker_authorized.astype(bool).any()
+
+
+def test_feature_failure_explains_absent_latest_price_and_short_history():
+    from radar.event_watch import missing_feature_detail, features_asof
+    spy, stock = _bars()
+    feature_at = spy.index[-1]
+    assert missing_feature_detail(stock.iloc[:-1], spy, feature_at) == "MISSING_ASOF_CLOSE"
+    assert missing_feature_detail(stock.iloc[-170:], spy, feature_at) == "INSUFFICIENT_200_SESSION_TREND"
+    assert features_asof(stock.iloc[-170:], spy, feature_at) is None
