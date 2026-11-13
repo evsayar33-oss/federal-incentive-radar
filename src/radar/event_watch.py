@@ -246,11 +246,21 @@ def evaluate_watch(
         "eligible_tickers": len(eligible),
         "priced_tickers": len(eligible) - len(audit),
         "excluded_tickers": len(audit), "candidates": len(result),
+        "exclusion_reasons": {str(k): int(v) for k, v in audit.reason.value_counts().items()},
+        "data_coverage_ok": bool(len(eligible) == 0 or (len(eligible) - len(audit)) / len(eligible) >= 0.8),
+        "decision": "WATCH_ONLY_NO_TRADE",
         "by_rule": {rule: int((result.rule == rule).sum()) for rule in RULES},
         "source_first_seen_forward_only": int(eligible["timestamp_quality"].eq("first_seen_utc").sum()) if len(eligible) else 0,
         "logic_source": "H083 monthly_low_beta and monthly_vol_squeeze",
         "risk_note": "Historically profitable samples did not establish statistically significant SPY-relative alpha",
     }
+    if not status["data_coverage_ok"]:
+        status["ok"] = False
+        status["reason"] = "INSUFFICIENT_PRICE_COVERAGE"
+        # Fail closed: never publish candidates from a materially incomplete sample.
+        result = empty
+        status["candidates"] = 0
+        status["by_rule"] = {rule: 0 for rule in RULES}
     return result, audit, status
 
 
