@@ -591,6 +591,15 @@ def run(now_utc: datetime | None = None) -> dict:
     decision_audit.record_forward_attempt(now,"COMPLETED_RESEARCH",
                                           "AFTER_NYSE_CLOSE",str(today.date()))
     store.save_json("h083_forward_status",report)
+    if market.get("regime") == "HIGH_STRESS":
+        try:
+            from . import research_notifications
+            research_notifications.warn_data_quality(
+                "H083_MARKET_REGIME", "HIGH_STRESS",
+                {"stress_ratio": market.get("stress_ratio", "UNKNOWN"),
+                 "feature_asof": market.get("feature_asof", "UNKNOWN")})
+        except Exception:
+            LOG.warning("H083 market-stress notification unavailable")
     # Retry a same-day bulletin after transient Telegram failure, but never resend
     # a confirmed delivery or issue a late notification after the entry session.
     bulletin=cohorts[cohorts.signal_session.eq(str(today.date()))]
