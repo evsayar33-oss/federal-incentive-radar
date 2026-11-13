@@ -271,6 +271,7 @@ def render(T,J) -> None:
         head = J("decision_audit_head") or {}
         attempts = T("h083_run_audit")
         last_attempt = J("h083_last_attempt") or {}
+        last_success = J("h083_last_successful_attempt") or {}
         if audits.empty:
             st.info("İlk denetim kaydı henüz oluşturulmadı.")
         elif not decision_audit.verify(audits):
@@ -290,6 +291,10 @@ def render(T,J) -> None:
                 " · " + str(last_attempt.get("state", "—")) +
                 " · neden: " + str(last_attempt.get("reason", "—"))
             )
+        if last_success:
+            st.caption("Son gerçek H083 araştırma çalışması: " +
+                       str(last_success.get("attempted_at_utc", "—")) +
+                       " · NYSE seansı: " + str(last_success.get("session", "—")))
         if not attempts.empty:
             fields = [x for x in ["attempted_at_utc", "state", "reason",
                                   "session", "counts_as_forward_month"] if x in attempts]
