@@ -23,6 +23,21 @@ _ACQUIRE = re.compile(
     r"to buy|buys|bought)\s+(?P<target>.+?)"
     r"(?=\s+(?:for|in|to|as|amid|after)\b|$)", re.I
 )
+_SUPPLY = re.compile(
+    r"^(?P<supplier>.+?)\s+(?:to supply|will supply|supplies|agrees to supply)\s+"
+    r"(?P<buyer>.+?)(?=\s+(?:with|for|under|to)\b|$)", re.I
+)
+_JOINT = re.compile(
+    r"^(?P<partner_a>.+?)\s+(?:forms|launches|announces)\s+"
+    r"(?:a\s+)?joint venture with\s+(?P<partner_b>.+?)"
+    r"(?=\s+(?:for|to|in)\b|$)", re.I
+)
+_AGREEMENT = re.compile(
+    r"^(?P<party_a>.+?)\s+(?:signs|signed|announces)\s+"
+    r"(?:a\s+)?(?:\$[\d,.]+\s*(?:billion|bn|million|mn)\s+)?"
+    r"(?:supply|capacity|purchase) agreement with\s+(?P<party_b>.+?)"
+    r"(?=\s+(?:for|to|in|under)\b|$)", re.I
+)
 _SUFFIX = re.compile(r"\s*[-–]\s*(?:Reuters|Bloomberg|CNBC|AP News|PR Newswire)\s*$", re.I)
 
 
@@ -34,6 +49,9 @@ class Relationship:
     amount_usd: float | None
     source_url: str
     observed_at_utc: str
+    source_role: str = "UNRESOLVED"
+    target_role: str = "UNRESOLVED"
+    transaction_status: str = "ANNOUNCED_UNVERIFIED"
     evidence: str = "HEADLINE_ONLY_UNVERIFIED"
     decision: str = "RESEARCH_ONLY_NO_TRADE"
 
@@ -57,9 +75,12 @@ def extract_relationship(headline: str, source_url: str, observed_at_utc: str) -
         amount = float(amount_match.group(1).replace(",", "")) * (
             1e9 if amount_match.group(2).lower() in {"billion", "bn"} else 1e6
         )
-    for pattern, relation, left, right in (
-        (_INVEST, "STRATEGIC_INVESTMENT", "investor", "recipient"),
-        (_ACQUIRE, "ACQUISITION_ANNOUNCED", "buyer", "target"),
+    for pattern, relation, left, right, source_role, target_role in (
+        (_INVEST, "STRATEGIC_INVESTMENT", "investor", "recipient", "INVESTOR", "DIRECT_RECIPIENT"),
+        (_ACQUIRE, "ACQUISITION_ANNOUNCED", "buyer", "target", "ACQUIRER", "TARGET"),
+        (_SUPPLY, "SUPPLY_ANNOUNCEMENT", "supplier", "buyer", "SUPPLIER", "BUYER"),
+        (_JOINT, "JOINT_VENTURE_ANNOUNCED", "partner_a", "partner_b", "PARTNER", "PARTNER"),
+        (_AGREEMENT, "AGREEMENT_ANNOUNCED", "party_a", "party_b", "COUNTERPARTY", "COUNTERPARTY"),
     ):
         match = pattern.match(title)
         if not match:
@@ -68,7 +89,8 @@ def extract_relationship(headline: str, source_url: str, observed_at_utc: str) -
         target = match.group(right).strip(" ,:;\"'")
         if not source or not target or source.casefold() == target.casefold():
             return None
-        return Relationship(source, target, relation, amount, source_url, stamp)
+        return Relationship(source, target, relation, amount, source_url, stamp,
+                            source_role=source_role, target_role=target_role)
     return None
 
 

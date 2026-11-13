@@ -34,7 +34,7 @@ CANDIDATE_COLS = [
     "event_date", "source", "source_url", "timestamp_quality", "evidence_scope",
     "midas_buy_usd", "midas_sell_usd", "midas_roundtrip_usd",
 ]
-EXCLUSION_COLS = ["ticker", "reason"]
+EXCLUSION_COLS = ["ticker", "reason", "detail"]
 TICKER_RE = re.compile(r"^[A-Z][A-Z0-9.\-]{0,11}$")
 QUALITIES = {"exact_utc", "date_only", "first_seen_utc"}
 
@@ -97,32 +97,16 @@ def _regular_bars(frame: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def download_daily_bars(tickers: list[str], period: str = "3y") -> dict[str, pd.DataFrame]:
-    """Isolated bounded Yahoo OHLCV source; never changes Radar core price store."""
-    import yfinance as yf
+LAST_PRICE_REPORT: dict = {}
 
-    result: dict[str, pd.DataFrame] = {}
-    for start in range(0, len(tickers), 15):
-        batch = tickers[start:start + 15]
-        yahoo = [t.replace(".", "-") for t in batch]
-        try:
-            data = yf.download(
-                yahoo, period=period, interval="1d", auto_adjust=True,
-                group_by="ticker", progress=False, threads=False,
-            )
-            if data is None or data.empty:
-                continue
-            for t, yt in zip(batch, yahoo):
-                try:
-                    part = data[yt] if isinstance(data.columns, pd.MultiIndex) else data
-                    clean = _regular_bars(part)
-                    if not clean.empty:
-                        result[t] = clean
-                except (KeyError, ValueError):
-                    continue
-        except Exception as exc:
-            log.warning("H083 OHLCV batch unavailable (%d symbols): %s", len(batch), str(exc)[:160])
-    return result
+
+def download_daily_bars(tickers: list[str], period: str = "3y") -> dict[str, pd.DataFrame]:
+    """Bounded per-symbol OHLCV with provider audit; never stitches prices."""
+    from .price_resilience import download_bars
+    global LAST_PRICE_REPORT
+    bars, report = download_bars(tickers, period)
+    LAST_PRICE_REPORT = report
+    return bars
 
 
 def features_asof(stock: pd.DataFrame, spy: pd.DataFrame, asof: pd.Timestamp) -> dict | None:
@@ -134,6 +118,8 @@ def features_asof(stock: pd.DataFrame, spy: pd.DataFrame, asof: pd.Timestamp) ->
         return None
     p = p.reindex(calendar)
     benchmark = benchmark.reindex(calendar)
+    if p["Close"].tail(200).notna().sum() < 200:
+        return None
     close, b = p["Close"], benchmark["Close"]
     volume = p["Volume"]
     if pd.isna(close.iloc[-1]) or pd.isna(volume.iloc[-1]) or volume.iloc[-1] <= 0:
@@ -155,6 +141,8 @@ def features_asof(stock: pd.DataFrame, spy: pd.DataFrame, asof: pd.Timestamp) ->
     atr_ratio = true_range.rolling(14, min_periods=14).mean() / close
     atr = atr_ratio.iloc[-1]
     atr20 = atr_ratio.rolling(126, min_periods=80).quantile(0.2).iloc[-1]
+    if not all(np.isfinite(x) for x in (beta, liquidity, mom63, atr, atr20)):
+        return None
     market_ma = b.rolling(200, min_periods=200).mean().iloc[-1]
     risk_on = bool(pd.notna(market_ma) and b.iloc[-1] > market_ma)
     return {
@@ -167,6 +155,26 @@ def features_asof(stock: pd.DataFrame, spy: pd.DataFrame, asof: pd.Timestamp) ->
         "market_regime": "RISK_ON" if risk_on else "RISK_OFF",
         "feature_asof": str(calendar[-1].date()),
     }
+
+
+def missing_feature_detail(stock: pd.DataFrame, spy: pd.DataFrame,
+                           asof: pd.Timestamp) -> str:
+    """Explain a missing feature without relaxing any qualification threshold."""
+    p = _regular_bars(stock)
+    benchmark = _regular_bars(spy)
+    calendar = benchmark.index[benchmark.index <= pd.Timestamp(asof).normalize()]
+    if p.empty:
+        return "NO_VALID_OHLCV"
+    if len(calendar) < 215:
+        return "INSUFFICIENT_BENCHMARK_HISTORY"
+    p = p.reindex(calendar)
+    if pd.isna(p.Close.iloc[-1]):
+        return "MISSING_ASOF_CLOSE"
+    if pd.isna(p.Volume.iloc[-1]) or p.Volume.iloc[-1] <= 0:
+        return "MISSING_ASOF_VOLUME"
+    if p.Close.tail(200).notna().sum() < 200:
+        return "INSUFFICIENT_200_SESSION_TREND"
+    return "NONFINITE_MOMENTUM_BETA_OR_ATR"
 
 
 def evaluate_watch(
@@ -197,19 +205,25 @@ def evaluate_watch(
         }
     feature_at = valid_sessions[-1]
     qualified = {rule: [] for rule in RULES}
+    feature_covered = 0
+    liquid_count = 0
     for row in eligible.to_dict("records"):
         ticker = str(row["ticker"])
         if ticker not in bars:
-            excluded.append({"ticker": ticker, "reason": "PRICE_MISSING"})
+            excluded.append({"ticker": ticker, "reason": "PRICE_MISSING", "detail": "NO_PROVIDER_SERIES"})
             continue
         feature = features_asof(bars[ticker], benchmark, feature_at)
         if feature is None:
-            excluded.append({"ticker": ticker, "reason": "FEATURE_HISTORY_OR_LAST_PRICE_MISSING"})
+            excluded.append({"ticker": ticker, "reason": "FEATURE_HISTORY_OR_LAST_PRICE_MISSING",
+                             "detail": missing_feature_detail(bars[ticker], benchmark, feature_at)})
             continue
+        feature_covered += 1
         liquid = np.isfinite(feature["dollar_volume20"]) and feature["dollar_volume20"] >= 5_000_000
         if not liquid:
-            excluded.append({"ticker": ticker, "reason": "NOT_LIQUID_5M"})
+            excluded.append({"ticker": ticker, "reason": "NOT_LIQUID_5M",
+                             "detail": "DOLLAR_VOLUME_20D_BELOW_5M"})
             continue
+        liquid_count += 1
         common = {
             **feature,
             "ticker": ticker, "event_id": str(row.get("event_id", "")),
@@ -244,10 +258,14 @@ def evaluate_watch(
         "feature_asof": str(feature_at.date()),
         "generated_at_utc": pd.Timestamp(now_utc).isoformat(),
         "eligible_tickers": len(eligible),
-        "priced_tickers": len(eligible) - len(audit),
+        "priced_tickers": feature_covered,
+        "liquid_tickers": liquid_count,
         "excluded_tickers": len(audit), "candidates": len(result),
         "exclusion_reasons": {str(k): int(v) for k, v in audit.reason.value_counts().items()},
-        "data_coverage_ok": bool(len(eligible) == 0 or (len(eligible) - len(audit)) / len(eligible) >= 0.8),
+        "exclusion_detail_reasons": {str(k): int(v) for k, v in audit.detail.value_counts().items()},
+        # Liquidity is a strategy eligibility filter, not a price feed outage.
+        "data_coverage_pct": round(feature_covered / len(eligible), 4) if len(eligible) else 1.0,
+        "data_coverage_ok": bool(len(eligible) == 0 or feature_covered / len(eligible) >= 0.8),
         "decision": "WATCH_ONLY_NO_TRADE",
         "by_rule": {rule: int((result.rule == rule).sum()) for rule in RULES},
         "source_first_seen_forward_only": int(eligible["timestamp_quality"].eq("first_seen_utc").sum()) if len(eligible) else 0,
@@ -285,15 +303,50 @@ def run() -> int:
         bars = download_daily_bars(universe)
         result, audit, status = evaluate_watch(capped, bars, now)
         status["universe_capped"] = int(max(0, len(eligible) - len(capped)))
+        status["price_download"] = dict(LAST_PRICE_REPORT)
     except Exception as exc:
         log.exception("H083 watch research unavailable; publishing empty snapshot")
         result = pd.DataFrame(columns=CANDIDATE_COLS)
         audit = pd.DataFrame([{"ticker": "*", "reason": "RUNTIME_ERROR"}], columns=EXCLUSION_COLS)
         status = {"ok": False, "watch_only": True, "candidates": 0,
-                  "error": type(exc).__name__, "validated_alpha": False}
+                  "error": type(exc).__name__, "validated_alpha": False,
+                  "decision": "NO_TRADE_AUTHORIZATION"}
+    # Preserve the research decision and its source-quality context before publishing.
+    # If the audit chain cannot be trusted, publish NO candidates.
+    try:
+        from . import decision_audit
+        decision_audit.record(
+            "H083_WATCH", "event_watch:" + now.isoformat(),
+            "WATCH_ONLY" if status.get("ok") else "BLOCK",
+            {"feature_asof": status.get("feature_asof", ""),
+             "eligible": status.get("eligible_tickers", 0),
+             "price_covered": status.get("priced_tickers", 0),
+             "candidates": status.get("candidates", 0),
+             "excluded": status.get("exclusion_reasons", {}),
+             "data_coverage_ok": status.get("data_coverage_ok", False)},
+            observed_at_utc=now,
+        )
+        status["decision_audit_ok"] = True
+    except Exception as audit_error:
+        log.error("H083 watch audit failed: %s", type(audit_error).__name__)
+        result = pd.DataFrame(columns=CANDIDATE_COLS)
+        status.update({"ok": False, "reason": "DECISION_AUDIT_UNAVAILABLE",
+                       "candidates": 0, "decision_audit_ok": False,
+                       "decision": "NO_TRADE_AUTHORIZATION"})
     store.write("event_watch_candidates", result)
     store.write("event_watch_exclusions", audit)
     store.save_json("event_watch_status", status)
+    if not status.get("ok"):
+        try:
+            from . import research_notifications
+            research_notifications.warn_data_quality(
+                "H083_WATCH", str(status.get("reason") or status.get("error") or "WATCH_UNAVAILABLE"),
+                {"eligible": status.get("eligible_tickers", 0),
+                 "priced": status.get("priced_tickers", 0),
+                 "candidates": status.get("candidates", 0)},
+            )
+        except Exception as exc:
+            log.warning("H083 research warning unavailable: %s", type(exc).__name__)
     if len(result):
         history = result.assign(snapshot_date=et.date().isoformat())
         store.upsert("event_watch_history", history,

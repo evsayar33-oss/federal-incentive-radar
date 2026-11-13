@@ -64,6 +64,18 @@ def collect(since: date, status: dict | None = None) -> pd.DataFrame:
         df = corp_invest.fetch(since)
         _store_events(df)
         new = df[~df["event_id"].astype(str).isin(old_ids)] if not df.empty else df
+        # Relationship evidence is separate from historical investment-alpha evidence.
+        # Only truly new RSS observations may be recorded as first-seen.
+        try:
+            from . import relationship_pipeline
+            graph = relationship_pipeline.record_new(new)
+            if status is not None:
+                status["economic_intelligence"] = graph
+        except Exception as graph_exc:
+            log.exception("Prospective corporate relationship ledger failed")
+            if status is not None:
+                status["economic_intelligence"] = {"ok": False, "error": type(graph_exc).__name__}
+
         if status is not None:
             status["corp_invest"] = {"ok": True, "rows": len(df), "new": len(new), "sec": round(time.time() - t0, 1)}
         return new

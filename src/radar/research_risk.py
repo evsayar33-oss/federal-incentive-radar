@@ -50,7 +50,7 @@ def risk_gate(
     max_loss_per_trade_pct: float = 0.005, min_reward_risk: float = 1.5,
     validated_alpha: bool = False,
 ) -> dict:
-    """Long-only research gate. Unknown alpha always blocks trade authorization."""
+    """Long-only NON-EXECUTABLE screen. An external boolean never proves alpha."""
     values = [entry, stop, target, equity, cash, existing_exposure,
               max_position_pct, max_portfolio_exposure_pct,
               max_loss_per_trade_pct, min_reward_risk]
@@ -77,7 +77,8 @@ def risk_gate(
         reasons.append("RISK_CAP")
     if reward_risk < min_reward_risk:
         reasons.append("REWARD_RISK_BELOW_MIN")
-    return {"decision": "BLOCK" if reasons else "PASS", "reasons": reasons,
+    return {"decision": "BLOCK" if reasons else "PASS_RESEARCH_SCREEN_ONLY", "reasons": reasons,
+            "broker_authorized": False, "evidence_boolean_is_not_proof": True,
             "notional_usd": round(notional, 2), "stop_risk_usd": round(at_risk, 2),
             "reward_risk": round(reward_risk, 4),
             "note": "Research gate only; stops may slip and PASS is not an order."}
