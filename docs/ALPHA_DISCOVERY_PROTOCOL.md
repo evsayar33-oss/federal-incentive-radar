@@ -22,7 +22,7 @@ These are hypothesis *families*, not a scanned parameter grid. Each has exactly 
 4. Use 25 bps roundtrip hypothetical asset costs and 5 bps benchmark costs, chosen before inspecting outcomes. This is a simplified implementation, **not true venue-dependent execution or spread data**. Symbol shares, orders and stop levels are not generated.
 5. Per hypothesis, eliminate overlapping entry/holding windows on the same ticker. This reduces but does not eliminate cross-ticker event-correlation.
 6. **Development**: exits before 2025-01-01. **Embargo**: 2025-01-01 through 2025-01-31. **Holdout**: entries from 2025-02-01. This chronology is **not a true out-of-sample holdout for newly conceived hypotheses** if researchers have seen 2025–2026 prices, and the present-day ticker dataset suffers survivorship bias.
-7. Require 40 independent-per-ticker-window observations in development, 40 in holdout, and 12 distinct holdout months. Use entry-month-cluster bootstrap lower 5% percentile and month-sign-flip one-sided permutation p-values. Apply Benjamini–Hochberg q≤0.05 **across all five predeclared families**, including those with insufficient data.
+7. For descriptive retrospective evidence, require 40 independent-per-ticker-window observations in development, 40 in holdout, and 12 distinct holdout months. **Because first-seen events are only being collected prospectively, this historical train/test requirement must not permanently bar a new strategy from being researched**: a separately preregistered prospective gate instead requires at least 60 matured observations and 12 distinct future months after the fixed 2026-11-13T19:54:31Z cutoff. Use entry-month-cluster bootstrap lower 5% percentile and month-sign-flip one-sided permutation p-values. Apply Benjamini–Hochberg q≤0.05 **across all five predeclared families**, including those with insufficient data, separately for historical and genuinely prospective observations.
 8. Even when these checks pass, label only `CANDIDATE_REQUIRES_PROSPECTIVE`, never `VALIDATED_ALPHA`. A genuinely newly recorded and frozen future cohort is needed for actual forward confirmation. No paper trade profit is assumed until its exit day has occurred.
 9. Publish **every failed and passing hypothesis** and the entire eligible simulated observation ledger, not just the best performer.
 
@@ -44,6 +44,6 @@ When the independent workflow runs, it emits:
 - `diagnostics.json`: feed acceptance/rejection counts, data provenance and limitations
 - `data_snapshot.txt`: exact source `data` branch commit SHA
 
-Artifacts expire according to GitHub Actions retention. The workflow does not push to `data` and therefore cannot corrupt active H083 research.
+The independent workflow runs automatically **every Saturday at 05:40 UTC after merge** and can also be triggered manually. Each run publishes a `preregistered_forward_queue.csv` of post-freeze observations awaiting 20-session outcomes. Artifacts expire according to GitHub Actions retention. The workflow does not push to `data` and therefore cannot corrupt active H083 research.
 
 **Decision rule:** No evidence -> no profitable-strategy claim. Positive retrospective results -> prospective investigation only. True profitable alpha requires genuinely prospective, independently time-stamped observations and audited net outperforming benchmark through multiple regimes.
