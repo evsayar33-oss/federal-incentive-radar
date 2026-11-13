@@ -539,6 +539,17 @@ def run(now_utc: datetime | None = None) -> dict:
     watch,exclusions,watch_status=W.evaluate_watch(capped,bars,now,asof=today)
     if watch_status.get("feature_asof")!=str(today.date()) or not watch_status.get("ok"):
         raise RuntimeError("Stale H083 candidate snapshot, no forward signal")
+    # Whole-series Stooq fallback may have different adjustment conventions.
+    # It can support WATCH research, but not irrevocable actual-open paper fills
+    # or a supposedly statistically validated forward month.
+    sourced=W.LAST_PRICE_REPORT.get("providers",{})
+    execution_symbols={"SPY"}|set(_pending_tickers(cohorts,today))|set(
+        watch.ticker.astype(str) if not watch.empty else [])
+    unverified=[t for t in sorted(execution_symbols) if
+                str(sourced.get(t,"")).startswith("STOOQ_")]
+    if unverified:
+        raise RuntimeError("H083_UNVERIFIED_SECONDARY_FILL_SOURCE: "+
+                           ",".join(unverified[:8]))
     # Source metadata is an eligibility condition; all news subtypes are separately documented.
     store.write("event_watch_candidates",watch)
     store.write("event_watch_exclusions",exclusions)
