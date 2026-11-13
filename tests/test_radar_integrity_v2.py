@@ -209,3 +209,48 @@ def test_shared_dashboard_compiles():
     from pathlib import Path
     root = Path(__file__).resolve().parents[1]
     ast.parse((root / "app/h083_page.py").read_text(encoding="utf-8"))
+
+
+def test_sec_source_review_is_only_a_candidate():
+    from radar import source_review
+    rel = pd.DataFrame([{
+        "event_id": "corp:1", "published_at_utc": "2026-11-12T20:00:00Z",
+        "source_ticker": "NVDA", "target_ticker": "LITE",
+        "source_company": "NVIDIA", "target_company": "Lumentum",
+        "relation": "STRATEGIC_INVESTMENT",
+    }])
+    filings = pd.DataFrame([
+        {"event_id": "sec:1", "source": "sec_edgar", "date": "2026-11-13",
+         "tickers": "LITE", "url": "https://www.sec.gov/Archives/edgar/data/1/abc/8k.htm"},
+        {"event_id": "other:1", "source": "news", "date": "2026-11-13",
+         "tickers": "NVDA", "url": "https://example.org/fake"},
+    ])
+    suggestions = source_review.suggest_filings(rel, filings)
+    assert len(suggestions) == 1
+    assert suggestions.iloc[0].matched_ticker == "LITE"
+    assert suggestions.iloc[0].review_state == "POTENTIAL_SEC_FILING_NOT_VERIFIED"
+    assert not bool(suggestions.iloc[0].is_transaction_verified)
+
+
+def test_research_alert_deduplicates_and_never_labels_news_a_trade(tmp_path, monkeypatch):
+    from radar import research_notifications as N
+    from radar import telegram
+    monkeypatch.setenv("RADAR_STORE", str(tmp_path))
+    sent = []
+    monkeypatch.setattr(telegram, "enabled", lambda: True)
+    monkeypatch.setattr(telegram, "send", lambda msg: sent.append(msg) or True)
+    assert N.warn_data_quality("H083", "COVERAGE", {"priced": 0})
+    assert not N.warn_data_quality("H083", "COVERAGE", {"priced": 0})
+    assert len(sent) == 1
+    rel = pd.DataFrame([{
+        "event_id": "corp:1", "source_company": "NVIDIA",
+        "target_company": "Lumentum", "source_role": "INVESTOR",
+        "target_role": "DIRECT_RECIPIENT", "source_ticker": "NVDA",
+        "target_ticker": "LITE", "relation": "STRATEGIC_INVESTMENT",
+        "observed_at_utc": NOW.isoformat(),
+        "source_url": "https://example.org/article",
+    }])
+    assert N.notify_relationships(rel) == 1
+    assert N.notify_relationships(rel) == 0
+    assert "DOĞRULANMAMIŞ" in sent[-1]
+    assert "AL/SAT SİNYALİ DEĞİL" in sent[-1]
