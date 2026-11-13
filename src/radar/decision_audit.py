@@ -99,3 +99,5 @@ def record_forward_attempt(now: datetime, state: str, reason: str, session: str 
     if old.empty or record["attempt_id"] not in set(old.attempt_id.astype(str)):
         store.append("h083_run_audit", pd.DataFrame([record]))
     store.save_json("h083_last_attempt", record)
+    if state == "COMPLETED_RESEARCH":
+        store.save_json("h083_last_successful_attempt", record)
