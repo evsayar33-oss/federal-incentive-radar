@@ -26,6 +26,7 @@ MIN_DEV = 40
 MIN_HOLDOUT = 40
 MIN_HOLDOUT_MONTHS = 12
 SEED = 20261113
+PRE_REGISTERED_AT = pd.Timestamp("2026-11-13T19:54:31Z")
 TIMESTAMP_PATTERN = re.compile(r"(?:Z|[+-]\d{2}:?\d{2})$", re.I)
 
 PREDECLARED = (
@@ -45,7 +46,8 @@ SUMMARY_COLUMNS = [
     "hypothesis", "description", "development_n", "holdout_n", "holdout_months",
     "holdout_mean_net", "holdout_hit_rate", "holdout_mean_excess",
     "holdout_excess_bootstrap_95_lower", "holdout_positive_month_p",
-    "bh_q", "status", "reason", "validated_alpha", "broker_authorized",
+    "bh_q", "status", "reason", "preregistered_matured_n",
+    "validated_alpha", "broker_authorized",
 ]
 
 
@@ -224,6 +226,7 @@ def _trade_for(event: dict, hypothesis: str, prices: dict[str, pd.Series]) -> di
             "HOLDOUT" if entry_date >= HOLDOUT_START else "EMBARGO"
         ),
         "eligible_forward": bool(entry_date >= HOLDOUT_START),
+        "preregistered_observation": bool(event["known"] >= PRE_REGISTERED_AT),
     }
 
 
@@ -307,6 +310,7 @@ def summarize(trades: pd.DataFrame) -> pd.DataFrame:
             "holdout_mean_excess": float(holdout.net_excess_vs_spy.mean()) if len(holdout) else float("nan"),
             "holdout_excess_bootstrap_95_lower": lower,
             "holdout_positive_month_p": p,
+            "preregistered_matured_n": int(holdout.preregistered_observation.astype(bool).sum()) if len(holdout) else 0,
             "_reasons": reasons,
         })
     q = _bh([r["holdout_positive_month_p"] for r in records])
@@ -330,6 +334,22 @@ def execute(prices: pd.DataFrame, feed: pd.DataFrame,
                                         prices_by_ticker["SPY"].index.max())
     trades = run_hypotheses(events, prices_by_ticker)
     summary = summarize(trades)
+    spy_dates = prices_by_ticker["SPY"].index
+    cutoff_position = max(0, len(spy_dates) - HORIZON - 1)
+    oldest_matured_signal_date = str(spy_dates[cutoff_position].date())
+    prospective = [event for event in events if event["known"] >= PRE_REGISTERED_AT]
+    # Independent forthcoming event queue: it is NOT a paper fill or validated alpha.
+    forward_queue = pd.DataFrame([
+        {"event_id": e["event_id"], "source": e["source"],
+         "family": e["family"], "ticker": e["ticker"],
+         "first_observed_utc": e["known"].isoformat(),
+         "signal_date_et": str(e["day"].date()),
+         "state": "AWAITING_PREDECLARED_SCREEN_AND_20_SESSION_OUTCOME",
+         "validated_alpha": False, "broker_authorized": False}
+        for e in prospective
+    ], columns=["event_id", "source", "family", "ticker",
+                "first_observed_utc", "signal_date_et", "state",
+                "validated_alpha", "broker_authorized"])
     diagnostics = {
         "status": "EXPLORATORY_RESEARCH_ONLY",
         "predeclared_hypotheses": len(PREDECLARED),
@@ -339,6 +359,12 @@ def execute(prices: pd.DataFrame, feed: pd.DataFrame,
         "roundtrip_cost_assumption": {"stock": ASSET_COST, "benchmark": SPY_COST},
         "price_snapshot": price_diag, "event_snapshot": event_diag,
         "total_trades": len(trades),
+        "pre_registered_at_utc": PRE_REGISTERED_AT.isoformat(),
+        "prospective_first_seen_events": int(len(prospective)),
+        "preregistered_matured_trades": int(trades.preregistered_observation.astype(bool).sum()) if not trades.empty else 0,
+        "oldest_signal_to_allow_full_20_session_outcome": oldest_matured_signal_date,
+        "event_known_utc_min": min((e["known"].isoformat() for e in events), default=None),
+        "event_known_utc_max": max((e["known"].isoformat() for e in events), default=None),
         "no_prospective_validation": True,
         "no_live_trading": True,
         "h083_forward_untouched": True,
@@ -351,7 +377,7 @@ def execute(prices: pd.DataFrame, feed: pd.DataFrame,
             "Predeclared and BH adjusted, but still exploratory research",
         ],
     }
-    return summary, trades, diagnostics
+    return summary, trades, diagnostics, forward_queue
 
 
 def main(argv=None) -> int:
@@ -364,9 +390,10 @@ def main(argv=None) -> int:
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True)
     prices, feed, relationships = load_data(args.prices, args.feed, args.relationships)
-    summary, trades, diag = execute(prices, feed, relationships)
+    summary, trades, diag, queue = execute(prices, feed, relationships)
     summary.to_csv(output / "hypothesis_scorecard.csv", index=False)
     trades.to_csv(output / "observations.csv", index=False)
+    queue.to_csv(output / "preregistered_forward_queue.csv", index=False)
     (output / "diagnostics.json").write_text(json.dumps(diag, indent=2, ensure_ascii=False))
     print("ALPHA_DISCOVERY_V1_REPORT_BEGIN")
     print(json.dumps({"diagnostics": diag, "hypotheses": summary.where(pd.notnull(summary), None)
