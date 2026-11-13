@@ -95,7 +95,18 @@ def record_new(
     known = set(old["event_id"].astype(str)) if not old.empty and "event_id" in old else set()
     additions = observed[~observed.event_id.astype(str).isin(known)] if not observed.empty else observed
     if not additions.empty:
+        from . import decision_audit
+        # Save evidence and its first-seen audit as two append-only logical tables.
         store.append("economic_relationships", additions)
+        decision_audit.record(
+            "ECONOMIC_RELATIONSHIP",
+            "relationships:" + pd.Timestamp(now).tz_convert("UTC").isoformat(),
+            "UNVERIFIED_RESEARCH_ONLY",
+            {"source_event_ids": sorted(additions.event_id.astype(str).tolist()),
+             "count": len(additions),
+             "primary_source_verified": False},
+            observed_at_utc=now,
+        )
     report = {
         "ok": True,
         "new_relationships": len(additions),
