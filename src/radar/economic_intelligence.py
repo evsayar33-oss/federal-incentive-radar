@@ -24,19 +24,19 @@ _ACQUIRE = re.compile(
     r"(?=\s+(?:for|in|to|as|amid|after)\b|$)", re.I
 )
 _SUPPLY = re.compile(
-    r"^(?P<supplier>.+?)\\s+(?:to supply|will supply|supplies|agrees to supply)\\s+"
-    r"(?P<buyer>.+?)(?=\\s+(?:with|for|under|to)\\b|$)", re.I
+    r"^(?P<supplier>.+?)\s+(?:to supply|will supply|supplies|agrees to supply)\s+"
+    r"(?P<buyer>.+?)(?=\s+(?:with|for|under|to)\b|$)", re.I
 )
 _JOINT = re.compile(
-    r"^(?P<partner_a>.+?)\\s+(?:forms|launches|announces)\\s+"
-    r"(?:a\\s+)?joint venture with\\s+(?P<partner_b>.+?)"
-    r"(?=\\s+(?:for|to|in)\\b|$)", re.I
+    r"^(?P<partner_a>.+?)\s+(?:forms|launches|announces)\s+"
+    r"(?:a\s+)?joint venture with\s+(?P<partner_b>.+?)"
+    r"(?=\s+(?:for|to|in)\b|$)", re.I
 )
 _AGREEMENT = re.compile(
-    r"^(?P<party_a>.+?)\\s+(?:signs|signed|announces)\\s+"
-    r"(?:a\\s+)?(?:\\$[\\d,.]+\\s*(?:billion|bn|million|mn)\\s+)?"
-    r"(?:supply|capacity|purchase) agreement with\\s+(?P<party_b>.+?)"
-    r"(?=\\s+(?:for|to|in|under)\\b|$)", re.I
+    r"^(?P<party_a>.+?)\s+(?:signs|signed|announces)\s+"
+    r"(?:a\s+)?(?:\$[\d,.]+\s*(?:billion|bn|million|mn)\s+)?"
+    r"(?:supply|capacity|purchase) agreement with\s+(?P<party_b>.+?)"
+    r"(?=\s+(?:for|to|in|under)\b|$)", re.I
 )
 _SUFFIX = re.compile(r"\s*[-–]\s*(?:Reuters|Bloomberg|CNBC|AP News|PR Newswire)\s*$", re.I)
 
