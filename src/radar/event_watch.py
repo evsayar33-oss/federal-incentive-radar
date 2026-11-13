@@ -34,7 +34,7 @@ CANDIDATE_COLS = [
     "event_date", "source", "source_url", "timestamp_quality", "evidence_scope",
     "midas_buy_usd", "midas_sell_usd", "midas_roundtrip_usd",
 ]
-EXCLUSION_COLS = ["ticker", "reason"]
+EXCLUSION_COLS = ["ticker", "reason", "detail"]
 TICKER_RE = re.compile(r"^[A-Z][A-Z0-9.\-]{0,11}$")
 QUALITIES = {"exact_utc", "date_only", "first_seen_utc"}
 
@@ -118,6 +118,8 @@ def features_asof(stock: pd.DataFrame, spy: pd.DataFrame, asof: pd.Timestamp) ->
         return None
     p = p.reindex(calendar)
     benchmark = benchmark.reindex(calendar)
+    if p["Close"].tail(200).notna().sum() < 200:
+        return None
     close, b = p["Close"], benchmark["Close"]
     volume = p["Volume"]
     if pd.isna(close.iloc[-1]) or pd.isna(volume.iloc[-1]) or volume.iloc[-1] <= 0:
@@ -139,6 +141,8 @@ def features_asof(stock: pd.DataFrame, spy: pd.DataFrame, asof: pd.Timestamp) ->
     atr_ratio = true_range.rolling(14, min_periods=14).mean() / close
     atr = atr_ratio.iloc[-1]
     atr20 = atr_ratio.rolling(126, min_periods=80).quantile(0.2).iloc[-1]
+    if not all(np.isfinite(x) for x in (beta, liquidity, mom63, atr, atr20)):
+        return None
     market_ma = b.rolling(200, min_periods=200).mean().iloc[-1]
     risk_on = bool(pd.notna(market_ma) and b.iloc[-1] > market_ma)
     return {
@@ -151,6 +155,26 @@ def features_asof(stock: pd.DataFrame, spy: pd.DataFrame, asof: pd.Timestamp) ->
         "market_regime": "RISK_ON" if risk_on else "RISK_OFF",
         "feature_asof": str(calendar[-1].date()),
     }
+
+
+def missing_feature_detail(stock: pd.DataFrame, spy: pd.DataFrame,
+                           asof: pd.Timestamp) -> str:
+    """Explain a missing feature without relaxing any qualification threshold."""
+    p = _regular_bars(stock)
+    benchmark = _regular_bars(spy)
+    calendar = benchmark.index[benchmark.index <= pd.Timestamp(asof).normalize()]
+    if p.empty:
+        return "NO_VALID_OHLCV"
+    if len(calendar) < 215:
+        return "INSUFFICIENT_BENCHMARK_HISTORY"
+    p = p.reindex(calendar)
+    if pd.isna(p.Close.iloc[-1]):
+        return "MISSING_ASOF_CLOSE"
+    if pd.isna(p.Volume.iloc[-1]) or p.Volume.iloc[-1] <= 0:
+        return "MISSING_ASOF_VOLUME"
+    if p.Close.tail(200).notna().sum() < 200:
+        return "INSUFFICIENT_200_SESSION_TREND"
+    return "NONFINITE_MOMENTUM_BETA_OR_ATR"
 
 
 def evaluate_watch(
@@ -186,16 +210,18 @@ def evaluate_watch(
     for row in eligible.to_dict("records"):
         ticker = str(row["ticker"])
         if ticker not in bars:
-            excluded.append({"ticker": ticker, "reason": "PRICE_MISSING"})
+            excluded.append({"ticker": ticker, "reason": "PRICE_MISSING", "detail": "NO_PROVIDER_SERIES"})
             continue
         feature = features_asof(bars[ticker], benchmark, feature_at)
         if feature is None:
-            excluded.append({"ticker": ticker, "reason": "FEATURE_HISTORY_OR_LAST_PRICE_MISSING"})
+            excluded.append({"ticker": ticker, "reason": "FEATURE_HISTORY_OR_LAST_PRICE_MISSING",
+                             "detail": missing_feature_detail(bars[ticker], benchmark, feature_at)})
             continue
         feature_covered += 1
         liquid = np.isfinite(feature["dollar_volume20"]) and feature["dollar_volume20"] >= 5_000_000
         if not liquid:
-            excluded.append({"ticker": ticker, "reason": "NOT_LIQUID_5M"})
+            excluded.append({"ticker": ticker, "reason": "NOT_LIQUID_5M",
+                             "detail": "DOLLAR_VOLUME_20D_BELOW_5M"})
             continue
         liquid_count += 1
         common = {
@@ -236,6 +262,7 @@ def evaluate_watch(
         "liquid_tickers": liquid_count,
         "excluded_tickers": len(audit), "candidates": len(result),
         "exclusion_reasons": {str(k): int(v) for k, v in audit.reason.value_counts().items()},
+        "exclusion_detail_reasons": {str(k): int(v) for k, v in audit.detail.value_counts().items()},
         # Liquidity is a strategy eligibility filter, not a price feed outage.
         "data_coverage_pct": round(feature_covered / len(eligible), 4) if len(eligible) else 1.0,
         "data_coverage_ok": bool(len(eligible) == 0 or feature_covered / len(eligible) >= 0.8),
