@@ -217,6 +217,18 @@ def render(T,J) -> None:
                 st.dataframe(rel.sort_values("observed_at_utc", ascending=False)[fields].head(100),
                              hide_index=True, use_container_width=True,
                              column_config={"source_url": st.column_config.LinkColumn("Haber kaynağı")})
+        st.markdown("**SEC birincil kaynak adayları (otomatik doğrulanmış DEĞİL)**")
+        review = T("economic_primary_review")
+        if not review.empty:
+            fields = [x for x in [
+                "relationship_event_id", "matched_ticker", "filing_date",
+                "filing_url", "review_state", "reason"
+            ] if x in review]
+            st.dataframe(review.tail(80).iloc[::-1][fields],
+                         hide_index=True, use_container_width=True,
+                         column_config={"filing_url": st.column_config.LinkColumn("SEC dosyası")})
+        else:
+            st.caption("İlişkilerle eşleşen SEC dosyası önerisi henüz yok. Bu, birincil kanıt olmadığı anlamına gelmez.")
         st.markdown("**H083: ileriye dönük net performans ve risk**")
         st.caption(
             "Net aylık portföy getirisi SPY ile karşılaştırılır. Aylık getiri, stop tanımı "
