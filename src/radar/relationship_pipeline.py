@@ -107,8 +107,16 @@ def record_new(
              "primary_source_verified": False},
             observed_at_utc=now,
         )
+    notices = 0
+    if not additions.empty:
+        try:
+            from . import research_notifications
+            notices = research_notifications.notify_relationships(additions)
+        except Exception as exc:
+            LOG.warning("Research-only relationship notice unavailable: %s", type(exc).__name__)
     report = {
         "ok": True,
+        "research_notifications_sent": notices,
         "new_relationships": len(additions),
         "total_relationships": len(known) + len(additions),
         "pending_primary_verification": len(additions),
