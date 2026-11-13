@@ -515,8 +515,10 @@ def run(now_utc: datetime | None = None) -> dict:
     today,schedule,index=_calendar(now)
     allowed,why=_active_session(now,today,schedule)
     if not allowed:
+        from . import decision_audit
+        decision_audit.record_forward_attempt(now, "SKIPPED", why, str(today.date()))
         print("[H083] skip: "+why)
-        return {"skipped":why}
+        return {"skipped":why, "counts_as_forward_month":False}
     feed_path=store_dir()/"event_trade_feed.csv"
     if not feed_path.exists():
         raise FileNotFoundError("No event feed, cannot perform forward H083 decisions")
@@ -548,11 +550,18 @@ def run(now_utc: datetime | None = None) -> dict:
     fills=capture_fills(today,now,cohorts,bars,old_fills)
     outcomes=resolve_months(now,today,cohorts,fills,old_results)
     gate=evidence_gate(outcomes,now)
+    from . import research_assessment, decision_audit
+    market=research_assessment.regime_snapshot(bars.get("SPY"),today)
+    assessment=research_assessment.build_scorecard(outcomes,gate,watch_status,market,now)
+    # Research risk cannot promote a rule; the frozen evidence gate retains
+    # exclusive authority over *information-only* forward plans.
     plans=create_plans(today,now,new,watch,bars,gate,old_plans)
     store.write("h083_forward_cohorts",cohorts)
     store.write("h083_forward_fills",fills)
     store.write("h083_forward_results",outcomes)
     store.write("h083_forward_gates",gate)
+    store.write("h083_research_scorecard",assessment)
+    store.save_json("h083_market_regime",market)
     store.write("h083_action_plans",plans)
     report={
         "ok":True,"generated_utc":pd.Timestamp(now).tz_convert("UTC").isoformat(),
@@ -562,9 +571,25 @@ def run(now_utc: datetime | None = None) -> dict:
         "watch_candidates":len(watch),"cohorts_frozen_this_run":len(new),
         "forward_months_closed":len(outcomes),"approved_paper_rules":
             gate[gate.validated_for_info_plans].rule.astype(str).tolist(),
+        "market_regime":market.get("regime","UNKNOWN"),
+        "data_coverage_ok":watch_status.get("data_coverage_ok",False),
+        "price_download":dict(W.LAST_PRICE_REPORT),
         "information_only":True,"broker_ordering":False,
         "note":"Historically positive H083 returns are not used for future validation.",
     }
+    # The journal and operational attempt metadata distinguish successful
+    # execution from a skipped Actions job and from statistical validation.
+    payload={"feature_asof":str(today.date()),"candidates":len(watch),
+             "new_cohorts":len(new),"completed_forward_months":len(outcomes),
+             "approved_paper_rules":report["approved_paper_rules"],
+             "regime":market.get("regime","UNKNOWN")}
+    import hashlib
+    fingerprint=hashlib.sha256(json.dumps(payload,sort_keys=True).encode()).hexdigest()[:16]
+    decision_audit.record("H083_FORWARD",
+                          "forward:"+str(today.date())+":"+fingerprint,
+                          "FORWARD_RESEARCH_ONLY",payload,observed_at_utc=now)
+    decision_audit.record_forward_attempt(now,"COMPLETED_RESEARCH",
+                                          "AFTER_NYSE_CLOSE",str(today.date()))
     store.save_json("h083_forward_status",report)
     # Retry a same-day bulletin after transient Telegram failure, but never resend
     # a confirmed delivery or issue a late notification after the entry session.
@@ -580,6 +605,12 @@ if __name__=="__main__":
         run()
     except Exception as exc:
         LOG.exception("H083 after-close job failed; no trade status promoted")
+        try:
+            from . import decision_audit
+            decision_audit.record_forward_attempt(
+                datetime.now(timezone.utc),"FAILED",type(exc).__name__)
+        except Exception:
+            LOG.exception("H083 failed attempt audit also failed")
         store.save_json("h083_forward_status",{
             "ok":False,"information_only":True,"broker_ordering":False,
             "last_attempt_utc":datetime.now(timezone.utc).isoformat(),
