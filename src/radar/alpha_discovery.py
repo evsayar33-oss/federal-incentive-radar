@@ -42,6 +42,7 @@ TRADE_COLUMNS = [
     "signal_date_et", "entry_date", "exit_date", "entry_close", "exit_close",
     "spy_entry_close", "spy_exit_close", "gross_return", "net_return",
     "spy_net_return", "net_excess_vs_spy", "stage", "eligible_forward",
+    "preregistered_observation",
 ]
 SUMMARY_COLUMNS = [
     "hypothesis", "description", "development_n", "holdout_n", "holdout_months",
@@ -421,8 +422,8 @@ def main(argv=None) -> int:
     queue.to_csv(output / "preregistered_forward_queue.csv", index=False)
     (output / "diagnostics.json").write_text(json.dumps(diag, indent=2, ensure_ascii=False))
     print("ALPHA_DISCOVERY_V1_REPORT_BEGIN")
-    print(json.dumps({"diagnostics": diag, "hypotheses": summary.where(pd.notnull(summary), None)
-                      .to_dict("records")}, default=str, ensure_ascii=False))
+    print(json.dumps({"diagnostics": diag, "hypotheses": json.loads(summary.to_json(orient="records"))},
+                     allow_nan=False, ensure_ascii=False))
     print("ALPHA_DISCOVERY_V1_REPORT_END")
     return 0
 
