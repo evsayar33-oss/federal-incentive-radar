@@ -29,6 +29,9 @@ def regime_snapshot(spy: pd.DataFrame | None, asof: pd.Timestamp) -> dict:
     if len(p) < 220:
         return {"regime": "UNKNOWN", "reason": "INSUFFICIENT_SPY_HISTORY",
                 "stress_ratio": None}
+    if p.index[-1] != pd.Timestamp(asof).normalize():
+        return {"regime": "UNKNOWN", "reason": "STALE_SPY_SESSION",
+                "stress_ratio": None}
     close = p.Close
     rets = close.pct_change(fill_method=None)
     short = float(rets.tail(20).std(ddof=1))
@@ -88,13 +91,19 @@ def build_scorecard(
         positives = values[values > 0].sum()
         negatives = -values[values < 0].sum()
         compounded = (1 + values).cumprod()
-        max_dd = float((compounded / compounded.cummax() - 1).min()) if len(values) else np.nan
+        if len(values):
+            wealth = np.r_[1.0, compounded.to_numpy(dtype=float)]
+            max_dd = float((wealth / np.maximum.accumulate(wealth) - 1).min())
+        else:
+            max_dd = np.nan
         drift = False
         if len(excess) >= 12:
             prior, recent = excess.iloc[:-6], excess.iloc[-6:]
             drift = bool(recent.mean() < prior.mean() - 0.02)
-        record = (gates.loc[gates.rule.astype(str).eq(rule)].iloc[0].to_dict()
-                  if gates is not None and not gates.empty and "rule" in gates else {})
+        gate_row = (gates.loc[gates.rule.astype(str).eq(rule)]
+                    if gates is not None and not gates.empty and "rule" in gates
+                    else pd.DataFrame())
+        record = gate_row.iloc[0].to_dict() if not gate_row.empty else {}
         confirmed = str(record.get("validated_for_info_plans", "")).lower() in {"true", "1"}
         coverage_ok = bool(watch_status.get("data_coverage_ok", False)) and bool(watch_status.get("ok", False))
         market = str(regime.get("regime", "UNKNOWN"))
