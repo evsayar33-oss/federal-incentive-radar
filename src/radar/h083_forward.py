@@ -553,9 +553,15 @@ def run(now_utc: datetime | None = None) -> dict:
     from . import research_assessment, decision_audit
     market=research_assessment.regime_snapshot(bars.get("SPY"),today)
     assessment=research_assessment.build_scorecard(outcomes,gate,watch_status,market,now)
-    # Research risk cannot promote a rule; the frozen evidence gate retains
-    # exclusive authority over *information-only* forward plans.
-    plans=create_plans(today,now,new,watch,bars,gate,old_plans)
+    # A risk screen can only further RESTRICT information-only proposals.
+    # Never alter monthly cohorts, realized paper results, or frozen evidence gates.
+    risk_eligible=set(assessment.loc[
+        assessment.research_decision.eq("WATCH_RESEARCH_ONLY"), "rule"].astype(str))
+    plan_gate=gate.copy()
+    if not plan_gate.empty:
+        approved=plan_gate.validated_for_info_plans.astype(str).str.lower().isin(["true","1"])
+        plan_gate["validated_for_info_plans"]=approved & plan_gate.rule.astype(str).isin(risk_eligible)
+    plans=create_plans(today,now,new,watch,bars,plan_gate,old_plans)
     store.write("h083_forward_cohorts",cohorts)
     store.write("h083_forward_fills",fills)
     store.write("h083_forward_results",outcomes)
@@ -574,6 +580,7 @@ def run(now_utc: datetime | None = None) -> dict:
         "market_regime":market.get("regime","UNKNOWN"),
         "data_coverage_ok":watch_status.get("data_coverage_ok",False),
         "price_download":dict(W.LAST_PRICE_REPORT),
+        "plans_eligible_after_risk":sorted(risk_eligible),
         "information_only":True,"broker_ordering":False,
         "note":"Historically positive H083 returns are not used for future validation.",
     }
@@ -604,7 +611,7 @@ def run(now_utc: datetime | None = None) -> dict:
     # a confirmed delivery or issue a late notification after the entry session.
     bulletin=cohorts[cohorts.signal_session.eq(str(today.date()))]
     if not bulletin.empty:
-        _notify(bulletin,gate,plans,now)
+        _notify(bulletin,plan_gate,plans,now)
     print("[H083] "+json.dumps(report,ensure_ascii=False))
     return report
 
