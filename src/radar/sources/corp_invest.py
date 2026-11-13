@@ -1,7 +1,7 @@
 """Büyük şirket yatırımları (basın haberleri): Google News RSS, anahtarsız. Geçmiş için after:/before: pencereleri.
 
 Başlıktan şirket adı, tutar ve kategori çıkarılır. Şirket yalnızca ETF/SEC evrenindeki bir hisseyle
-kesin (exact/fuzzy) eşleşirse tutulur; belirsiz eşleşmeler atılır (yanlış hisse sinyalden kötüdür).
+yalnızca kesin (exact/override) eşleşirse tutulur; belirsiz eşleşmeler atılır (yanlış hisse sinyalden kötüdür).
 Olaylar ana 'events' tablosuna girmez; 'invest_events' tablosunda ayrı izlenir ve ayrı kanıtlanır.
 """
 from __future__ import annotations
@@ -69,7 +69,7 @@ def parse_rss(xml_text: str, query: str, universe_matcher: Matcher | None, min_u
         ticker, method = "", "none"
         if universe_matcher is not None:
             t, _score, method = universe_matcher.match(company)
-            ticker = t if method in ("exact", "fuzzy", "override") else ""
+            ticker = t if method in ("exact", "override") else ""
         if not ticker:
             continue
         try:
