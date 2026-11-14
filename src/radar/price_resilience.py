@@ -109,17 +109,68 @@ def download_bars(
     bars = {t: frame for t, frame in bars.items() if not frame.empty}
     providers = {t: "YAHOO_ADJUSTED" for t in bars}
     missing = [t for t in names if t not in bars]
+    # A downloaded symbol can still be unusable for H083 when it lacks
+    # the benchmark's latest completed close, volume, or 200 sessions.
+    # Use the benchmark's last observed session, never wall-clock today.
+    benchmark = bars.get("SPY")
+    asof = benchmark.index[-1] if benchmark is not None and not benchmark.empty else None
+    impaired = []
+    impairment_reasons = {}
+    if asof is not None:
+        for ticker in names:
+            if ticker == "SPY" or ticker not in bars:
+                continue
+            frame = bars[ticker]
+            recent = frame.loc[frame.index <= asof]
+            if recent.empty or asof not in recent.index:
+                reason = "MISSING_ASOF_CLOSE"
+            elif pd.isna(recent.loc[asof, "Volume"]) or recent.loc[asof, "Volume"] <= 0:
+                reason = "MISSING_ASOF_VOLUME"
+            elif recent["Close"].tail(200).notna().sum() < 200:
+                reason = "INSUFFICIENT_200_SESSION_TREND"
+            else:
+                continue
+            impaired.append(ticker)
+            impairment_reasons[ticker] = reason
     # Recover benchmark first. Never turn a price-provider outage into 180
     # uncapped HTTP requests; alternate provider traffic has a hard ceiling.
-    ordered = sorted(missing, key=lambda t: (t != "SPY", names.index(t)))
+    ordered = sorted(missing, key=lambda t: (t != "SPY", names.index(t))) + impaired
     attempted = ordered[:max(0, min(int(max_fallback), MAX_FALLBACK_SYMBOLS))]
     secondary = fallback or stooq_bars
+    recovered_impaired = []
+    rejected_secondary = {}
     for ticker in attempted:
         try:
             frame = normalize(secondary(ticker))
-            if not frame.empty:
-                bars[ticker] = frame
-                providers[ticker] = "STOOQ_SECONDARY_ADJUSTMENT_NOT_VERIFIED"
+            if frame.empty:
+                rejected_secondary[ticker] = "EMPTY_SECONDARY"
+                continue
+            if ticker in impaired:
+                primary = bars[ticker]
+                # Never repair by stitching individual bars from different sources.
+                # Secondary must independently satisfy the full H083 feature window.
+                candidate = frame.loc[frame.index <= asof]
+                if (asof not in candidate.index or len(candidate.tail(200)) < 200
+                        or candidate["Close"].tail(200).isna().any()
+                        or pd.isna(candidate.loc[asof, "Volume"])
+                        or candidate.loc[asof, "Volume"] <= 0):
+                    rejected_secondary[ticker] = "SECONDARY_STILL_INCOMPLETE"
+                    continue
+                overlap = primary[["Close"]].join(candidate[["Close"]], how="inner",
+                                                   lsuffix="_primary", rsuffix="_secondary").tail(20)
+                if len(overlap) >= 5:
+                    ratio = overlap["Close_secondary"] / overlap["Close_primary"]
+                    # Reject sources whose adjusted-price conventions disagree;
+                    # unverified agreement must never be presented as validated.
+                    if (not ratio.notna().all() or (ratio - 1).abs().max() > 0.02):
+                        rejected_secondary[ticker] = "ADJUSTMENT_OR_PRICE_MISMATCH"
+                        continue
+                else:
+                    rejected_secondary[ticker] = "INSUFFICIENT_SOURCE_OVERLAP"
+                    continue
+                recovered_impaired.append(ticker)
+            bars[ticker] = frame
+            providers[ticker] = "STOOQ_SECONDARY_ADJUSTMENT_CHECKED" if ticker in recovered_impaired else "STOOQ_SECONDARY_ADJUSTMENT_NOT_VERIFIED"
         except Exception as exc:
             errors.append("STOOQ_" + type(exc).__name__)
             LOG.info("H083 secondary unavailable %s: %s", ticker, type(exc).__name__)
@@ -128,7 +179,11 @@ def download_bars(
         "loaded": len(bars),
         "missing": len(names) - len(bars),
         "fallback_attempted": len(attempted),
-        "fallback_recovered": sum(t in bars for t in attempted),
+        "fallback_recovered": sum(t in bars for t in attempted if t in missing) + len(recovered_impaired),
+        "partial_series_detected": len(impaired),
+        "partial_series_recovered": len(recovered_impaired),
+        "partial_series_reasons": impairment_reasons,
+        "secondary_rejected": rejected_secondary,
         "fallback_budget": MAX_FALLBACK_SYMBOLS,
         "providers": providers,
         "errors": errors[:12],
