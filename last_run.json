@@ -1,0 +1,1302 @@
+{
+  "slot_open": {
+    "at": "2026-11-12T10:38:38Z",
+    "status": {
+      "federal_register": {
+        "ok": true,
+        "rows": 58,
+        "sec": 2.8
+      },
+      "congress": {
+        "ok": true,
+        "rows": 689,
+        "sec": 19.5
+      },
+      "usaspending": {
+        "ok": true,
+        "rows": 5,
+        "sec": 1.1
+      },
+      "grants_gov": {
+        "ok": true,
+        "rows": 1,
+        "sec": 5.1
+      },
+      "sec_edgar": {
+        "ok": true,
+        "rows": 47,
+        "sec": 4.8
+      },
+      "gdelt": {
+        "ok": true,
+        "rows": 28,
+        "sec": 12.9
+      },
+      "fred": {
+        "ok": true
+      },
+      "treasury_dts": {
+        "ok": true
+      },
+      "autofix": {
+        "ok": true,
+        "new": 0
+      },
+      "events_total": 65093,
+      "events_new": 517,
+      "corp_invest": {
+        "ok": true,
+        "rows": 6,
+        "new": 6,
+        "sec": 5.5
+      },
+      "quality": [],
+      "_diagnostics": {
+        "captured": 0,
+        "warning_count": 0,
+        "error_count": 0,
+        "by_level": {},
+        "groups": [],
+        "recent_records": [],
+        "records_kept": 0,
+        "total_seen": 0,
+        "records_dropped": 0
+      }
+    },
+    "warnings": [],
+    "log_diagnostics": {
+      "captured": 0,
+      "warning_count": 0,
+      "error_count": 0,
+      "by_level": {},
+      "groups": [],
+      "recent_records": [],
+      "records_kept": 0,
+      "total_seen": 0,
+      "records_dropped": 0
+    }
+  },
+  "tables": {
+    "events": 65320,
+    "universe": 10418,
+    "prices": {
+      "tickers": 2369,
+      "first": "2019-10-24",
+      "last": "2026-11-13"
+    },
+    "outlays": 15000,
+    "fred": 33789,
+    "ledger": 462,
+    "scores_latest": 33,
+    "company_exposure": 1289,
+    "review_queue": 24,
+    "alerts": 1521,
+    "event_study": 8792,
+    "metrics": 2,
+    "events_by_source": {
+      "congress": {
+        "total": 827,
+        "relevant": 32,
+        "with_ticker": 0,
+        "with_amount": 0,
+        "last_date": "2026-11-12"
+      },
+      "federal_register": {
+        "total": 4145,
+        "relevant": 2263,
+        "with_ticker": 0,
+        "with_amount": 0,
+        "last_date": "2026-11-13"
+      },
+      "gdelt": {
+        "total": 523,
+        "relevant": 44,
+        "with_ticker": 0,
+        "with_amount": 0,
+        "last_date": "2026-11-13"
+      },
+      "grants_gov": {
+        "total": 81,
+        "relevant": 60,
+        "with_ticker": 0,
+        "with_amount": 43,
+        "last_date": "2026-11-13"
+      },
+      "sec_edgar": {
+        "total": 10221,
+        "relevant": 10221,
+        "with_ticker": 9408,
+        "with_amount": 0,
+        "last_date": "2026-11-13"
+      },
+      "usaspending": {
+        "total": 49523,
+        "relevant": 49523,
+        "with_ticker": 3268,
+        "with_amount": 36808,
+        "last_date": "2028-12-31"
+      }
+    },
+    "events_by_program": {
+      "other": 36271,
+      "infrastructure": 10275,
+      "clean_power": 3898,
+      "agriculture": 2945,
+      "housing": 2942,
+      "critical_minerals": 1862,
+      "semiconductors": 807,
+      "nuclear": 687,
+      "clean_manufacturing": 610,
+      "defense_industrial": 419,
+      "carbon_management": 366,
+      "health_bio": 364,
+      "ai_quantum": 348,
+      "broadband": 185,
+      "hydrogen": 74,
+      "ev_auto": 54,
+      "grid": 36
+    },
+    "match_methods": {
+      "none": 45513,
+      "": 19041,
+      "override_none": 680,
+      "review": 62,
+      "override": 20,
+      "fuzzy": 2,
+      "exact": 2
+    },
+    "universe_by_sector": {
+      "(yok)": 9904,
+      "Industrials": 84,
+      "Information Technology": 77,
+      "Financials": 77,
+      "Health Care": 61,
+      "Consumer Discretionary": 48,
+      "Consumer Staples": 34,
+      "Utilities": 32,
+      "Real Estate": 31,
+      "Materials": 25,
+      "Communication Services": 23,
+      "Energy": 22
+    },
+    "universe_sp500_weight_n": 503,
+    "universe_r2000_weight_n": 0,
+    "universe_sector_weight_n": 510
+  },
+  "slot_midday": {
+    "at": "2026-10-30T18:54:54Z",
+    "status": {
+      "federal_register": {
+        "ok": true,
+        "rows": 85,
+        "sec": 2.8
+      },
+      "congress": {
+        "ok": true,
+        "rows": 709,
+        "sec": 9.4
+      },
+      "usaspending": {
+        "ok": true,
+        "rows": 48,
+        "sec": 9.5
+      },
+      "grants_gov": {
+        "ok": true,
+        "rows": 10,
+        "sec": 9.6
+      },
+      "sec_edgar": {
+        "ok": true,
+        "rows": 133,
+        "sec": 3.1
+      },
+      "gdelt": {
+        "ok": true,
+        "rows": 59,
+        "sec": 13.9
+      },
+      "autofix": {
+        "ok": true,
+        "new": 3
+      },
+      "events_total": 53950,
+      "events_new": 752,
+      "quality": [
+        "İnceleme kuyruğunda 215 belirsiz şirket eşleşmesi var."
+      ],
+      "_diagnostics": {
+        "captured": 2,
+        "warning_count": 2,
+        "error_count": 0,
+        "by_level": {
+          "WARNING": 2
+        },
+        "groups": [
+          {
+            "level": "WARNING",
+            "logger": "radar.gdelt",
+            "count": 1,
+            "example": "GDELT 429 (paylaşılan IP sınırı); bu çalışmada Google News RSS kullanılacak",
+            "file": "gdelt.py",
+            "line": 79,
+            "at": "2026-10-30T18:54:44+00:00"
+          },
+          {
+            "level": "WARNING",
+            "logger": "radar.http",
+            "count": 1,
+            "example": "GET api.gdeltproject.org -> 429, 1.1s sonra tekrar",
+            "file": "http.py",
+            "line": 67,
+            "at": "2026-10-30T18:54:43+00:00"
+          }
+        ],
+        "recent_records": [
+          {
+            "at": "2026-10-30T18:54:43+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 67,
+            "msg": "GET api.gdeltproject.org -> 429, 1.1s sonra tekrar"
+          },
+          {
+            "at": "2026-10-30T18:54:44+00:00",
+            "level": "WARNING",
+            "logger": "radar.gdelt",
+            "file": "gdelt.py",
+            "line": 79,
+            "msg": "GDELT 429 (paylaşılan IP sınırı); bu çalışmada Google News RSS kullanılacak"
+          }
+        ],
+        "records_kept": 2,
+        "total_seen": 2,
+        "records_dropped": 0
+      }
+    },
+    "warnings": [
+      {
+        "at": "2026-10-30T18:54:43+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 67,
+        "msg": "GET api.gdeltproject.org -> 429, 1.1s sonra tekrar"
+      },
+      {
+        "at": "2026-10-30T18:54:44+00:00",
+        "level": "WARNING",
+        "logger": "radar.gdelt",
+        "file": "gdelt.py",
+        "line": 79,
+        "msg": "GDELT 429 (paylaşılan IP sınırı); bu çalışmada Google News RSS kullanılacak"
+      }
+    ],
+    "log_diagnostics": {
+      "captured": 2,
+      "warning_count": 2,
+      "error_count": 0,
+      "by_level": {
+        "WARNING": 2
+      },
+      "groups": [
+        {
+          "level": "WARNING",
+          "logger": "radar.gdelt",
+          "count": 1,
+          "example": "GDELT 429 (paylaşılan IP sınırı); bu çalışmada Google News RSS kullanılacak",
+          "file": "gdelt.py",
+          "line": 79,
+          "at": "2026-10-30T18:54:44+00:00"
+        },
+        {
+          "level": "WARNING",
+          "logger": "radar.http",
+          "count": 1,
+          "example": "GET api.gdeltproject.org -> 429, 1.1s sonra tekrar",
+          "file": "http.py",
+          "line": 67,
+          "at": "2026-10-30T18:54:43+00:00"
+        }
+      ],
+      "recent_records": [
+        {
+          "at": "2026-10-30T18:54:43+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 67,
+          "msg": "GET api.gdeltproject.org -> 429, 1.1s sonra tekrar"
+        },
+        {
+          "at": "2026-10-30T18:54:44+00:00",
+          "level": "WARNING",
+          "logger": "radar.gdelt",
+          "file": "gdelt.py",
+          "line": 79,
+          "msg": "GDELT 429 (paylaşılan IP sınırı); bu çalışmada Google News RSS kullanılacak"
+        }
+      ],
+      "records_kept": 2,
+      "total_seen": 2,
+      "records_dropped": 0
+    }
+  },
+  "weekly": {
+    "at": "2026-11-12T10:37:26Z",
+    "status": {
+      "universe": 10418,
+      "company_sic": {
+        "ok": true,
+        "new": 29
+      },
+      "bea_io": {
+        "ok": true,
+        "year": "2025"
+      },
+      "classifier": {
+        "trained": true,
+        "n": 16718,
+        "n_user_labels": 0,
+        "classes": 18
+      },
+      "autofix": {
+        "ok": true,
+        "new": 7
+      },
+      "evidence": {
+        "unclear": 126,
+        "collecting": 123,
+        "no_effect": 39
+      },
+      "corp_invest_evidence": {
+        "ok": true,
+        "unclear": 6,
+        "collecting": 1
+      },
+      "insider_sync": {
+        "quarters_done": 0,
+        "events": 0,
+        "pending": [
+          "2026q2",
+          "2026q3",
+          "2026q4"
+        ],
+        "errors": []
+      },
+      "insider_evidence": {
+        "ok": true,
+        "unclear": 2,
+        "no_effect": 1
+      },
+      "basket_evidence": {
+        "ok": true,
+        "collecting": 69,
+        "unclear": 22,
+        "no_effect": 14
+      },
+      "sector_confluence": {
+        "ok": true,
+        "events": 109,
+        "strategies": 20
+      },
+      "research": {
+        "hypotheses": 520,
+        "confirmed": 0
+      },
+      "metrics_rows": 1,
+      "learning": {
+        "ok": true
+      },
+      "_diagnostics": {
+        "captured": 1,
+        "warning_count": 1,
+        "error_count": 0,
+        "by_level": {
+          "WARNING": 1
+        },
+        "groups": [
+          {
+            "level": "WARNING",
+            "logger": "radar.etf",
+            "count": 1,
+            "example": "iShares IWM alınamadı: ",
+            "file": "etf_holdings.py",
+            "line": 73,
+            "at": "2026-11-12T10:21:02+00:00"
+          }
+        ],
+        "recent_records": [
+          {
+            "at": "2026-11-12T10:21:02+00:00",
+            "level": "WARNING",
+            "logger": "radar.etf",
+            "file": "etf_holdings.py",
+            "line": 73,
+            "msg": "iShares IWM alınamadı: "
+          }
+        ],
+        "records_kept": 1,
+        "total_seen": 1,
+        "records_dropped": 0
+      }
+    },
+    "warnings": [
+      {
+        "at": "2026-11-12T10:21:02+00:00",
+        "level": "WARNING",
+        "logger": "radar.etf",
+        "file": "etf_holdings.py",
+        "line": 73,
+        "msg": "iShares IWM alınamadı: "
+      }
+    ],
+    "log_diagnostics": {
+      "captured": 1,
+      "warning_count": 1,
+      "error_count": 0,
+      "by_level": {
+        "WARNING": 1
+      },
+      "groups": [
+        {
+          "level": "WARNING",
+          "logger": "radar.etf",
+          "count": 1,
+          "example": "iShares IWM alınamadı: ",
+          "file": "etf_holdings.py",
+          "line": 73,
+          "at": "2026-11-12T10:21:02+00:00"
+        }
+      ],
+      "recent_records": [
+        {
+          "at": "2026-11-12T10:21:02+00:00",
+          "level": "WARNING",
+          "logger": "radar.etf",
+          "file": "etf_holdings.py",
+          "line": 73,
+          "msg": "iShares IWM alınamadı: "
+        }
+      ],
+      "records_kept": 1,
+      "total_seen": 1,
+      "records_dropped": 0
+    }
+  },
+  "slot_close": {
+    "at": "2026-11-13T22:14:45Z",
+    "status": {
+      "federal_register": {
+        "ok": true,
+        "rows": 61,
+        "sec": 2.8
+      },
+      "congress": {
+        "ok": true,
+        "rows": 610,
+        "sec": 2.5
+      },
+      "usaspending": {
+        "ok": true,
+        "rows": 0,
+        "sec": 1.1
+      },
+      "grants_gov": {
+        "ok": true,
+        "rows": 2,
+        "sec": 5.7
+      },
+      "sec_edgar": {
+        "ok": true,
+        "rows": 119,
+        "sec": 3.2
+      },
+      "gdelt": {
+        "ok": true,
+        "rows": 40,
+        "sec": 14.4
+      },
+      "prices": {
+        "ok": true
+      },
+      "autofix": {
+        "ok": true,
+        "new": 0
+      },
+      "events_total": 65320,
+      "events_new": 605,
+      "economic_intelligence": {
+        "ok": true,
+        "research_notifications_sent": 1,
+        "sec_review_candidates": 0,
+        "sec_review_error": "",
+        "new_relationships": 1,
+        "total_relationships": 1,
+        "pending_primary_verification": 1,
+        "generated_at_utc": "2026-11-13T22:09:05.914605+00:00",
+        "research_only": true,
+        "note": "Secondary headlines and first-seen timestamps are NOT confirmed legal agreements."
+      },
+      "corp_invest": {
+        "ok": true,
+        "rows": 13,
+        "new": 9,
+        "sec": 6.5
+      },
+      "evidence": {
+        "ok": true
+      },
+      "sector_confluence": {
+        "ok": true,
+        "events": 109,
+        "strategies": 20
+      },
+      "research": {
+        "hypotheses": 516,
+        "confirmed": 0
+      },
+      "quality": [],
+      "_diagnostics": {
+        "captured": 0,
+        "warning_count": 0,
+        "error_count": 0,
+        "by_level": {},
+        "groups": [],
+        "recent_records": [],
+        "records_kept": 0,
+        "total_seen": 0,
+        "records_dropped": 0
+      }
+    },
+    "warnings": [],
+    "log_diagnostics": {
+      "captured": 0,
+      "warning_count": 0,
+      "error_count": 0,
+      "by_level": {},
+      "groups": [],
+      "recent_records": [],
+      "records_kept": 0,
+      "total_seen": 0,
+      "records_dropped": 0
+    }
+  },
+  "history": {
+    "at": "2026-11-10T20:05:54Z",
+    "status": {
+      "universe": {
+        "ok": true,
+        "tickers": 514
+      },
+      "history": {
+        "windows_done": 124,
+        "events": 75596,
+        "stopped_early": false,
+        "errors": [
+          "usaspending 2024-08-29: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+          "usaspending 2024-09-29: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+          "usaspending 2024-10-30: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+          "usaspending 2024-11-30: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+          "usaspending 2024-12-31: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+          "usaspending 2025-01-31: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+          "usaspending 2025-03-03: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+          "usaspending 2025-04-03: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+          "usaspending 2025-05-04: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+          "usaspending 2025-06-04: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+          "usaspending 2025-07-05: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+          "usaspending 2025-08-05: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+          "usaspending 2025-09-05: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+          "usaspending 2025-10-06: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"
+        ]
+      },
+      "corp_invest_history": {
+        "windows_done": 59,
+        "events": 414,
+        "stopped_early": false,
+        "errors": []
+      },
+      "insider_sync": {
+        "quarters_done": 0,
+        "events": 0,
+        "pending": [
+          "2026q2",
+          "2026q3",
+          "2026q4"
+        ],
+        "errors": []
+      },
+      "company_sic": {
+        "ok": true,
+        "new": 26
+      },
+      "prices": {
+        "ok": true
+      },
+      "evidence": {
+        "unclear": 124,
+        "collecting": 119,
+        "no_effect": 43
+      },
+      "corp_invest_evidence": {
+        "ok": true,
+        "unclear": 3,
+        "no_effect": 2,
+        "promising": 1,
+        "collecting": 1
+      },
+      "insider_evidence": {
+        "ok": true,
+        "unclear": 2,
+        "promising": 1
+      },
+      "basket_evidence": {
+        "ok": true,
+        "collecting": 75,
+        "no_effect": 26,
+        "unclear": 10
+      },
+      "trade_evidence": {
+        "ok": true,
+        "no_effect": 6
+      },
+      "sector_confluence": {
+        "ok": true,
+        "events": 109,
+        "strategies": 20
+      },
+      "research": {
+        "hypotheses": 528,
+        "confirmed": 0
+      },
+      "_diagnostics": {
+        "captured": 18,
+        "warning_count": 18,
+        "error_count": 0,
+        "by_level": {
+          "WARNING": 18
+        },
+        "groups": [
+          {
+            "level": "WARNING",
+            "logger": "radar.http",
+            "count": 6,
+            "example": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.1s sonra tekrar",
+            "file": "http.py",
+            "line": 85,
+            "at": "2026-11-10T19:40:36+00:00"
+          },
+          {
+            "level": "WARNING",
+            "logger": "radar.http",
+            "count": 3,
+            "example": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.8s sonra tekrar",
+            "file": "http.py",
+            "line": 85,
+            "at": "2026-11-10T19:41:32+00:00"
+          },
+          {
+            "level": "WARNING",
+            "logger": "radar.http",
+            "count": 2,
+            "example": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.3s sonra tekrar",
+            "file": "http.py",
+            "line": 85,
+            "at": "2026-11-10T19:40:17+00:00"
+          },
+          {
+            "level": "WARNING",
+            "logger": "radar.http",
+            "count": 2,
+            "example": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.5s sonra tekrar",
+            "file": "http.py",
+            "line": 85,
+            "at": "2026-11-10T19:44:03+00:00"
+          },
+          {
+            "level": "WARNING",
+            "logger": "radar.etf",
+            "count": 1,
+            "example": "iShares IWM alınamadı: ",
+            "file": "etf_holdings.py",
+            "line": 73,
+            "at": "2026-11-10T19:29:59+00:00"
+          },
+          {
+            "level": "WARNING",
+            "logger": "radar.http",
+            "count": 1,
+            "example": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.6s sonra tekrar",
+            "file": "http.py",
+            "line": 85,
+            "at": "2026-11-10T19:43:06+00:00"
+          },
+          {
+            "level": "WARNING",
+            "logger": "radar.http",
+            "count": 1,
+            "example": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.7s sonra tekrar",
+            "file": "http.py",
+            "line": 85,
+            "at": "2026-11-10T19:43:25+00:00"
+          },
+          {
+            "level": "WARNING",
+            "logger": "radar.http",
+            "count": 1,
+            "example": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.9s sonra tekrar",
+            "file": "http.py",
+            "line": 85,
+            "at": "2026-11-10T19:44:59+00:00"
+          },
+          {
+            "level": "WARNING",
+            "logger": "radar.usaspending",
+            "count": 1,
+            "example": "Sözleşme araması başarısız: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+            "file": "usaspending.py",
+            "line": 81,
+            "at": "2026-11-10T19:40:25+00:00"
+          }
+        ],
+        "recent_records": [
+          {
+            "at": "2026-11-10T19:29:59+00:00",
+            "level": "WARNING",
+            "logger": "radar.etf",
+            "file": "etf_holdings.py",
+            "line": 73,
+            "msg": "iShares IWM alınamadı: "
+          },
+          {
+            "at": "2026-11-10T19:40:17+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 85,
+            "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.3s sonra tekrar"
+          },
+          {
+            "at": "2026-11-10T19:40:25+00:00",
+            "level": "WARNING",
+            "logger": "radar.usaspending",
+            "file": "usaspending.py",
+            "line": 81,
+            "msg": "Sözleşme araması başarısız: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"
+          },
+          {
+            "at": "2026-11-10T19:40:36+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 85,
+            "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.1s sonra tekrar"
+          },
+          {
+            "at": "2026-11-10T19:40:54+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 85,
+            "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.3s sonra tekrar"
+          },
+          {
+            "at": "2026-11-10T19:41:13+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 85,
+            "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.1s sonra tekrar"
+          },
+          {
+            "at": "2026-11-10T19:41:32+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 85,
+            "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.8s sonra tekrar"
+          },
+          {
+            "at": "2026-11-10T19:41:51+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 85,
+            "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.8s sonra tekrar"
+          },
+          {
+            "at": "2026-11-10T19:42:11+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 85,
+            "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.1s sonra tekrar"
+          },
+          {
+            "at": "2026-11-10T19:42:29+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 85,
+            "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.1s sonra tekrar"
+          },
+          {
+            "at": "2026-11-10T19:42:47+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 85,
+            "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.1s sonra tekrar"
+          },
+          {
+            "at": "2026-11-10T19:43:06+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 85,
+            "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.6s sonra tekrar"
+          },
+          {
+            "at": "2026-11-10T19:43:25+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 85,
+            "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.7s sonra tekrar"
+          },
+          {
+            "at": "2026-11-10T19:43:44+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 85,
+            "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.8s sonra tekrar"
+          },
+          {
+            "at": "2026-11-10T19:44:03+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 85,
+            "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.5s sonra tekrar"
+          },
+          {
+            "at": "2026-11-10T19:44:21+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 85,
+            "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.5s sonra tekrar"
+          },
+          {
+            "at": "2026-11-10T19:44:41+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 85,
+            "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.1s sonra tekrar"
+          },
+          {
+            "at": "2026-11-10T19:44:59+00:00",
+            "level": "WARNING",
+            "logger": "radar.http",
+            "file": "http.py",
+            "line": 85,
+            "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.9s sonra tekrar"
+          }
+        ],
+        "records_kept": 18,
+        "total_seen": 18,
+        "records_dropped": 0
+      }
+    },
+    "warnings": [
+      {
+        "at": "2026-11-10T19:29:59+00:00",
+        "level": "WARNING",
+        "logger": "radar.etf",
+        "file": "etf_holdings.py",
+        "line": 73,
+        "msg": "iShares IWM alınamadı: "
+      },
+      {
+        "at": "2026-11-10T19:40:17+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 85,
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.3s sonra tekrar"
+      },
+      {
+        "at": "2026-11-10T19:40:25+00:00",
+        "level": "WARNING",
+        "logger": "radar.usaspending",
+        "file": "usaspending.py",
+        "line": 81,
+        "msg": "Sözleşme araması başarısız: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"
+      },
+      {
+        "at": "2026-11-10T19:40:36+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 85,
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.1s sonra tekrar"
+      },
+      {
+        "at": "2026-11-10T19:40:54+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 85,
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.3s sonra tekrar"
+      },
+      {
+        "at": "2026-11-10T19:41:13+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 85,
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.1s sonra tekrar"
+      },
+      {
+        "at": "2026-11-10T19:41:32+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 85,
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.8s sonra tekrar"
+      },
+      {
+        "at": "2026-11-10T19:41:51+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 85,
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.8s sonra tekrar"
+      },
+      {
+        "at": "2026-11-10T19:42:11+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 85,
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.1s sonra tekrar"
+      },
+      {
+        "at": "2026-11-10T19:42:29+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 85,
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.1s sonra tekrar"
+      },
+      {
+        "at": "2026-11-10T19:42:47+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 85,
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.1s sonra tekrar"
+      },
+      {
+        "at": "2026-11-10T19:43:06+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 85,
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.6s sonra tekrar"
+      },
+      {
+        "at": "2026-11-10T19:43:25+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 85,
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.7s sonra tekrar"
+      },
+      {
+        "at": "2026-11-10T19:43:44+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 85,
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.8s sonra tekrar"
+      },
+      {
+        "at": "2026-11-10T19:44:03+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 85,
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.5s sonra tekrar"
+      },
+      {
+        "at": "2026-11-10T19:44:21+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 85,
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.5s sonra tekrar"
+      },
+      {
+        "at": "2026-11-10T19:44:41+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 85,
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.1s sonra tekrar"
+      },
+      {
+        "at": "2026-11-10T19:44:59+00:00",
+        "level": "WARNING",
+        "logger": "radar.http",
+        "file": "http.py",
+        "line": 85,
+        "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.9s sonra tekrar"
+      }
+    ],
+    "log_diagnostics": {
+      "captured": 18,
+      "warning_count": 18,
+      "error_count": 0,
+      "by_level": {
+        "WARNING": 18
+      },
+      "groups": [
+        {
+          "level": "WARNING",
+          "logger": "radar.http",
+          "count": 6,
+          "example": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.1s sonra tekrar",
+          "file": "http.py",
+          "line": 85,
+          "at": "2026-11-10T19:40:36+00:00"
+        },
+        {
+          "level": "WARNING",
+          "logger": "radar.http",
+          "count": 3,
+          "example": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.8s sonra tekrar",
+          "file": "http.py",
+          "line": 85,
+          "at": "2026-11-10T19:41:32+00:00"
+        },
+        {
+          "level": "WARNING",
+          "logger": "radar.http",
+          "count": 2,
+          "example": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.3s sonra tekrar",
+          "file": "http.py",
+          "line": 85,
+          "at": "2026-11-10T19:40:17+00:00"
+        },
+        {
+          "level": "WARNING",
+          "logger": "radar.http",
+          "count": 2,
+          "example": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.5s sonra tekrar",
+          "file": "http.py",
+          "line": 85,
+          "at": "2026-11-10T19:44:03+00:00"
+        },
+        {
+          "level": "WARNING",
+          "logger": "radar.etf",
+          "count": 1,
+          "example": "iShares IWM alınamadı: ",
+          "file": "etf_holdings.py",
+          "line": 73,
+          "at": "2026-11-10T19:29:59+00:00"
+        },
+        {
+          "level": "WARNING",
+          "logger": "radar.http",
+          "count": 1,
+          "example": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.6s sonra tekrar",
+          "file": "http.py",
+          "line": 85,
+          "at": "2026-11-10T19:43:06+00:00"
+        },
+        {
+          "level": "WARNING",
+          "logger": "radar.http",
+          "count": 1,
+          "example": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.7s sonra tekrar",
+          "file": "http.py",
+          "line": 85,
+          "at": "2026-11-10T19:43:25+00:00"
+        },
+        {
+          "level": "WARNING",
+          "logger": "radar.http",
+          "count": 1,
+          "example": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.9s sonra tekrar",
+          "file": "http.py",
+          "line": 85,
+          "at": "2026-11-10T19:44:59+00:00"
+        },
+        {
+          "level": "WARNING",
+          "logger": "radar.usaspending",
+          "count": 1,
+          "example": "Sözleşme araması başarısız: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+          "file": "usaspending.py",
+          "line": 81,
+          "at": "2026-11-10T19:40:25+00:00"
+        }
+      ],
+      "recent_records": [
+        {
+          "at": "2026-11-10T19:29:59+00:00",
+          "level": "WARNING",
+          "logger": "radar.etf",
+          "file": "etf_holdings.py",
+          "line": 73,
+          "msg": "iShares IWM alınamadı: "
+        },
+        {
+          "at": "2026-11-10T19:40:17+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 85,
+          "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.3s sonra tekrar"
+        },
+        {
+          "at": "2026-11-10T19:40:25+00:00",
+          "level": "WARNING",
+          "logger": "radar.usaspending",
+          "file": "usaspending.py",
+          "line": 81,
+          "msg": "Sözleşme araması başarısız: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"
+        },
+        {
+          "at": "2026-11-10T19:40:36+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 85,
+          "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.1s sonra tekrar"
+        },
+        {
+          "at": "2026-11-10T19:40:54+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 85,
+          "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.3s sonra tekrar"
+        },
+        {
+          "at": "2026-11-10T19:41:13+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 85,
+          "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.1s sonra tekrar"
+        },
+        {
+          "at": "2026-11-10T19:41:32+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 85,
+          "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.8s sonra tekrar"
+        },
+        {
+          "at": "2026-11-10T19:41:51+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 85,
+          "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.8s sonra tekrar"
+        },
+        {
+          "at": "2026-11-10T19:42:11+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 85,
+          "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.1s sonra tekrar"
+        },
+        {
+          "at": "2026-11-10T19:42:29+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 85,
+          "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.1s sonra tekrar"
+        },
+        {
+          "at": "2026-11-10T19:42:47+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 85,
+          "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.1s sonra tekrar"
+        },
+        {
+          "at": "2026-11-10T19:43:06+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 85,
+          "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.6s sonra tekrar"
+        },
+        {
+          "at": "2026-11-10T19:43:25+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 85,
+          "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.7s sonra tekrar"
+        },
+        {
+          "at": "2026-11-10T19:43:44+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 85,
+          "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.8s sonra tekrar"
+        },
+        {
+          "at": "2026-11-10T19:44:03+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 85,
+          "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.5s sonra tekrar"
+        },
+        {
+          "at": "2026-11-10T19:44:21+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 85,
+          "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.5s sonra tekrar"
+        },
+        {
+          "at": "2026-11-10T19:44:41+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 85,
+          "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.1s sonra tekrar"
+        },
+        {
+          "at": "2026-11-10T19:44:59+00:00",
+          "level": "WARNING",
+          "logger": "radar.http",
+          "file": "http.py",
+          "line": 85,
+          "msg": "POST api.usaspending.gov -> ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), 8.9s sonra tekrar"
+        }
+      ],
+      "records_kept": 18,
+      "total_seen": 18,
+      "records_dropped": 0
+    }
+  },
+  "diagnostics_version": 2
+}
