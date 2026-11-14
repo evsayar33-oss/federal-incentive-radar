@@ -343,7 +343,12 @@ def run() -> int:
                 "H083_WATCH", str(status.get("reason") or status.get("error") or "WATCH_UNAVAILABLE"),
                 {"eligible": status.get("eligible_tickers", 0),
                  "priced": status.get("priced_tickers", 0),
-                 "candidates": status.get("candidates", 0)},
+                 "coverage_pct": str(round(100 * status.get("data_coverage_pct", 0), 2)) + "%",
+                 "exclusions": ", ".join(f"{k}={v}" for k, v in status.get("exclusion_detail_reasons", status.get("exclusion_reasons", {})).items())[:180],
+                 "provider": "loaded={loaded} missing={missing} recovered={recovered}".format(
+                     loaded=status.get("price_download", {}).get("loaded", "?"),
+                     missing=status.get("price_download", {}).get("missing", "?"),
+                     recovered=status.get("price_download", {}).get("fallback_recovered", "?"))},
             )
         except Exception as exc:
             log.warning("H083 research warning unavailable: %s", type(exc).__name__)
