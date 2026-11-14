@@ -1,0 +1,92 @@
+{
+  "asof": "2026-11-10",
+  "events": 64864,
+  "tickers_in_events": 1939,
+  "tickers_with_prices": 1523,
+  "tickers_without_prices": 416,
+  "survivorship_note": "Fiyatı olmayan şirketler (iflas, birleşme, ticker değişimi) ölçülemez; etkiler hafif iyimser olabilir.",
+  "universe": {
+    "ok": true,
+    "tickers": 514
+  },
+  "history": {
+    "windows_done": 124,
+    "events": 75596,
+    "stopped_early": false,
+    "errors": [
+      "usaspending 2024-08-29: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+      "usaspending 2024-09-29: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+      "usaspending 2024-10-30: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+      "usaspending 2024-11-30: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+      "usaspending 2024-12-31: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+      "usaspending 2025-01-31: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+      "usaspending 2025-03-03: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+      "usaspending 2025-04-03: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+      "usaspending 2025-05-04: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+      "usaspending 2025-06-04: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+      "usaspending 2025-07-05: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+      "usaspending 2025-08-05: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+      "usaspending 2025-09-05: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+      "usaspending 2025-10-06: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"
+    ]
+  },
+  "corp_invest_history": {
+    "windows_done": 59,
+    "events": 414,
+    "stopped_early": false,
+    "errors": []
+  },
+  "insider_sync": {
+    "quarters_done": 0,
+    "events": 0,
+    "pending": [
+      "2026q2",
+      "2026q3",
+      "2026q4"
+    ],
+    "errors": []
+  },
+  "company_sic": {
+    "ok": true,
+    "new": 26
+  },
+  "prices": {
+    "ok": true
+  },
+  "evidence": {
+    "unclear": 124,
+    "collecting": 119,
+    "no_effect": 43
+  },
+  "corp_invest_evidence": {
+    "ok": true,
+    "unclear": 3,
+    "no_effect": 2,
+    "promising": 1,
+    "collecting": 1
+  },
+  "insider_evidence": {
+    "ok": true,
+    "unclear": 2,
+    "promising": 1
+  },
+  "basket_evidence": {
+    "ok": true,
+    "collecting": 75,
+    "no_effect": 26,
+    "unclear": 10
+  },
+  "trade_evidence": {
+    "ok": true,
+    "no_effect": 6
+  },
+  "sector_confluence": {
+    "ok": true,
+    "events": 109,
+    "strategies": 20
+  },
+  "research": {
+    "hypotheses": 528,
+    "confirmed": 0
+  }
+}

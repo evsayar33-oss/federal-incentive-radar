@@ -1,0 +1,9 @@
+{
+  "attempt_id": "2026-11-14T02:28:24.216065+00:00|H083",
+  "attempted_at_utc": "2026-11-14T02:28:24.216065+00:00",
+  "state": "SKIPPED",
+  "reason": "OUTSIDE_17_ET_AFTERCLOSE_SLOT",
+  "session": "2026-11-13",
+  "counts_as_forward_month": false,
+  "note": "A scheduled success or safe skip is not a completed forward outcome."
+}

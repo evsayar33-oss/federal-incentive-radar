@@ -1,0 +1,40 @@
+{
+  "run_id": "2026-11-13T17:06_close",
+  "asof": "2026-11-13",
+  "regime": {
+    "series": "EPUFISCAL",
+    "last": 223.83540361150935,
+    "z": 0.07,
+    "mult": 0.995
+  },
+  "dts_multipliers": {
+    "Information Technology": 0.8,
+    "Energy": 1.013,
+    "Industrials": 1.165,
+    "Materials": 1.25,
+    "Utilities": 1.166,
+    "Health Care": 1.0305,
+    "Financials": 1.0,
+    "Consumer Discretionary": 1.0,
+    "Consumer Staples": 1.25,
+    "Communication Services": 1.0,
+    "Real Estate": 1.0070000000000001
+  },
+  "version": "2.0.0",
+  "spillover": "açık (BEA I-O)",
+  "drift": {
+    "psi": 0.3769,
+    "flag": true,
+    "rising_programs": {
+      "clean_power": 0.173,
+      "infrastructure": 0.03,
+      "ai_quantum": 0.017
+    }
+  },
+  "telegram": {
+    "enabled": true,
+    "notify_statuses": [
+      "proven"
+    ]
+  }
+}
