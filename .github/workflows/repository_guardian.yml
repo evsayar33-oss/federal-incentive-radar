@@ -1,0 +1,33 @@
+name: Repository Guardian (capacity and schedules)
+
+# Preventive audit; does not remove, truncate, or commit trading data.
+# GitHub can disable public-repo schedules after 60 days without activity.
+# The audit itself is not a guaranteed substitute for external monitoring.
+on:
+  schedule:
+    - cron: '37 7 3,18 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+  issues: write
+
+concurrency:
+  group: repository-guardian
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout current tracked tree (no full history download)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Check capacity and inactivity-disabled workflows
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/repo_guardian.py
