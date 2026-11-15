@@ -1,0 +1,49 @@
+name: Immutable recovery points (data branches)
+
+# Create monthly recovery refs without changing main, data, state, or results.
+# No pruning, force push, deletion, or trading execution.
+on:
+  schedule:
+    - cron: '13 8 7 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: recovery-points
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Protect current source commits using immutable tag refs
+        shell: bash
+        env:
+          SOURCE_BRANCHES: 'data'
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          period="$(date -u +%Y-%m)"
+          for branch in $SOURCE_BRANCHES; do
+            if ! git ls-remote --exit-code --heads origin "refs/heads/$branch" >/dev/null; then
+              echo "::warning::Branch $branch not found. No recovery point made."
+              continue
+            fi
+            git fetch --no-tags origin "refs/heads/$branch"
+            sha="$(git rev-parse FETCH_HEAD)"
+            tag="recovery/$branch/$period"
+            if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+              echo "Recovery ref already exists, preserving it: $tag"
+              continue
+            fi
+            git tag "$tag" "$sha"
+            git push origin "refs/tags/$tag"
+            echo "Created recovery point: $tag -> $sha"
+          done
