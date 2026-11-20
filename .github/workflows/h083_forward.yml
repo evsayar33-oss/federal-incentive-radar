@@ -26,6 +26,8 @@ jobs:
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       RUN_LABEL: h083-forward
+      # Allows the runner to reject the DST-mismatched cron even if delayed.
+      H083_TRIGGER_CRON: ${{ github.event.schedule }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6

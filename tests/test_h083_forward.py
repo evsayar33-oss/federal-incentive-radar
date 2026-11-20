@@ -239,6 +239,43 @@ def test_wrong_dst_cron_slot_does_not_publish():
     assert ok and why=="AFTER_NYSE_CLOSE"
 
 
+def test_delayed_correct_cron_is_same_session_not_backfilled(monkeypatch):
+    schedule=pd.DataFrame(
+        {"market_close":[pd.Timestamp("2026-11-19T21:00:00Z")]},
+        index=[pd.Timestamp("2026-11-19")],
+    )
+    # Observed at 22:19 New York time on Nov 19 (03:19 UTC Nov 20).
+    # GitHub scheduled the 17:20 EST cron but dispatched it hours late.
+    monkeypatch.setenv("H083_TRIGGER_CRON","20 22 * * 1-5")
+    allow,why=F._active_session(
+        datetime(2026,11,20,3,19,tzinfo=timezone.utc),
+        pd.Timestamp("2026-11-19"),schedule)
+    assert allow and why=="AFTER_NYSE_CLOSE"
+    # Even a late execution of the *wrong* DST cron must still be ignored.
+    monkeypatch.setenv("H083_TRIGGER_CRON","20 21 * * 1-5")
+    allow,why=F._active_session(
+        datetime(2026,11,20,3,19,tzinfo=timezone.utc),
+        pd.Timestamp("2026-11-19"),schedule)
+    assert not allow and why=="WRONG_DST_CRON_SLOT"
+
+
+def test_summer_wrong_utc_cron_never_triggers_at_18_et(monkeypatch):
+    schedule=pd.DataFrame(
+        {"market_close":[pd.Timestamp("2026-07-01T20:00:00Z")]},
+        index=[pd.Timestamp("2026-07-01")],
+    )
+    monkeypatch.setenv("H083_TRIGGER_CRON","20 22 * * 1-5")
+    ok,why=F._active_session(
+        datetime(2026,7,1,22,20,tzinfo=timezone.utc),
+        pd.Timestamp("2026-07-01"),schedule)
+    assert not ok and why=="WRONG_DST_CRON_SLOT"
+    monkeypatch.setenv("H083_TRIGGER_CRON","20 21 * * 1-5")
+    ok,why=F._active_session(
+        datetime(2026,7,1,22,20,tzinfo=timezone.utc),
+        pd.Timestamp("2026-07-01"),schedule)
+    assert ok and why=="AFTER_NYSE_CLOSE"
+
+
 def test_exchange_calendar_reads_real_nyse_holidays():
     today,schedule,index=F._calendar(datetime(2026,11,26,23,tzinfo=timezone.utc))
     assert pd.Timestamp("2026-11-26") not in index # Thanksgiving

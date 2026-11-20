@@ -11,6 +11,7 @@ import html
 import json
 import logging
 import math
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -82,9 +83,17 @@ def _active_session(now: datetime, today, schedule) -> tuple[bool,str]:
     if today not in schedule.index:
         return False,"NYSE_CLOSED"
     et=pd.Timestamp(now).tz_convert("America/New_York")
-    # Both UTC cron expressions are installed for DST. Ignore the wrong slot.
-    # A delayed out-of-window run must not backdate an entry decision.
-    if et.hour != 17:
+    # The two DST UTC crons can BOTH launch in one day. Reject the cron
+    # that does not belong to the current NYSE date, even if GitHub delayed it.
+    scheduled_cron = os.environ.get("H083_TRIGGER_CRON", "").strip()
+    if scheduled_cron:
+        expected = "20 21 * * 1-5" if et.dst() else "20 22 * * 1-5"
+        if scheduled_cron != expected:
+            return False,"WRONG_DST_CRON_SLOT"
+    # GitHub can launch the CORRECT scheduled run hours late. A genuinely
+    # observed same-session evening is still before the next NYSE open;
+    # keep actual observation UTC and NEVER reconstruct a previous session.
+    if et.hour < 17:
         return False,"OUTSIDE_17_ET_AFTERCLOSE_SLOT"
     official_close = pd.Timestamp(schedule.loc[today,"market_close"])
     if pd.Timestamp(now).tz_convert("UTC") < official_close + pd.Timedelta(minutes=45):
