@@ -1,0 +1,97 @@
+name: Native data-first strategy research (NO ORDERS)
+on:
+  workflow_dispatch:
+  push:
+    branches: ['main']
+    paths:
+      - '.github/workflows/native_strategy_research.yml'
+  pull_request:
+    paths:
+      - '.github/workflows/native_strategy_research.yml'
+      - 'docs/NATIVE_STRATEGY_RESEARCH.md'
+  schedule:
+    - cron: '19 7 * * *'
+permissions:
+  contents: write
+concurrency:
+  group: native-data-first-strategy-research
+  cancel-in-progress: false
+jobs:
+  native-research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Acquire immutable quant_superlab research adapter (read-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          PIN='effd30985408a3441f26b57125582db1d0553445'
+          LAB="$RUNNER_TEMP/quant-mesh-engine"
+          git init -q "$LAB"
+          git -C "$LAB" remote add origin https://github.com/evsayar33-oss/quant_superlab.git
+          git -C "$LAB" fetch -q --depth=1 origin "$PIN"
+          git -C "$LAB" checkout -q --detach FETCH_HEAD
+          test "$(git -C "$LAB" rev-parse HEAD)" = "$PIN"
+          echo "PYTHONPATH=$LAB" >> "$GITHUB_ENV"
+      - name: Offline causal/source-integrity contracts
+        run: |
+          python -m unittest discover -s "$RUNNER_TEMP/quant-mesh-engine/research/portfolio_qualification" -p 'test_*.py' -v
+      - name: Restore ONLY this repository's separate research ledger
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          B='research/strategy-mesh-evidence'
+          ROOT="$RUNNER_TEMP/source-native-evidence"
+          if git ls-remote --exit-code --heads origin "$B" >/dev/null 2>&1; then
+            git fetch -q --depth=1 origin "refs/heads/$B"
+            git worktree add --detach "$ROOT" FETCH_HEAD
+          else
+            git worktree add --detach "$ROOT" HEAD
+          fi
+          mkdir -p "$ROOT/observations/strategy_mesh"
+          echo "MESH_LEDGER_ROOT=$ROOT" >> "$GITHUB_ENV"
+      - name: Accumulate real source-as-of observations and run native study
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARGS=()
+          if [ -n "${MESH_RELEASE_PANEL:-}" ]; then
+            ARGS+=(--release-panel "$MESH_RELEASE_PANEL")
+          fi
+          python -m research.portfolio_qualification.mesh \
+            --repo 'federal-incentive-radar' --root . \
+            --ledger "$MESH_LEDGER_ROOT/observations/strategy_mesh/observations.jsonl" \
+            --out out/native_mesh "${ARGS[@]}"
+          cat out/native_mesh/report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Append only hashed research evidence in isolated branch
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="$MESH_LEDGER_ROOT"
+          test -f "$ROOT/observations/strategy_mesh/observations.jsonl" || exit 0
+          git -C "$ROOT" config user.name 'github-actions[bot]'
+          git -C "$ROOT" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C "$ROOT" add observations/strategy_mesh/observations.jsonl
+          if git -C "$ROOT" diff --cached --quiet; then
+            echo 'NO_NEW_SOURCE_OBSERVATIONS' >> "$GITHUB_STEP_SUMMARY"
+          else
+            git -C "$ROOT" commit -m 'research(mesh): append native source observation [skip ci]'
+            git -C "$ROOT" push origin HEAD:refs/heads/research/strategy-mesh-evidence
+          fi
+      - name: Upload independent study diagnostics (not trading signals)
+        if: always() && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-mesh-${{ github.run_id }}
+          path: out/native_mesh/
+          retention-days: 90
+          if-no-files-found: warn
