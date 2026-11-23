@@ -31,7 +31,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          PIN='811c04aeca2f2634bfe0f3d07be9c4b8bf480090'
+          PIN='b5ca02a12d58730ac29b84badef8601b898540fe'
           LAB="$RUNNER_TEMP/quant-mesh-engine"
           git init -q "$LAB"
           git -C "$LAB" remote add origin https://github.com/evsayar33-oss/quant_superlab.git
