@@ -36,6 +36,6 @@ PAPER_ACCEPT, LIVE_ACCEPT, kurumsal alpha veya emir üretmez.
 **Teknik güvenlik:** Üretim dosyalarını değiştirmez; yalnız kendi
 reposunda ayrık araştırma dalına ve kendi Actions artifact'ına veri yazar.
 Araştırma kodu `quant_superlab` kaynak commit'ine pinli:
-`811c04aeca2f2634bfe0f3d07be9c4b8bf480090`. Diğer repo API'larına veya özel kaynaklara yazma yetkisi yoktur.
+`b5ca02a12d58730ac29b84badef8601b898540fe`. Diğer repo API'larına veya özel kaynaklara yazma yetkisi yoktur.
 `Actions > Native data-first strategy research (NO ORDERS)` üzerinden
 `workflow_dispatch` ile manuel başlatılabilir; günlük cron best effort.
