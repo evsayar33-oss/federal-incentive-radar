@@ -14,3 +14,9 @@ Repository Guardian runs daily and after changes to its own code. PRs run offlin
 ## Remaining external boundaries
 
 Account billing usage/plan/budgets require account access. Public standard runners being free does not imply unlimited storage. Releases, Actions, API rate limits and external data providers can fail. Expiring artifacts larger than the archive worker limit need a dedicated archive job. Continuous data growth eventually requires storage migration; warnings are not a guarantee of unlimited capacity. The daily report and external observer must be checked for freshness, not merely for a green previous run.
+
+## Large source recovery
+
+Files at least 25 MiB in any branch receive a release backup keyed by the exact Git blob SHA. The worker streams the raw blob to disk, verifies its Git identity and byte count, uploads the original bytes, downloads them again, and verifies SHA256 before writing a provenance receipt. Original files and branches remain untouched. The receipt records the original path; recovery downloads the `.bin` asset and restores that path after checking its digest.
+
+At most four distinct blobs, each at most 100 MiB, are processed per run with a ten-minute admission budget. Unprotected large files remain alerts. Verified files become informational below 50 MiB; a 50 MiB operational warning or a 14-day growth projection still raises an alert even when a backup exists. These are early operational budgets, not promises of unlimited GitHub capacity. No history is truncated and no paid tier is enabled.

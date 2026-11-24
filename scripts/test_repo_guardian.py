@@ -20,6 +20,26 @@ probe = module('resource_probe')
 
 
 class GuardianTests(unittest.TestCase):
+    def test_source_blob_checks_git_identity_and_size(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as temp:
+            p=Path(temp)/'blob'; p.write_bytes(b'abc')
+            sha=hashlib.sha1(b'blob 3\0abc').hexdigest()
+            guardian.verify_git_blob(p,sha,3)
+            with self.assertRaises(ValueError):guardian.verify_git_blob(p,sha,4)
+            p.write_bytes(b'bad')
+            with self.assertRaises(ValueError):guardian.verify_git_blob(p,sha,3)
+
+    def test_source_backup_does_not_hide_growth_or_size_warning(self):
+        now=datetime.now(timezone.utc)
+        item={'branch':'data','path':'prices','bytes':30*guardian.MIB,'backup_verified':True}
+        self.assertEqual(guardian.large_file_alerts([item],None,now),[])
+        old={'observed_at':(now-timedelta(days=1)).isoformat(),
+             'large_files':[dict(item,bytes=28*guardian.MIB)]}
+        self.assertTrue(guardian.large_file_alerts([item],old,now))
+        self.assertTrue(guardian.large_file_alerts([dict(item,bytes=50*guardian.MIB)],None,now))
+        self.assertTrue(guardian.large_file_alerts([dict(item,backup_verified=False)],None,now))
+
     def test_pagination_reads_beyond_first_page(self):
         with patch.object(guardian, 'api', side_effect=[{'items': list(range(100))}, {'items': [100]}]) as api:
             self.assertEqual(len(guardian.paged('path', 'items')), 101)
