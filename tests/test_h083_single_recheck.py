@@ -132,3 +132,26 @@ def test_single_symbol_uses_supported_yahoo_history_window(monkeypatch):
     assert seen["symbol"] == "ACME"
     assert seen["period"] == "5y"
     assert seen["auto_adjust"] is True
+
+
+def test_excess_partial_symbols_rotate_across_benchmark_sessions():
+    spy = _bars(n=251)
+    names = ["SPY"] + ["X" + str(i).zfill(2) for i in range(29)]
+    bad = _bars(n=251, last_volume=0)
+    def run(benchmark):
+        calls = []
+        P.download_bars(
+            names,
+            yahoo_loader=lambda names, period: (
+                {"SPY": benchmark, **{t: bad for t in names if t != "SPY"}}, []),
+            single_loader=lambda ticker, period: (
+                calls.append(ticker) or pd.DataFrame()
+            ),
+            fallback=lambda _: pd.DataFrame(),
+            max_fallback=24,
+        )
+        return calls
+    a = run(spy.iloc[:-1])
+    b = run(spy)
+    assert len(a) == len(b) == 24
+    assert set(a) != set(b)
