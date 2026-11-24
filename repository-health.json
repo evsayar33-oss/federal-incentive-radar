@@ -1,6 +1,6 @@
 {
   "repository": "evsayar33-oss/federal-incentive-radar",
-  "observed_at": "2026-11-24T11:22:41.654309+00:00",
+  "observed_at": "2026-11-24T11:53:42.746861+00:00",
   "metrics": {
     "repository_bytes": 90416128,
     "cache_bytes": 158073997,
@@ -9,9 +9,7 @@
     "release_count": 0,
     "release_asset_bytes": 0
   },
-  "alerts": [
-    "1 branch/file entries >=25 MiB; archive before growth reaches Git file limits"
-  ],
+  "alerts": [],
   "errors": [],
   "repaired": [],
   "archives": [],
@@ -41,9 +39,13 @@
     {
       "branch": "data",
       "path": "prices.parquet",
-      "bytes": 36899806
+      "bytes": 36899806,
+      "sha": "087588b16a4dc332a16e1c4d1e6ba4dc1707665b",
+      "backup_verified": true,
+      "backup_tag": "source-blob-087588b16a4dc332a16e1c4d1e6ba4dc1707665b"
     }
   ],
+  "large_file_warning_bytes": 52428800,
   "default_branch_commit_age_days": 0,
-  "status": "attention"
+  "status": "ok"
 }
