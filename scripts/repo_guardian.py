@@ -139,6 +139,80 @@ def preserve_artifact(repo, artifact, head):
         return receipt
 
 
+def verify_git_blob(path, expected_sha, expected_size):
+    size = path.stat().st_size
+    digest = hashlib.sha1(f"blob {size}\0".encode())
+    with path.open('rb') as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+            digest.update(chunk)
+    if size != expected_size or digest.hexdigest() != expected_sha:
+        raise ValueError('Git blob identity mismatch')
+
+
+def preserve_git_blob(repo, item, head):
+    """Verified backup, with no deletion or change to source branches/readers."""
+    sha = item['sha']
+    tag = 'source-blob-' + sha
+    name = 'source-' + sha + '.bin'
+    receipt_name = 'receipt.json'
+    try:
+        release = api(f'repos/{repo}/releases/tags/{tag}')
+    except subprocess.CalledProcessError as exc:
+        if '404' not in (exc.stderr or ''):
+            raise
+        gh('release', 'create', tag, '--repo', repo, '--target', head,
+           '--title', 'Source recovery ' + sha[:12], '--notes',
+           'Original Git blob, byte-identical backup and provenance receipt. No source deletion.',
+           '--latest=false')
+        release = api(f'repos/{repo}/releases/tags/{tag}')
+    assets = paged(f"repos/{repo}/releases/{release['id']}/assets")
+    names = {a['name'] for a in assets}
+    with tempfile.TemporaryDirectory() as temp:
+        root = Path(temp)
+        if name in names and receipt_name in names:
+            gh('release', 'download', tag, '--repo', repo, '--pattern', receipt_name, '--dir', temp)
+            receipt = json.loads((root / receipt_name).read_text())
+            asset = next(a for a in assets if a['name'] == name)
+            if (receipt.get('repository') != repo or receipt.get('git_blob_sha') != sha
+                    or receipt.get('bytes') != item['bytes'] or asset['size'] != item['bytes']
+                    or not receipt.get('round_trip_verified')
+                    or asset.get('digest') != 'sha256:' + receipt.get('sha256', '')):
+                raise ValueError('Existing source backup identity mismatch')
+            return receipt
+        original = root / name
+        with original.open('wb') as out:
+            subprocess.run(['gh', 'api', f'repos/{repo}/git/blobs/{sha}',
+                            '-H', 'Accept: application/vnd.github.raw'], stdout=out,
+                           stderr=subprocess.PIPE, check=True, timeout=180)
+        verify_git_blob(original, sha, item['bytes'])
+        if name not in names:
+            gh('release', 'upload', tag, str(original), '--repo', repo)
+        recovered = root / 'verify'
+        recovered.mkdir()
+        gh('release', 'download', tag, '--repo', repo, '--pattern', name, '--dir', str(recovered))
+        digest = verify_copy(original, recovered / name)
+        receipt = {'repository': repo, 'git_blob_sha': sha, 'bytes': item['bytes'],
+                   'source': item, 'sha256': digest, 'release_tag': tag,
+                   'round_trip_verified': True, 'verified_at': datetime.now(timezone.utc).isoformat()}
+        (root / receipt_name).write_text(json.dumps(receipt, indent=2) + '\n')
+        gh('release', 'upload', tag, str(root / receipt_name), '--repo', repo)
+        return receipt
+
+
+def large_file_alerts(items, previous, now):
+    old = {(v['branch'], v['path']): v for v in (previous or {}).get('large_files', [])}
+    alerts = []
+    for item in items:
+        label = item['branch'] + ':' + item['path']
+        if not item.get('backup_verified'):
+            alerts.append(label + ': large source has no verified backup')
+        prior = old.get((item['branch'], item['path']))
+        baseline = ({'observed_at': previous['observed_at'], 'metrics': {label: prior['bytes']}}
+                    if prior else None)
+        alerts.extend(threshold_alerts({label: item['bytes']}, {label: 50 * MIB}, baseline, now))
+    return alerts
+
+
 def read_status(repo):
     try:
         item = api(f"repos/{repo}/contents/{STATUS_PATH}?ref={STATUS_BRANCH}")
@@ -290,10 +364,18 @@ def audit(repo, apply=False, archive=True):
                 errors.append(f"tree {b['name']}: truncated")
             for item in tree.get("tree", []):
                 if item.get("size", 0) >= 25 * MIB:
-                    large.append({"branch": b["name"], "path": item["path"], "bytes": item["size"]})
-        report["large_files"] = large[:100]
-        if large:
-            alerts.append(f"{len(large)} branch/file entries >=25 MiB; archive before growth reaches Git file limits")
+                    large.append({"branch": b["name"], "path": item["path"], "bytes": item["size"], "sha": item["sha"]})
+        backups = {}
+        for item in large:
+            if apply and item['bytes'] <= 100 * MIB:
+                if item['sha'] not in backups and len(backups) < 4 and time.monotonic() - start < 600:
+                    backups[item['sha']] = preserve_git_blob(repo, item, head['sha'])
+                if item['sha'] in backups:
+                    item['backup_verified'] = True
+                    item['backup_tag'] = backups[item['sha']]['release_tag']
+        report['large_files'] = large
+        report['large_file_warning_bytes'] = 50 * MIB
+        alerts.extend(large_file_alerts(large, previous, now))
     except Exception as exc:
         errors.append(f"branch trees: {type(exc).__name__}")
     last_commit = utc(head["commit"]["committer"]["date"])
