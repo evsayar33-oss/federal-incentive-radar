@@ -1,0 +1,49 @@
+{
+  "repository": "evsayar33-oss/federal-incentive-radar",
+  "observed_at": "2026-11-24T11:22:41.654309+00:00",
+  "metrics": {
+    "repository_bytes": 90416128,
+    "cache_bytes": 158073997,
+    "artifact_bytes": 30242,
+    "artifact_count": 11,
+    "release_count": 0,
+    "release_asset_bytes": 0
+  },
+  "alerts": [
+    "1 branch/file entries >=25 MiB; archive before growth reaches Git file limits"
+  ],
+  "errors": [],
+  "repaired": [],
+  "archives": [],
+  "billing_quota": "unknown: account billing permission required",
+  "archive_candidates": 0,
+  "archive_pending": 0,
+  "workflow_states": {
+    ".github/workflows/alpha_discovery.yml": "active",
+    ".github/workflows/ci.yml": "active",
+    ".github/workflows/h083_forward.yml": "active",
+    ".github/workflows/history.yml": "active",
+    ".github/workflows/immutable_recovery_points.yml": "active",
+    ".github/workflows/keepalive.yml": "active",
+    ".github/workflows/native_strategy_research.yml": "active",
+    ".github/workflows/radar.yml": "active",
+    ".github/workflows/repository_guardian.yml": "active",
+    ".github/workflows/weekly.yml": "active",
+    "dynamic/agents/copilot-pull-request-reviewer": "active"
+  },
+  "operational_warning_budgets": {
+    "repository_bytes": 734003200,
+    "artifact_bytes": 419430400,
+    "cache_bytes": 8589934592,
+    "checkpoint_uncompressed_bytes": 603979776
+  },
+  "large_files": [
+    {
+      "branch": "data",
+      "path": "prices.parquet",
+      "bytes": 36899806
+    }
+  ],
+  "default_branch_commit_age_days": 0,
+  "status": "attention"
+}
