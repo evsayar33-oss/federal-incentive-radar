@@ -99,8 +99,12 @@ def yahoo_single_bars(ticker: str, period: str) -> pd.DataFrame:
     It may recover transient batch/transport gaps, never fabricate absent trades.
     """
     import yfinance as yf
+    # Yahoo's chart API does not promise arbitrary periods such as "3y".
+    # Use a documented longer range and verify the actual as-of/200-session
+    # window against the benchmark before accepting anything.
+    supported_period = "5y" if period == "3y" else period
     return normalize(yf.Ticker(ticker.replace(".", "-")).history(
-        period=period, interval="1d", auto_adjust=True, actions=False,
+        period=supported_period, interval="1d", auto_adjust=True, actions=False,
     ))
 
 
