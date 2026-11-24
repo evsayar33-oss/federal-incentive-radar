@@ -115,3 +115,20 @@ def test_stooq_missing_symbol_must_have_current_close_and_full_history():
     )
     assert "ACME" not in bars
     assert audit["secondary_rejected"]["ACME"] == "MISSING_ASOF_CLOSE"
+
+
+def test_single_symbol_uses_supported_yahoo_history_window(monkeypatch):
+    import sys
+    from types import SimpleNamespace
+    seen = {}
+    class FakeTicker:
+        def __init__(self, symbol):
+            seen["symbol"] = symbol
+        def history(self, **kwargs):
+            seen.update(kwargs)
+            return _bars()
+    monkeypatch.setitem(sys.modules, "yfinance", SimpleNamespace(Ticker=FakeTicker))
+    assert len(P.yahoo_single_bars("ACME", "3y")) == 250
+    assert seen["symbol"] == "ACME"
+    assert seen["period"] == "5y"
+    assert seen["auto_adjust"] is True
