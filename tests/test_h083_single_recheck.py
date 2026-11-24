@@ -137,7 +137,8 @@ def test_single_symbol_uses_supported_yahoo_history_window(monkeypatch):
 def test_excess_partial_symbols_rotate_across_benchmark_sessions():
     spy = _bars(n=251)
     names = ["SPY"] + ["X" + str(i).zfill(2) for i in range(29)]
-    bad = _bars(n=251, last_volume=0)
+    bad = _bars(n=251)
+    bad["Volume"] = 0
     def run(benchmark):
         calls = []
         P.download_bars(
