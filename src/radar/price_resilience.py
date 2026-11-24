@@ -183,8 +183,17 @@ def download_bars(
             impairment_reasons[ticker] = reason
     # Prioritise the benchmark, then missing symbols, then unusable features.
     # Keep the same symbol budget across re-checks and secondary attempts.
-    ordered = sorted(missing, key=lambda t: (t != "SPY", names.index(t))) + impaired
-    selected = ordered[:max(0, min(int(max_fallback), MAX_FALLBACK_SYMBOLS))]
+    priority_missing = sorted(missing, key=lambda t: (t != "SPY", names.index(t)))
+    available = max(0, min(int(max_fallback), MAX_FALLBACK_SYMBOLS))
+    # Otherwise the same last few partial symbols are starved forever.
+    # Rotate only when there are more incomplete names than remaining
+    # capacity; the benchmark session makes retries deterministic per day.
+    shift = 0
+    if asof is not None and len(impaired) > max(0, available - len(priority_missing)):
+        shift = int(asof.toordinal()) % len(impaired)
+    rotated = impaired[shift:] + impaired[:shift]
+    ordered = priority_missing + rotated
+    selected = ordered[:available]
     # When the default Yahoo batch loader is used, re-check incomplete symbols
     # individually first: a single-symbol chart can resolve partial batch reads.
     # Injected loaders remain entirely offline unless single_loader is provided.
@@ -244,6 +253,7 @@ def download_bars(
         "single_recheck_recovered": len(retry_recovered),
         "single_recheck_rejected": retry_rejected,
         "unreached_due_to_budget": len(ordered) - len(selected),
+        "recovery_rotation": shift,
         "partial_series_detected": len(impaired),
         "partial_series_recovered": len(recovered_impaired) + sum(t in impaired for t in retry_recovered),
         "partial_series_reasons": impairment_reasons,
