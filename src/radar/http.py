@@ -21,6 +21,7 @@ MIN_INTERVAL = {
     "api.congress.gov": 0.8,      # 5.000 istek/saat
     "api.usaspending.gov": 0.5,
     "api.grants.gov": 0.5,
+    "api.twelvedata.com": 8.5,  # Basic free tier: <=8 credits/min, one symbol/request
     "www.federalregister.gov": 0.3,
     "api.fiscaldata.treasury.gov": 0.3,
     "fred.stlouisfed.org": 0.6,

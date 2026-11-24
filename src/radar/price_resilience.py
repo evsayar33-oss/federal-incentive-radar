@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 import logging
+import os
 import re
 from typing import Callable
 
@@ -17,6 +18,7 @@ from . import http
 
 LOG = logging.getLogger("radar.price_resilience")
 MAX_FALLBACK_SYMBOLS = 24
+MAX_INDEPENDENT_SYMBOLS = 5  # Twelve Data Basic: 8 credits/min, bounded by host pacing
 BATCH_SIZE = 15
 REQUIRED = ("Open", "High", "Low", "Close", "Volume")
 VALID = re.compile(r"^[A-Z][A-Z0-9.\-]{0,11}$")
@@ -144,6 +146,8 @@ def download_bars(
     *, fallback: Callable[[str], pd.DataFrame] | None = None,
     yahoo_loader: Callable[[list[str], str], tuple[dict[str, pd.DataFrame], list[str]]] | None = None,
     single_loader: Callable[[str, str], pd.DataFrame] | None = None,
+    independent_loader: Callable[[str, str], pd.DataFrame] | None = None,
+    max_independent: int = MAX_INDEPENDENT_SYMBOLS,
     max_fallback: int = MAX_FALLBACK_SYMBOLS,
 ) -> tuple[dict[str, pd.DataFrame], dict]:
     """Return price frames and a truthful, bounded provider coverage audit."""
@@ -219,7 +223,33 @@ def download_bars(
             except Exception as exc:
                 retry_rejected[ticker] = type(exc).__name__
                 errors.append("YAHOO_SINGLE_" + type(exc).__name__)
-    attempted = [t for t in selected if t not in retry_recovered]
+    pending = [t for t in selected if t not in retry_recovered]
+    independent = independent_loader
+    if independent is None and os.getenv("TWELVE_DATA_API_KEY", "").strip():
+        from .twelvedata_provider import fetch_bars as independent
+    independent_attempted = (pending[:max(0, min(int(max_independent), MAX_INDEPENDENT_SYMBOLS))]
+                             if independent is not None else [])
+    independent_recovered = []
+    independent_rejected = {}
+    for ticker in independent_attempted:
+        try:
+            candidate = normalize(independent(ticker, period))
+            quality = ("NO_VALID_BENCHMARK" if asof is None and ticker != "SPY"
+                       else _replacement_quality(candidate, bars.get(ticker), benchmark, asof))
+            if quality is not None:
+                independent_rejected[ticker] = quality
+                continue
+            had_primary = ticker in bars
+            bars[ticker] = candidate
+            providers[ticker] = ("TWELVE_DATA_INDEPENDENT_ADJUSTMENT_CHECKED" if had_primary
+                                 else "TWELVE_DATA_INDEPENDENT_NO_PRIMARY_OVERLAP")
+            independent_recovered.append(ticker)
+            if ticker == "SPY":
+                benchmark, asof = candidate, candidate.index[-1]
+        except Exception as exc:
+            independent_rejected[ticker] = type(exc).__name__
+            errors.append("TWELVE_DATA_" + type(exc).__name__)
+    attempted = [t for t in pending if t not in independent_recovered]
     secondary = fallback or stooq_bars
     recovered_impaired = []
     rejected_secondary = {}
@@ -252,15 +282,22 @@ def download_bars(
         "single_recheck_attempted": len(selected) if retry is not None else 0,
         "single_recheck_recovered": len(retry_recovered),
         "single_recheck_rejected": retry_rejected,
+        "independent_provider": "TWELVE_DATA" if independent is not None else "DISABLED_NO_API_KEY",
+        "independent_attempted": len(independent_attempted),
+        "independent_recovered": len(independent_recovered),
+        "independent_rejected": independent_rejected,
+        "independent_budget": MAX_INDEPENDENT_SYMBOLS,
         "unreached_due_to_budget": len(ordered) - len(selected),
         "recovery_rotation": shift,
         "partial_series_detected": len(impaired),
-        "partial_series_recovered": len(recovered_impaired) + sum(t in impaired for t in retry_recovered),
+        "partial_series_recovered": (len(recovered_impaired) + sum(t in impaired for t in retry_recovered)
+                                     + sum(t in impaired for t in independent_recovered)),
         "partial_series_reasons": impairment_reasons,
         "secondary_rejected": rejected_secondary,
         "fallback_budget": MAX_FALLBACK_SYMBOLS,
         "providers": providers,
         "errors": errors[:12],
-        "note": "Single Yahoo re-check is not independent confirmation; no bar stitching, calendar gaps or OHLCV fabrication.",
+        "note": ("Yahoo is not independent; Twelve Data is independent but remains unverified for "
+                 "forward fills; whole-series replacements only, no bar stitching or synthetic sessions."),
     }
     return bars, report
