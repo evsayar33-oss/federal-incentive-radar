@@ -1,33 +1,59 @@
 name: Repository Guardian (capacity and schedules)
-
-# Preventive audit; does not remove, truncate, or commit trading data.
-# GitHub can disable public-repo schedules after 60 days without activity.
-# The audit itself is not a guaranteed substitute for external monitoring.
 on:
   schedule:
-    - cron: '37 7 3,18 * *'
+    - cron: '22 6 * * *'
   workflow_dispatch:
-
+  push:
+    branches: [main]
+    paths: ['scripts/repo_guardian.py', 'scripts/resource_probe.py', 'scripts/test_repo_guardian.py', '.github/workflows/repository_guardian.yml']
+  pull_request:
+    paths: ['scripts/repo_guardian.py', 'scripts/resource_probe.py', 'scripts/test_repo_guardian.py', '.github/workflows/repository_guardian.yml']
 permissions:
   contents: read
-  actions: write
-  issues: write
-
 concurrency:
-  group: repository-guardian
+  group: repository-guardian-${{ github.ref }}
   cancel-in-progress: false
-
 jobs:
-  audit:
+  tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
-      - name: Checkout current tracked tree (no full history download)
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Start bounded resource telemetry
+        continue-on-error: true
+        run: python3 scripts/resource_probe.py start
+      - run: python3 scripts/test_repo_guardian.py
+      - name: Report runner capacity
+        if: always()
+        continue-on-error: true
+        run: |
+          probe="$RUNNER_TEMP/repo-resource-$GITHUB_RUN_ID-$GITHUB_JOB/probe.py"
+          if test -f "$probe"; then python3 "$probe" finish; else echo "::warning::Resource telemetry unavailable"; fi
+  audit:
+    needs: tests
+    if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
         with:
           persist-credentials: false
           fetch-depth: 1
-      - name: Check capacity and inactivity-disabled workflows
+      - name: Start bounded resource telemetry
+        continue-on-error: true
+        run: python3 scripts/resource_probe.py start
+      - name: Measure capacity, preserve expiring evidence and recover inactivity
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python3 scripts/repo_guardian.py
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/repo_guardian.py --apply
+      - name: Report runner capacity
+        if: always()
+        continue-on-error: true
+        run: |
+          probe="$RUNNER_TEMP/repo-resource-$GITHUB_RUN_ID-$GITHUB_JOB/probe.py"
+          if test -f "$probe"; then python3 "$probe" finish; else echo "::warning::Resource telemetry unavailable"; fi
