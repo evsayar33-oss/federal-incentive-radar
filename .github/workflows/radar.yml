@@ -34,6 +34,7 @@ jobs:
     env:
       PYTHONPATH: src
       RADAR_STORE: store
+      TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
       CONGRESS_API_KEY: ${{ secrets.CONGRESS_API_KEY }}
       SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
       FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
