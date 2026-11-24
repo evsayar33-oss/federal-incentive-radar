@@ -91,10 +91,55 @@ def stooq_bars(ticker: str) -> pd.DataFrame:
     return normalize(data.set_index("Date"))
 
 
+
+def yahoo_single_bars(ticker: str, period: str) -> pd.DataFrame:
+    """Independently re-query Yahoo for one symbol after a partial batch result.
+
+    This is the SAME vendor as the batch, not independent corroboration.
+    It may recover transient batch/transport gaps, never fabricate absent trades.
+    """
+    import yfinance as yf
+    return normalize(yf.Ticker(ticker.replace(".", "-")).history(
+        period=period, interval="1d", auto_adjust=True, actions=False,
+    ))
+
+
+def _replacement_quality(candidate: pd.DataFrame, primary: pd.DataFrame | None,
+                         benchmark: pd.DataFrame | None, asof) -> str | None:
+    """Validate the complete replacement on the actual benchmark calendar."""
+    if candidate.empty:
+        return "EMPTY_RECHECK"
+    if asof is None:
+        # Only SPY can establish the benchmark when it is missing.
+        if len(candidate) < 215:
+            return "INSUFFICIENT_BENCHMARK_HISTORY"
+    else:
+        if asof not in candidate.index:
+            return "MISSING_ASOF_CLOSE"
+        if pd.isna(candidate.loc[asof, "Volume"]) or candidate.loc[asof, "Volume"] <= 0:
+            return "MISSING_ASOF_VOLUME"
+        if benchmark is not None:
+            sessions = benchmark.index[benchmark.index <= asof][-200:]
+            if len(sessions) < 200 or candidate.reindex(sessions)["Close"].isna().any():
+                return "INCOMPLETE_BENCHMARK_CALENDAR"
+    if primary is not None and not primary.empty:
+        overlap = primary[["Close"]].join(
+            candidate[["Close"]], how="inner",
+            lsuffix="_primary", rsuffix="_secondary",
+        ).tail(20)
+        if len(overlap) < 5:
+            return "INSUFFICIENT_SOURCE_OVERLAP"
+        ratio = overlap["Close_secondary"] / overlap["Close_primary"]
+        if not ratio.notna().all() or (ratio - 1).abs().max() > 0.02:
+            return "ADJUSTMENT_OR_PRICE_MISMATCH"
+    return None
+
+
 def download_bars(
     tickers: list[str], period: str = "3y",
     *, fallback: Callable[[str], pd.DataFrame] | None = None,
     yahoo_loader: Callable[[list[str], str], tuple[dict[str, pd.DataFrame], list[str]]] | None = None,
+    single_loader: Callable[[str, str], pd.DataFrame] | None = None,
     max_fallback: int = MAX_FALLBACK_SYMBOLS,
 ) -> tuple[dict[str, pd.DataFrame], dict]:
     """Return price frames and a truthful, bounded provider coverage audit."""
@@ -132,45 +177,54 @@ def download_bars(
                 continue
             impaired.append(ticker)
             impairment_reasons[ticker] = reason
-    # Recover benchmark first. Never turn a price-provider outage into 180
-    # uncapped HTTP requests; alternate provider traffic has a hard ceiling.
+    # Prioritise the benchmark, then missing symbols, then unusable features.
+    # Keep the same symbol budget across re-checks and secondary attempts.
     ordered = sorted(missing, key=lambda t: (t != "SPY", names.index(t))) + impaired
-    attempted = ordered[:max(0, min(int(max_fallback), MAX_FALLBACK_SYMBOLS))]
+    selected = ordered[:max(0, min(int(max_fallback), MAX_FALLBACK_SYMBOLS))]
+    # When the default Yahoo batch loader is used, re-check incomplete symbols
+    # individually first: a single-symbol chart can resolve partial batch reads.
+    # Injected loaders remain entirely offline unless single_loader is provided.
+    retry = single_loader if single_loader is not None else (
+        yahoo_single_bars if yahoo_loader is None else None
+    )
+    retry_recovered = []
+    retry_rejected = {}
+    if retry is not None:
+        for ticker in selected:
+            try:
+                candidate = normalize(retry(ticker, period))
+                quality = _replacement_quality(candidate, bars.get(ticker), benchmark, asof)
+                if quality is not None:
+                    retry_rejected[ticker] = quality
+                    continue
+                bars[ticker] = candidate
+                providers[ticker] = "YAHOO_SINGLE_RECHECK_ADJUSTED"
+                retry_recovered.append(ticker)
+                if ticker == "SPY":
+                    benchmark, asof = candidate, candidate.index[-1]
+            except Exception as exc:
+                retry_rejected[ticker] = type(exc).__name__
+                errors.append("YAHOO_SINGLE_" + type(exc).__name__)
+    attempted = [t for t in selected if t not in retry_recovered]
     secondary = fallback or stooq_bars
     recovered_impaired = []
     rejected_secondary = {}
     for ticker in attempted:
         try:
             frame = normalize(secondary(ticker))
-            if frame.empty:
-                rejected_secondary[ticker] = "EMPTY_SECONDARY"
+            quality = _replacement_quality(frame, bars.get(ticker), benchmark, asof)
+            if quality is not None:
+                rejected_secondary[ticker] = quality
                 continue
             if ticker in impaired:
-                primary = bars[ticker]
-                # Never repair by stitching individual bars from different sources.
-                # Secondary must independently satisfy the full H083 feature window.
-                candidate = frame.loc[frame.index <= asof]
-                if (asof not in candidate.index or len(candidate.tail(200)) < 200
-                        or candidate["Close"].tail(200).isna().any()
-                        or pd.isna(candidate.loc[asof, "Volume"])
-                        or candidate.loc[asof, "Volume"] <= 0):
-                    rejected_secondary[ticker] = "SECONDARY_STILL_INCOMPLETE"
-                    continue
-                overlap = primary[["Close"]].join(candidate[["Close"]], how="inner",
-                                                   lsuffix="_primary", rsuffix="_secondary").tail(20)
-                if len(overlap) >= 5:
-                    ratio = overlap["Close_secondary"] / overlap["Close_primary"]
-                    # Reject sources whose adjusted-price conventions disagree;
-                    # unverified agreement must never be presented as validated.
-                    if (not ratio.notna().all() or (ratio - 1).abs().max() > 0.02):
-                        rejected_secondary[ticker] = "ADJUSTMENT_OR_PRICE_MISMATCH"
-                        continue
-                else:
-                    rejected_secondary[ticker] = "INSUFFICIENT_SOURCE_OVERLAP"
-                    continue
                 recovered_impaired.append(ticker)
             bars[ticker] = frame
-            providers[ticker] = "STOOQ_SECONDARY_ADJUSTMENT_CHECKED" if ticker in recovered_impaired else "STOOQ_SECONDARY_ADJUSTMENT_NOT_VERIFIED"
+            providers[ticker] = (
+                "STOOQ_SECONDARY_ADJUSTMENT_CHECKED"
+                if ticker in recovered_impaired else "STOOQ_SECONDARY_ADJUSTMENT_NOT_VERIFIED"
+            )
+            if ticker == "SPY":
+                benchmark, asof = frame, frame.index[-1]
         except Exception as exc:
             errors.append("STOOQ_" + type(exc).__name__)
             LOG.info("H083 secondary unavailable %s: %s", ticker, type(exc).__name__)
@@ -180,13 +234,17 @@ def download_bars(
         "missing": len(names) - len(bars),
         "fallback_attempted": len(attempted),
         "fallback_recovered": sum(t in bars for t in attempted if t in missing) + len(recovered_impaired),
+        "single_recheck_attempted": len(selected) if retry is not None else 0,
+        "single_recheck_recovered": len(retry_recovered),
+        "single_recheck_rejected": retry_rejected,
+        "unreached_due_to_budget": len(ordered) - len(selected),
         "partial_series_detected": len(impaired),
-        "partial_series_recovered": len(recovered_impaired),
+        "partial_series_recovered": len(recovered_impaired) + sum(t in impaired for t in retry_recovered),
         "partial_series_reasons": impairment_reasons,
         "secondary_rejected": rejected_secondary,
         "fallback_budget": MAX_FALLBACK_SYMBOLS,
         "providers": providers,
         "errors": errors[:12],
-        "note": "Providers may use different corporate-action adjustment conventions; no bar stitching.",
+        "note": "Single Yahoo re-check is not independent confirmation; no bar stitching, calendar gaps or OHLCV fabrication.",
     }
     return bars, report
