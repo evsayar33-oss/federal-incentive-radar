@@ -193,7 +193,8 @@ def download_bars(
         for ticker in selected:
             try:
                 candidate = normalize(retry(ticker, period))
-                quality = _replacement_quality(candidate, bars.get(ticker), benchmark, asof)
+                quality = ("NO_VALID_BENCHMARK" if asof is None and ticker != "SPY"
+                           else _replacement_quality(candidate, bars.get(ticker), benchmark, asof))
                 if quality is not None:
                     retry_rejected[ticker] = quality
                     continue
@@ -212,7 +213,8 @@ def download_bars(
     for ticker in attempted:
         try:
             frame = normalize(secondary(ticker))
-            quality = _replacement_quality(frame, bars.get(ticker), benchmark, asof)
+            quality = ("NO_VALID_BENCHMARK" if asof is None and ticker != "SPY"
+                       else _replacement_quality(frame, bars.get(ticker), benchmark, asof))
             if quality is not None:
                 rejected_secondary[ticker] = quality
                 continue
