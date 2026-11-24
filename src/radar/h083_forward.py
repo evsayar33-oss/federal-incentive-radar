@@ -54,6 +54,11 @@ PLAN_COLS = ["plan_id","rule","ticker","side","target_session","exit_session",
              "notes","created_at_utc"]
 
 
+def _unverified_secondary(provider: str) -> bool:
+    """Non-Yahoo OHLCV cannot validate forward fills without another gate."""
+    return str(provider).startswith(("STOOQ_", "TWELVE_DATA_"))
+
+
 def _read(name: str, columns: list[str]) -> pd.DataFrame:
     current = store.read(name)
     if current is None or current.empty:
@@ -555,7 +560,7 @@ def run(now_utc: datetime | None = None) -> dict:
     execution_symbols={"SPY"}|set(_pending_tickers(cohorts,today))|set(
         watch.ticker.astype(str) if not watch.empty else [])
     unverified=[t for t in sorted(execution_symbols) if
-                str(sourced.get(t,"")).startswith(("STOOQ_", "TWELVE_DATA_"))]
+                _unverified_secondary(sourced.get(t,""))]
     if unverified:
         raise RuntimeError("H083_UNVERIFIED_SECONDARY_FILL_SOURCE: "+
                            ",".join(unverified[:8]))
