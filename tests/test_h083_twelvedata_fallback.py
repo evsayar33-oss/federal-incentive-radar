@@ -173,3 +173,35 @@ def test_forward_fill_gate_rejects_every_third_party_provider():
     assert _unverified_secondary("TWELVE_DATA_INDEPENDENT_NO_PRIMARY_OVERLAP")
     assert not _unverified_secondary("YAHOO_ADJUSTED")
     assert not _unverified_secondary("YAHOO_SINGLE_RECHECK_ADJUSTED")
+
+
+def test_independent_budget_reaches_partial_series_despite_missing_symbols():
+    spy = _bars(n=251)
+    names = ["SPY"] + [f"M{i}" for i in range(7)] + ["PART"]
+    partial = spy.drop(spy.index[-80])
+    calls = []
+    _, audit = P.download_bars(
+        names, yahoo_loader=lambda *_: ({"SPY": spy, "PART": partial}, []),
+        independent_loader=lambda ticker, period: (calls.append(ticker) or (spy if ticker == "PART" else pd.DataFrame())),
+        fallback=lambda _: pd.DataFrame(), max_independent=2,
+    )
+    assert calls == ["M0", "PART"]
+    assert audit["independent_recovered"] == 1
+    assert audit["independent_unreached_due_to_budget"] == 6
+
+
+def test_independent_numeric_errors_are_safe_and_distinct():
+    import requests
+    spy = _bars()
+    def independent(ticker, period):
+        if ticker == "AAA":
+            response = requests.Response()
+            response.status_code = 403
+            raise requests.HTTPError("secret must not appear", response=response)
+        raise TD.TwelveDataResponseError(429)
+    _, audit = P.download_bars(
+        ["SPY", "AAA", "BBB"], yahoo_loader=lambda *_: ({"SPY": spy}, []),
+        independent_loader=independent, fallback=lambda _: pd.DataFrame(),
+    )
+    assert audit["independent_rejected"] == {"AAA": "HTTP_403", "BBB": "API_429"}
+    assert "secret" not in str(audit)
