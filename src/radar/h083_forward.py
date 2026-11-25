@@ -550,15 +550,35 @@ def run(now_utc: datetime | None = None) -> dict:
     benchmark=W._regular_bars(bars.get("SPY",pd.DataFrame()))
     if today not in benchmark.index:
         raise ValueError(f"SPY completed OHLCV unavailable for {today.date()}, no decisions or fills")
+    # Preserve actual-session observations for already-frozen cohorts before
+    # candidate discovery can fail. The existing provider restriction still
+    # applies to SPY and every pending member; no new cohort is created here.
+    sourced=W.LAST_PRICE_REPORT.get("providers",{})
+    existing_symbols={"SPY"}|set(_pending_tickers(cohorts,today))
+    unverified=[t for t in sorted(existing_symbols) if
+                _unverified_secondary(sourced.get(t,""))]
+    if unverified:
+        raise RuntimeError("H083_UNVERIFIED_SECONDARY_FILL_SOURCE: "+
+                           ",".join(unverified[:8]))
+    fills=capture_fills(today,now,cohorts,bars,old_fills)
+    outcomes=resolve_months(now,today,cohorts,fills,old_results)
+    # Append-only observation functions preserve the first observed fills
+    # and closed outcomes. Avoid touching the tables when nothing is added.
+    if len(fills)>len(old_fills):
+        store.write("h083_forward_fills",fills)
+    if len(outcomes)>len(old_results):
+        store.write("h083_forward_results",outcomes)
+    old_fills,old_results=fills,outcomes
+
     watch,exclusions,watch_status=W.evaluate_watch(capped,bars,now,asof=today)
     if watch_status.get("feature_asof")!=str(today.date()) or not watch_status.get("ok"):
+        LOG.error("H083 candidate gate rejected session %s: reason=%s coverage=%s feature_asof=%s",
+                  today.date(),watch_status.get("reason","STALE_OR_UNAVAILABLE"),
+                  watch_status.get("data_coverage_pct"),watch_status.get("feature_asof"))
         raise RuntimeError("Stale H083 candidate snapshot, no forward signal")
-    # Independent fallback sources may have adjustment or feed timing drift.
-    # They can support WATCH research, but never forward-paper fills or
-    # statistically validated months without a separate source-specific gate.
-    sourced=W.LAST_PRICE_REPORT.get("providers",{})
-    execution_symbols={"SPY"}|set(_pending_tickers(cohorts,today))|set(
-        watch.ticker.astype(str) if not watch.empty else [])
+    # Independent fallback sources may support WATCH research, but never
+    # forward-paper fills or new cohort validation without a separate gate.
+    execution_symbols=existing_symbols|set(watch.ticker.astype(str) if not watch.empty else [])
     unverified=[t for t in sorted(execution_symbols) if
                 _unverified_secondary(sourced.get(t,""))]
     if unverified:
