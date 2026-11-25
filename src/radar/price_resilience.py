@@ -181,6 +181,11 @@ def download_bars(
                 reason = "MISSING_ASOF_VOLUME"
             elif recent["Close"].tail(200).notna().sum() < 200:
                 reason = "INSUFFICIENT_200_SESSION_TREND"
+            elif (len(benchmark.index[benchmark.index <= asof][-200:]) == 200
+                  and recent.reindex(benchmark.index[benchmark.index <= asof][-200:])["Close"].isna().any()):
+                # Match features_asof: 200 observations are insufficient if
+                # any of the actual last 200 SPY sessions is absent.
+                reason = "INCOMPLETE_BENCHMARK_CALENDAR"
             else:
                 continue
             impaired.append(ticker)
@@ -227,8 +232,24 @@ def download_bars(
     independent = independent_loader
     if independent is None and os.getenv("TWELVE_DATA_API_KEY", "").strip():
         from .twelvedata_provider import fetch_bars as independent
-    independent_attempted = (pending[:max(0, min(int(max_independent), MAX_INDEPENDENT_SYMBOLS))]
-                             if independent is not None else [])
+    independent_limit = max(0, min(int(max_independent), MAX_INDEPENDENT_SYMBOLS))
+    # Reserve benchmark priority, then give partially observed symbols a
+    # fair share of scarce independent credits. A permanent missing ticker
+    # must not consume every credit on every session. No extra API calls.
+    independent_order = list(pending)
+    if asof is not None:
+        partial_pending = [t for t in pending if t in impaired]
+        missing_pending = [t for t in pending if t not in impaired and t != "SPY"]
+        if partial_pending:
+            reserve = 1 if missing_pending and independent_limit > 1 else 0
+            # Advance by the available partial slots, even when the broader
+            # fallback budget covered all impaired symbols.
+            slots = max(1, independent_limit - reserve - int("SPY" in pending))
+            offset = (int(asof.toordinal()) * slots) % len(partial_pending)
+            partial_pending = partial_pending[offset:] + partial_pending[:offset]
+            independent_order = (["SPY"] if "SPY" in pending else []) + (
+                missing_pending[:reserve] + partial_pending + missing_pending[reserve:])
+    independent_attempted = independent_order[:independent_limit] if independent is not None else []
     independent_recovered = []
     independent_rejected = {}
     for ticker in independent_attempted:
@@ -247,8 +268,19 @@ def download_bars(
             if ticker == "SPY":
                 benchmark, asof = candidate, candidate.index[-1]
         except Exception as exc:
-            independent_rejected[ticker] = type(exc).__name__
-            errors.append("TWELVE_DATA_" + type(exc).__name__)
+            # Report numeric status only; never serialize request/response
+            # messages, URLs, or headers containing the provider key.
+            response = getattr(exc, "response", None)
+            code = getattr(response, "status_code", None)
+            if type(code) is int and 400 <= code <= 599:
+                reason = "HTTP_" + str(code)
+            else:
+                provider_code = getattr(exc, "provider_code", None)
+                reason = ("API_" + str(provider_code)
+                          if type(provider_code) is int and 400 <= provider_code <= 599
+                          else type(exc).__name__)
+            independent_rejected[ticker] = reason
+            errors.append("TWELVE_DATA_" + reason)
     attempted = [t for t in pending if t not in independent_recovered]
     secondary = fallback or stooq_bars
     recovered_impaired = []
@@ -287,6 +319,7 @@ def download_bars(
         "independent_recovered": len(independent_recovered),
         "independent_rejected": independent_rejected,
         "independent_budget": MAX_INDEPENDENT_SYMBOLS,
+        "independent_unreached_due_to_budget": max(0, len(pending) - len(independent_attempted)) if independent is not None else 0,
         "unreached_due_to_budget": len(ordered) - len(selected),
         "recovery_rotation": shift,
         "partial_series_detected": len(impaired),

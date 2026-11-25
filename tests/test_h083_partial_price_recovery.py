@@ -74,3 +74,15 @@ def test_fallback_budget_limits_partial_series_retries():
     assert audit["partial_series_detected"] == 2
     assert audit["partial_series_recovered"] == 1
     assert bars["BBB"].loc[spy.index[-1], "Volume"] == 0
+
+
+def test_internal_missing_spy_session_is_selected_for_recovery():
+    spy = _bars()
+    primary = spy.drop(spy.index[-80])
+    bars, audit = P.download_bars(
+        ["SPY", "ACME"], yahoo_loader=lambda *_: ({"SPY": spy, "ACME": primary}, []),
+        single_loader=lambda *_: spy, fallback=lambda _: (_ for _ in ()).throw(AssertionError("fallback unnecessary")),
+    )
+    assert audit["partial_series_reasons"]["ACME"] == "INCOMPLETE_BENCHMARK_CALENDAR"
+    assert audit["single_recheck_recovered"] == 1
+    assert len(bars["ACME"]) == len(spy)

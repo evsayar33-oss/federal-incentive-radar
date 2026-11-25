@@ -14,6 +14,14 @@ import pandas as pd
 from . import http
 
 
+class TwelveDataResponseError(RuntimeError):
+    """Safe diagnostic: only a numeric vendor code, never remote messages."""
+
+    def __init__(self, code):
+        super().__init__("TWELVE_DATA_RESPONSE_NOT_OK")
+        self.provider_code = code if type(code) is int and 400 <= code <= 599 else None
+
+
 def fetch_bars(ticker: str, period: str = "3y") -> pd.DataFrame:
     """Fetch a whole adjusted daily series, or return no usable observations."""
     key = os.getenv("TWELVE_DATA_API_KEY", "").strip()
@@ -40,7 +48,7 @@ def fetch_bars(ticker: str, period: str = "3y") -> pd.DataFrame:
     if not isinstance(payload, dict) or payload.get("status") != "ok":
         # Provider may return quota/permission errors as HTTP 200.
         # Never echo remote messages that might contain credentials.
-        raise RuntimeError("TWELVE_DATA_RESPONSE_NOT_OK")
+        raise TwelveDataResponseError(payload.get("code") if isinstance(payload, dict) else None)
     meta = payload.get("meta")
     if not isinstance(meta, dict):
         raise ValueError("TWELVE_DATA_METADATA_MISSING")
