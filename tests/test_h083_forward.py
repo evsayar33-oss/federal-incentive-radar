@@ -329,6 +329,67 @@ def test_full_month_end_runner_is_reproducible_without_network(tmp_path,monkeypa
     assert len(saved["h083_forward_cohorts"])==2
 
 
+@pytest.mark.parametrize("day,exit_day", [
+    ("2026-12-01",False), ("2027-01-04",True),
+])
+@pytest.mark.parametrize("blocked_provider", [False, True])
+def test_existing_fills_survive_candidate_coverage_failure(tmp_path, monkeypatch, day, exit_day,
+                                                           blocked_provider):
+    today=pd.Timestamp(day)
+    now=datetime.fromisoformat(day+"T23:00:00+00:00")
+    c=_cohorts()
+    prior=F.capture_fills(pd.Timestamp("2026-12-01"),
+                          datetime(2026,12,1,23,tzinfo=timezone.utc),
+                          c,_bars(),pd.DataFrame(columns=F.FILL_COLS)) if exit_day else pd.DataFrame(columns=F.FILL_COLS)
+    saved={"h083_forward_cohorts":c.copy(),"h083_forward_fills":prior.copy()}
+    writes=[]
+    pd.DataFrame([{"ticker":"ACME"}]).to_csv(tmp_path/"event_trade_feed.csv",index=False)
+    monkeypatch.setattr(F,"store_dir",lambda:tmp_path)
+    monkeypatch.setattr(F,"_calendar",lambda now:(today,None,_index()))
+    monkeypatch.setattr(F,"_active_session",lambda *args:(True,"MOCKED_AFTERCLOSE"))
+    monkeypatch.setattr(F.W,"eligible_events",lambda *args:pd.DataFrame(columns=["ticker"]))
+    monkeypatch.setattr(F.W,"download_daily_bars",lambda *args,**kwargs:_bars())
+    monkeypatch.setattr(F.W,"LAST_PRICE_REPORT",{"providers":{
+        "SPY":"YAHOO_ADJUSTED",
+        "ACME":"TWELVE_DATA_INDEPENDENT_ADJUSTMENT_CHECKED" if blocked_provider else "YAHOO_ADJUSTED",
+    }})
+    monkeypatch.setattr(F.W,"evaluate_watch",lambda *args,**kwargs:(
+        pd.DataFrame(columns=F.W.CANDIDATE_COLS),pd.DataFrame(),
+        {"ok":False,"feature_asof":day,"data_coverage_ok":False,
+         "data_coverage_pct":0.7959,"reason":"INSUFFICIENT_PRICE_COVERAGE"}))
+    monkeypatch.setattr(F.store,"read",lambda key:saved.get(key,pd.DataFrame()))
+    def write(key,value):
+        writes.append(key)
+        saved[key]=value.copy()
+    monkeypatch.setattr(F.store,"write",write)
+    def forbidden(*args,**kwargs):
+        pytest.fail("candidate outage must not freeze cohorts, evaluate gates, or notify")
+    monkeypatch.setattr(F,"freeze_cohorts",forbidden)
+    monkeypatch.setattr(F,"evidence_gate",forbidden)
+    monkeypatch.setattr(F,"_notify",forbidden)
+    if blocked_provider:
+        with pytest.raises(RuntimeError,match="UNVERIFIED_SECONDARY_FILL_SOURCE"):
+            F.run(now)
+        assert writes==[]
+        pd.testing.assert_frame_equal(saved["h083_forward_fills"],prior)
+    else:
+        with pytest.raises(RuntimeError,match="Stale H083 candidate snapshot"):
+            F.run(now)
+        fills=saved["h083_forward_fills"]
+        assert len(fills)==(8 if exit_day else 4)
+        assert fills.valid.astype(str).str.lower().eq("true").all()
+        assert set(fills.loc[fills.phase.eq("EXIT" if exit_day else "ENTRY"),"observed_at_utc"])=={now.isoformat()}
+        if exit_day:
+            assert len(saved["h083_forward_results"])==2
+            assert saved["h083_forward_results"].complete.astype(str).str.lower().eq("true").all()
+        before=list(writes)
+        with pytest.raises(RuntimeError,match="Stale H083 candidate snapshot"):
+            F.run(now)
+        assert writes==before
+    pd.testing.assert_frame_equal(saved["h083_forward_cohorts"],c)
+    assert set(writes).issubset({"h083_forward_fills","h083_forward_results"})
+
+
 def test_long_telegram_bulletin_is_split_without_broken_html():
     msg="\n".join(["<b>H083</b> aday · haber / kural / işlem"]*280)
     chunks=F._telegram_chunks(msg)
