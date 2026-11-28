@@ -1,13 +1,13 @@
 {
   "repository": "evsayar33-oss/federal-incentive-radar",
-  "observed_at": "2026-11-27T16:49:51.264359+00:00",
+  "observed_at": "2026-11-28T15:40:56.490243+00:00",
   "metrics": {
-    "repository_bytes": 56467456,
-    "cache_bytes": 158073997,
-    "artifact_bytes": 44535,
-    "artifact_count": 14,
-    "release_count": 3,
-    "release_asset_bytes": 110916483
+    "repository_bytes": 59840512,
+    "cache_bytes": 524617678,
+    "artifact_bytes": 53811,
+    "artifact_count": 16,
+    "release_count": 4,
+    "release_asset_bytes": 147949888
   },
   "alerts": [],
   "errors": [],
@@ -19,6 +19,7 @@
   "workflow_states": {
     ".github/workflows/alpha_discovery.yml": "active",
     ".github/workflows/ci.yml": "active",
+    ".github/workflows/h083_expansion.yml": "active",
     ".github/workflows/h083_forward.yml": "active",
     ".github/workflows/history.yml": "active",
     ".github/workflows/immutable_recovery_points.yml": "active",
@@ -39,13 +40,13 @@
     {
       "branch": "data",
       "path": "prices.parquet",
-      "bytes": 37032877,
-      "sha": "89dbb03aab67c56936cd90c5bd5f646a19eda9f1",
+      "bytes": 37061727,
+      "sha": "2491cadea5c606e6919367b7109e03bf63b2ea1d",
       "backup_verified": true,
-      "backup_tag": "source-blob-89dbb03aab67c56936cd90c5bd5f646a19eda9f1"
+      "backup_tag": "source-blob-2491cadea5c606e6919367b7109e03bf63b2ea1d"
     }
   ],
   "large_file_warning_bytes": 52428800,
-  "default_branch_commit_age_days": 2,
+  "default_branch_commit_age_days": 0,
   "status": "ok"
 }
