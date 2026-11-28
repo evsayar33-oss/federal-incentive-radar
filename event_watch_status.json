@@ -1,0 +1,34 @@
+{
+  "ok": true,
+  "watch_only": true,
+  "validated_alpha": false,
+  "feature_asof": "2026-11-27",
+  "generated_at_utc": "2026-11-28T03:55:14.264626+00:00",
+  "eligible_tickers": 147,
+  "priced_tickers": 123,
+  "liquid_tickers": 108,
+  "excluded_tickers": 39,
+  "candidates": 10,
+  "exclusion_reasons": {
+    "FEATURE_HISTORY_OR_LAST_PRICE_MISSING": 22,
+    "NOT_LIQUID_5M": 15,
+    "PRICE_MISSING": 2
+  },
+  "exclusion_detail_reasons": {
+    "DOLLAR_VOLUME_20D_BELOW_5M": 15,
+    "MISSING_ASOF_CLOSE": 9,
+    "INSUFFICIENT_200_SESSION_TREND": 7,
+    "MISSING_ASOF_VOLUME": 6,
+    "NO_PROVIDER_SERIES": 2
+  },
+  "data_coverage_pct": 0.8367,
+  "data_coverage_ok": true,
+  "decision": "WATCH_ONLY_NO_TRADE",
+  "by_rule": {
+    "monthly_low_beta": 5,
+    "monthly_vol_squeeze": 5
+  },
+  "source_first_seen_forward_only": 22,
+  "logic_source": "H083 monthly_low_beta and monthly_vol_squeeze",
+  "risk_note": "Historically profitable samples did not establish statistically significant SPY-relative alpha"
+}
