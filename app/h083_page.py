@@ -104,6 +104,10 @@ def render(T,J) -> None:
             "alt türleri birbirinden farklıdır; hiçbiri otomatik 'kanıtlı kazanç' değildir."
         )
     with pages[2]:
+        st.caption("Bağımsız yeni şirket araştırması: [H083 genişleme verileri]"
+                   "(https://github.com/evsayar33-oss/federal-incentive-radar/tree/research/h083-expansion) "
+                   "· Pilot ve 300–500 hedefi ayrı izlenir. İlk yayın tamamlanmış seans sonrası; "
+                   "ana H083 kapsaması ve PAPER onayı değişmez.")
         st.markdown(
             "**Aylık düşük-beta:** SMA200 üstünde, 63 günlük momentum pozitif, "
             "126 günlük SPY betası 0–1; en düşük beta ilk sırada. "
