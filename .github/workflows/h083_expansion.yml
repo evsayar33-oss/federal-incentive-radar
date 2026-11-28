@@ -1,0 +1,73 @@
+name: H083 — isolated prospective universe expansion
+
+on:
+  schedule:
+    - cron: "40 23 * * 1-5" # after both NYSE core slots
+    - cron: "40 3 * * 2-6"  # one late retry; healthy same-session snapshots skip
+  workflow_dispatch:
+
+permissions:
+  contents: write
+# Do not occupy or cancel any job in the existing radar-data concurrency group.
+concurrency:
+  group: radar-h083-expansion
+  cancel-in-progress: false
+
+jobs:
+  expansion-watch-only:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PYTHONPATH: src
+      RADAR_STORE: store
+      DATA_BRANCH: research/h083-expansion
+      SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+      RUN_LABEL: h083-expansion
+    steps:
+      - uses: actions/checkout@v5
+      - name: Start bounded resource telemetry
+        continue-on-error: true
+        run: python3 scripts/resource_probe.py start
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-etl.txt
+      - run: pip install -r requirements-etl.txt
+      - name: Mount only independent expansion output branch
+        run: bash .github/scripts/data_branch.sh setup
+      - name: Read pinned core data without changing it
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin data
+          SHA=$(git rev-parse FETCH_HEAD)
+          INPUT="$RUNNER_TEMP/h083-expansion-source"
+          mkdir -p "$INPUT"
+          for f in event_trade_feed.csv event_watch_status.json; do
+            git show "$SHA:$f" > "$INPUT/$f"
+          done
+          for table in events prices; do
+            if git cat-file -e "$SHA:$table.parquet" 2>/dev/null; then
+              git show "$SHA:$table.parquet" > "$INPUT/$table.parquet"
+            else
+              git show "$SHA:$table.csv.gz" > "$INPUT/$table.csv.gz"
+            fi
+          done
+          echo "RADAR_EXPANSION_INPUT=$INPUT" >> "$GITHUB_ENV"
+          echo "RADAR_EXPANSION_SOURCE_SHA=$SHA" >> "$GITHUB_ENV"
+      - name: Independent discovery and watch snapshot (no core writes or PAPER approval)
+        timeout-minutes: 16
+        run: python -m radar.h083_expansion
+      - name: Publish isolated research tables
+        run: |
+          if test -f store/h083_expansion_status.json && test -n "$(git -C store status --porcelain)"; then
+            bash .github/scripts/data_branch.sh publish
+          fi
+      - name: Report runner capacity
+        if: always()
+        continue-on-error: true
+        run: |
+          probe="$RUNNER_TEMP/repo-resource-$GITHUB_RUN_ID-$GITHUB_JOB/probe.py"
+          if test -f "$probe"; then python3 "$probe" finish; else echo "::warning::Resource telemetry unavailable"; fi

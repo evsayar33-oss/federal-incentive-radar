@@ -339,3 +339,31 @@ kapısını ve ilgili araştırma kolunda keşif sonrası doğrulamayı geçmede
 kendi walk-forward ve canlı geri besleme testleri korunur; yatırım, içeriden alım, sepet ve kırılım adayları yeni
 olaylarla ileriye dönük doğrulanır. Araştırma ve fiyat verileri ücretsiz kaynaklarla çalışır; otomatik emir verilmez.
 Bu süreç avantaj bulmayı garanti etmez; hiçbir hipotez kapıları geçmezse sistem sinyal üretmez.
+
+
+### H083 bağımsız evren genişletmesi (araştırma, işlem değil)
+
+Mevcut H083 olay-uygun evreni, seçim kuralları, dondurulmuş ileri kağıt
+kayıtları ve %80 fiyat kapsamı değişmez. Ayrı izleme evreni önce toplam 200
+varlığa kadar küçük pilotla başlar; üç ayrı sağlıklı seans ve bekleyen
+uygun aday varsa kapasite 50 artar. İlk hedef 300, üst sınır 500;
+hedefe ulaşmak zorunlu değildir. Sağlıksız seans yeni artışı engeller.
+
+Yeni adaylar mevcut uygun olay taşması veya SEC EDGAR şirket açıklamasındaki
+federal program ifadesi, resmi NYSE/Nasdaq ticker–CIK eşleşmesi, son 365
+gün ve önceki 200 tamamlanmış seansın fiyat geçmişi ile seçilir. SEC belge
+ifadesi federal teşvik kazanıldığını kanıtlamaz; doğrudan araştırma
+ipucundan ibarettir. Fiyat kapsaması için aynı günün kesin tamamlanmış
+OHLCV seansı, %80 ve mevcut $5m likidite testi zorunludur. Bugünkü eksik
+fiyatlara göre üyelik seçilmez; mevcut uygun üyeler korunur.
+
+Genişleme iş akışı önceden pinlenen `data` snapshotını sadece okur.
+Ayrı `research/h083-expansion` dalındaki
+`h083_expansion_status.json`, `h083_expansion_universe.parquet`,
+`h083_expansion_candidates.parquet` ve `h083_expansion_exclusions.parquet`
+verilerinde kapsama ve kaynak kanıtı tutulur. Bu iş ana veri dalını,
+PAPER/ACCEPT kapısını ve broker emirlerini değiştirmez. Yahoo geniş çaplı
+veri kesintisinde yeni sorgular durur; Twelve Data kotası çekirdek
+Radar için korunur. H122 gözlemi genişleme ve ana araştırma kapsamını
+ayrı gösterir. İlk yayın piyasanın sonraki tamamlanan seansından sonra
+yapılır; eksik veri varsa aday listesi boş kalır.
