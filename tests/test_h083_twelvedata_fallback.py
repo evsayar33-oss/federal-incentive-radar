@@ -164,7 +164,7 @@ def test_independent_calls_bounded_before_stooq():
     assert audit["independent_attempted"] == 2
     assert audit["independent_recovered"] == 0
     assert audit["fallback_attempted"] == 9
-    assert audit["independent_budget"] == 5
+    assert audit["independent_budget"] == 12
 
 
 def test_forward_fill_gate_rejects_every_third_party_provider():

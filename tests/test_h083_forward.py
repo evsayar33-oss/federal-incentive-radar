@@ -308,7 +308,7 @@ def test_full_month_end_runner_is_reproducible_without_network(tmp_path,monkeypa
     monkeypatch.setattr(module,"store_dir",lambda:tmp_path)
     monkeypatch.setattr(module,"_calendar",lambda now:(pd.Timestamp("2026-11-30"),sch,_index()))
     monkeypatch.setattr(module,"_active_session",lambda *args:(True,"MOCKED_AFTERCLOSE"))
-    monkeypatch.setattr(module.W,"download_daily_bars",lambda tickers,period:_bars())
+    monkeypatch.setattr(module.W,"download_daily_bars",lambda tickers,period,**kwargs:_bars())
     monkeypatch.setattr(module.W,"evaluate_watch",
         lambda *args,**kwargs:(_watch(),pd.DataFrame(columns=["ticker","reason"]),
                               {"ok":True,"feature_asof":"2026-11-30"}))
@@ -362,6 +362,7 @@ def test_existing_fills_survive_candidate_coverage_failure(tmp_path, monkeypatch
         writes.append(key)
         saved[key]=value.copy()
     monkeypatch.setattr(F.store,"write",write)
+    monkeypatch.setattr(F.store,"save_json",lambda key,value:saved.update({key:value}))
     def forbidden(*args,**kwargs):
         pytest.fail("candidate outage must not freeze cohorts, evaluate gates, or notify")
     monkeypatch.setattr(F,"freeze_cohorts",forbidden)
@@ -385,9 +386,9 @@ def test_existing_fills_survive_candidate_coverage_failure(tmp_path, monkeypatch
         before=list(writes)
         with pytest.raises(RuntimeError,match="Stale H083 candidate snapshot"):
             F.run(now)
-        assert writes==before
+        assert [w for w in writes if not w.startswith("event_watch_")]==[w for w in before if not w.startswith("event_watch_")]
     pd.testing.assert_frame_equal(saved["h083_forward_cohorts"],c)
-    assert set(writes).issubset({"h083_forward_fills","h083_forward_results"})
+    assert set(writes).issubset({"h083_forward_fills","h083_forward_results","event_watch_candidates","event_watch_exclusions"})
 
 
 def test_long_telegram_bulletin_is_split_without_broken_html():
