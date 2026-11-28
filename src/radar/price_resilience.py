@@ -12,13 +12,15 @@ import os
 import re
 from typing import Callable
 
+import numpy as np
 import pandas as pd
 
 from . import http
 
 LOG = logging.getLogger("radar.price_resilience")
 MAX_FALLBACK_SYMBOLS = 24
-MAX_INDEPENDENT_SYMBOLS = 5  # Twelve Data Basic: 8 credits/min, bounded by host pacing
+MAX_INDEPENDENT_SYMBOLS = 12  # 8.5-second host pacing; bounded per research run
+DEFAULT_INDEPENDENT_SYMBOLS = 5
 BATCH_SIZE = 15
 REQUIRED = ("Open", "High", "Low", "Close", "Volume")
 VALID = re.compile(r"^[A-Z][A-Z0-9.\-]{0,11}$")
@@ -40,7 +42,7 @@ def normalize(frame: pd.DataFrame | None) -> pd.DataFrame:
         out[field] = pd.to_numeric(out[field], errors="coerce")
     out = out[~out.index.duplicated(keep="last")].sort_index()
     # One corrupt bar must never silently produce valid-looking indicators.
-    good = (out["Open"].gt(0) & out["High"].gt(0) & out["Low"].gt(0)
+    good = (np.isfinite(out).all(axis=1) & out["Open"].gt(0) & out["High"].gt(0) & out["Low"].gt(0)
             & out["Close"].gt(0) & out["Volume"].ge(0)
             & out["High"].ge(out["Low"])
             & out["High"].ge(out[["Open", "Close"]].max(axis=1) * 0.999)
@@ -115,11 +117,9 @@ def _replacement_quality(candidate: pd.DataFrame, primary: pd.DataFrame | None,
     """Validate the complete replacement on the actual benchmark calendar."""
     if candidate.empty:
         return "EMPTY_RECHECK"
-    if asof is None:
-        # Only SPY can establish the benchmark when it is missing.
-        if len(candidate) < 215:
-            return "INSUFFICIENT_BENCHMARK_HISTORY"
-    else:
+    if benchmark is None and len(candidate.loc[candidate.index <= asof] if asof is not None else candidate) < 215:
+        return "INSUFFICIENT_BENCHMARK_HISTORY"
+    if asof is not None:
         if asof not in candidate.index:
             return "MISSING_ASOF_CLOSE"
         if pd.isna(candidate.loc[asof, "Volume"]) or candidate.loc[asof, "Volume"] <= 0:
@@ -147,8 +147,11 @@ def download_bars(
     yahoo_loader: Callable[[list[str], str], tuple[dict[str, pd.DataFrame], list[str]]] | None = None,
     single_loader: Callable[[str, str], pd.DataFrame] | None = None,
     independent_loader: Callable[[str, str], pd.DataFrame] | None = None,
-    max_independent: int = MAX_INDEPENDENT_SYMBOLS,
+    max_independent: int = DEFAULT_INDEPENDENT_SYMBOLS,
     max_fallback: int = MAX_FALLBACK_SYMBOLS,
+    required_asof: pd.Timestamp | None = None,
+    recovery_round: int = 0,
+    previous_independent_recovered: tuple[str, ...] = (),
 ) -> tuple[dict[str, pd.DataFrame], dict]:
     """Return price frames and a truthful, bounded provider coverage audit."""
     names = list(dict.fromkeys(str(t).strip().upper() for t in tickers if VALID.fullmatch(str(t).strip().upper())))
@@ -159,6 +162,9 @@ def download_bars(
         LOG.warning("H083 price provider failed: %s", type(exc).__name__)
         bars, errors = {}, [type(exc).__name__]
     bars = {t: normalize(frame) for t, frame in bars.items() if t in names}
+    if required_asof is not None:
+        required_asof = pd.Timestamp(required_asof).normalize()
+        bars = {t: frame.loc[frame.index <= required_asof] for t, frame in bars.items()}
     bars = {t: frame for t, frame in bars.items() if not frame.empty}
     providers = {t: "YAHOO_ADJUSTED" for t in bars}
     missing = [t for t in names if t not in bars]
@@ -166,10 +172,20 @@ def download_bars(
     # the benchmark's latest completed close, volume, or 200 sessions.
     # Use the benchmark's last observed session, never wall-clock today.
     benchmark = bars.get("SPY")
-    asof = benchmark.index[-1] if benchmark is not None and not benchmark.empty else None
+    asof = required_asof if required_asof is not None else (
+        benchmark.index[-1] if benchmark is not None and not benchmark.empty else None)
     impaired = []
     impairment_reasons = {}
-    if asof is not None:
+    # An explicitly required NYSE session may never fall back to an older
+    # SPY close. Give an impaired benchmark first recovery priority.
+    if required_asof is not None and (benchmark is None or len(benchmark) < 215
+                                     or required_asof not in benchmark.index
+                                     or benchmark.loc[required_asof, "Volume"] <= 0):
+        if "SPY" in bars:
+            impaired.append("SPY")
+            impairment_reasons["SPY"] = "MISSING_REQUIRED_BENCHMARK_SESSION"
+        benchmark = None
+    if asof is not None and benchmark is not None:
         for ticker in names:
             if ticker == "SPY" or ticker not in bars:
                 continue
@@ -197,11 +213,22 @@ def download_bars(
     # Otherwise the same last few partial symbols are starved forever.
     # Rotate only when there are more incomplete names than remaining
     # capacity; the benchmark session makes retries deterministic per day.
+    previous = set(previous_independent_recovered)
+    # Preserve the prior proven recovery targets, but never reuse their
+    # prices. Every run re-downloads and checks the source's whole series.
+    known_recovered = [t for t in impaired if t in previous and t != "SPY"] + [
+        t for t in priority_missing if t in previous and t != "SPY"]
+    impaired = [t for t in impaired if t not in known_recovered]
+    priority_missing = [t for t in priority_missing if t not in known_recovered]
+    benchmark_first = ["SPY"] if "SPY" in impaired or "SPY" in priority_missing else []
+    rotating = [t for t in impaired if t != "SPY"]
     shift = 0
-    if asof is not None and len(impaired) > max(0, available - len(priority_missing)):
-        shift = int(asof.toordinal()) % len(impaired)
-    rotated = impaired[shift:] + impaired[:shift]
-    ordered = priority_missing + rotated
+    if asof is not None and len(rotating) > max(0, available - len(priority_missing) - len(known_recovered)):
+        shift = (int(asof.toordinal()) + recovery_round * max(1, available-len(priority_missing)-len(known_recovered))) % len(rotating)
+    rotated = rotating[shift:] + rotating[:shift]
+    ordered = list(dict.fromkeys(benchmark_first + known_recovered + priority_missing + rotated))
+    # The original impairment lists include previous targets for audit.
+    impaired = list(impairment_reasons)
     selected = ordered[:available]
     # When the default Yahoo batch loader is used, re-check incomplete symbols
     # individually first: a single-symbol chart can resolve partial batch reads.
@@ -215,8 +242,10 @@ def download_bars(
         for ticker in selected:
             try:
                 candidate = normalize(retry(ticker, period))
-                quality = ("NO_VALID_BENCHMARK" if asof is None and ticker != "SPY"
-                           else _replacement_quality(candidate, bars.get(ticker), benchmark, asof))
+                if required_asof is not None:
+                    candidate = candidate.loc[candidate.index <= required_asof]
+                quality = ("NO_VALID_BENCHMARK" if benchmark is None and ticker != "SPY"
+                           else _replacement_quality(candidate, bars.get(ticker), None if ticker == "SPY" else benchmark, asof))
                 if quality is not None:
                     retry_rejected[ticker] = quality
                     continue
@@ -233,6 +262,13 @@ def download_bars(
     if independent is None and os.getenv("TWELVE_DATA_API_KEY", "").strip():
         from .twelvedata_provider import fetch_bars as independent
     independent_limit = max(0, min(int(max_independent), MAX_INDEPENDENT_SYMBOLS))
+    # Larger budget only to recover coverage. HTTP host pacing is already
+    # 8.5s/request; no parallel requests or paid quota expansion.
+    if required_asof is not None and benchmark is not None:
+        unresolved = len((set(missing) | set(impaired)) - set(retry_recovered) - {"SPY"})
+        eligible_count = len(set(names) - {"SPY"})
+        if not eligible_count or (eligible_count-unresolved)/eligible_count >= .8:
+            independent_limit = min(independent_limit, DEFAULT_INDEPENDENT_SYMBOLS)
     # Reserve benchmark priority, then give partially observed symbols a
     # fair share of scarce independent credits. A permanent missing ticker
     # must not consume every credit on every session. No extra API calls.
@@ -245,18 +281,24 @@ def download_bars(
             # Advance by the available partial slots, even when the broader
             # fallback budget covered all impaired symbols.
             slots = max(1, independent_limit - reserve - int("SPY" in pending))
-            offset = (int(asof.toordinal()) * slots) % len(partial_pending)
+            offset = ((int(asof.toordinal()) + recovery_round) * slots) % len(partial_pending)
             partial_pending = partial_pending[offset:] + partial_pending[:offset]
             independent_order = (["SPY"] if "SPY" in pending else []) + (
                 missing_pending[:reserve] + partial_pending + missing_pending[reserve:])
+    # Retest previously verified independent targets first, not the same
+    # rejected five names forever. Reserve capacity for new targets.
+    proven = [t for t in pending if t in previous and t != "SPY"][:max(0, independent_limit-1-int("SPY" in pending))]
+    independent_order = list(dict.fromkeys((["SPY"] if "SPY" in pending else []) + proven + independent_order))
     independent_attempted = independent_order[:independent_limit] if independent is not None else []
     independent_recovered = []
     independent_rejected = {}
     for ticker in independent_attempted:
         try:
             candidate = normalize(independent(ticker, period))
-            quality = ("NO_VALID_BENCHMARK" if asof is None and ticker != "SPY"
-                       else _replacement_quality(candidate, bars.get(ticker), benchmark, asof))
+            if required_asof is not None:
+                candidate = candidate.loc[candidate.index <= required_asof]
+            quality = ("NO_VALID_BENCHMARK" if benchmark is None and ticker != "SPY"
+                       else _replacement_quality(candidate, bars.get(ticker), None if ticker == "SPY" else benchmark, asof))
             if quality is not None:
                 independent_rejected[ticker] = quality
                 continue
@@ -288,8 +330,10 @@ def download_bars(
     for ticker in attempted:
         try:
             frame = normalize(secondary(ticker))
-            quality = ("NO_VALID_BENCHMARK" if asof is None and ticker != "SPY"
-                       else _replacement_quality(frame, bars.get(ticker), benchmark, asof))
+            if required_asof is not None:
+                frame = frame.loc[frame.index <= required_asof]
+            quality = ("NO_VALID_BENCHMARK" if benchmark is None and ticker != "SPY"
+                       else _replacement_quality(frame, bars.get(ticker), None if ticker == "SPY" else benchmark, asof))
             if quality is not None:
                 rejected_secondary[ticker] = quality
                 continue
@@ -317,6 +361,11 @@ def download_bars(
         "independent_provider": "TWELVE_DATA" if independent is not None else "DISABLED_NO_API_KEY",
         "independent_attempted": len(independent_attempted),
         "independent_recovered": len(independent_recovered),
+        "independent_recovered_symbols": independent_recovered,
+        "total_recovered": (len(retry_recovered) + len(independent_recovered)
+                            + sum(t in bars for t in attempted if t in missing) + len(recovered_impaired)),
+        "required_asof": str(required_asof.date()) if required_asof is not None else None,
+        "recovery_round": recovery_round,
         "independent_rejected": independent_rejected,
         "independent_budget": MAX_INDEPENDENT_SYMBOLS,
         "independent_unreached_due_to_budget": max(0, len(pending) - len(independent_attempted)) if independent is not None else 0,

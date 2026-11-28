@@ -546,9 +546,14 @@ def run(now_utc: datetime | None = None) -> dict:
     old_results=_read("h083_forward_results",RESULT_COLS)
     old_plans=_read("h083_action_plans",PLAN_COLS)
     universe=sorted({"SPY"}|set(capped.ticker.astype(str))|set(_pending_tickers(cohorts,today)))
-    bars=W.download_daily_bars(universe,period="3y")
+    bars=W.download_daily_bars(universe,period="3y",asof=today)
     benchmark=W._regular_bars(bars.get("SPY",pd.DataFrame()))
-    if today not in benchmark.index:
+    if today not in benchmark.index or not np.isfinite(benchmark.loc[today,"Volume"]) or benchmark.loc[today,"Volume"]<=0:
+        watch,exclusions,watch_status=W.evaluate_watch(capped,bars,now,asof=today)
+        watch_status["price_download"]=dict(W.LAST_PRICE_REPORT)
+        store.write("event_watch_candidates",watch)
+        store.write("event_watch_exclusions",exclusions)
+        store.save_json("event_watch_status",watch_status)
         raise ValueError(f"SPY completed OHLCV unavailable for {today.date()}, no decisions or fills")
     # Preserve actual-session observations for already-frozen cohorts before
     # candidate discovery can fail. The existing provider restriction still
@@ -571,14 +576,21 @@ def run(now_utc: datetime | None = None) -> dict:
     old_fills,old_results=fills,outcomes
 
     watch,exclusions,watch_status=W.evaluate_watch(capped,bars,now,asof=today)
+    watch_status["price_download"]=dict(W.LAST_PRICE_REPORT)
     if watch_status.get("feature_asof")!=str(today.date()) or not watch_status.get("ok"):
+        # Publish this exact blocked session, not yesterday's healthy watch.
+        store.write("event_watch_candidates",pd.DataFrame(columns=W.CANDIDATE_COLS))
+        store.write("event_watch_exclusions",exclusions)
+        store.save_json("event_watch_status",watch_status)
         LOG.error("H083 candidate gate rejected session %s: reason=%s coverage=%s feature_asof=%s",
                   today.date(),watch_status.get("reason","STALE_OR_UNAVAILABLE"),
                   watch_status.get("data_coverage_pct"),watch_status.get("feature_asof"))
         raise RuntimeError("Stale H083 candidate snapshot, no forward signal")
     # Independent fallback sources may support WATCH research, but never
     # forward-paper fills or new cohort validation without a separate gate.
-    execution_symbols=existing_symbols|set(watch.ticker.astype(str) if not watch.empty else [])
+    execution_symbols=existing_symbols
+    if _month_end_rebalance(today,index) is not None and not watch.empty:
+        execution_symbols=execution_symbols|set(watch.ticker.astype(str))
     unverified=[t for t in sorted(execution_symbols) if
                 _unverified_secondary(sourced.get(t,""))]
     if unverified:

@@ -156,3 +156,68 @@ def test_excess_partial_symbols_rotate_across_benchmark_sessions():
     b = run(spy)
     assert len(a) == len(b) == 24
     assert set(a) != set(b)
+
+
+def test_same_session_retries_rotate_and_keep_previous_recovered_target():
+    spy = _bars()
+    names = ["SPY"] + [f"X{i:02}" for i in range(34)]
+    incomplete = spy.iloc[:-1]
+    def run(round_number, previous=()):
+        calls = []
+        _, report = P.download_bars(
+            names, yahoo_loader=lambda *_: ({"SPY":spy, **{t:incomplete for t in names[1:]}},[]),
+            single_loader=lambda ticker,period: (calls.append(ticker) or incomplete),
+            independent_loader=lambda *_: spy, fallback=lambda _:pd.DataFrame(),
+            max_fallback=24, max_independent=5, required_asof=spy.index[-1],
+            recovery_round=round_number, previous_independent_recovered=previous)
+        return calls, report
+    first, a = run(0)
+    second, b = run(1, tuple(a["independent_recovered_symbols"]))
+    assert len(first)==len(second)==24
+    assert set(first)!=set(second)
+    assert set(a["independent_recovered_symbols"]) <= set(second)
+    assert a["total_recovered"]==a["independent_recovered"]==5
+    assert b["recovery_round"]==1
+
+
+def test_stale_spy_is_prioritized_for_the_exact_session():
+    spy = _bars()
+    stale = spy.iloc[:-1]
+    calls=[]
+    bars,audit=P.download_bars(["SPY","ACME"],
+        yahoo_loader=lambda *_:({"SPY":stale,"ACME":spy},[]),
+        single_loader=lambda ticker,period:(calls.append(ticker) or spy),
+        fallback=lambda _:pd.DataFrame(),required_asof=spy.index[-1])
+    assert calls[0]=="SPY"
+    assert bars["SPY"].index[-1]==spy.index[-1]
+    assert audit["single_recheck_recovered"]==audit["total_recovered"]==1
+    bars,audit=P.download_bars(["SPY","ACME"],
+        yahoo_loader=lambda *_:({"SPY":stale,"ACME":spy},[]),
+        single_loader=lambda *_:stale,fallback=lambda _:stale,required_asof=spy.index[-1])
+    assert bars["SPY"].index[-1]!=spy.index[-1]
+    assert audit["single_recheck_rejected"]["SPY"]=="MISSING_ASOF_CLOSE"
+
+
+def test_adaptive_independent_budget_increases_only_when_coverage_is_bad():
+    spy=_bars()
+    names=["SPY"]+[f"X{i:02}" for i in range(40)]
+    def run(missing):
+        bad=spy.iloc[:-1]
+        _,report=P.download_bars(names,
+           yahoo_loader=lambda *_:({"SPY":spy,**{t:bad if t in missing else spy for t in names[1:]}},[]),
+           independent_loader=lambda *_:spy,fallback=lambda _:pd.DataFrame(),
+           required_asof=spy.index[-1], max_independent=12)
+        return report
+    low=run(set(names[1:25]))
+    healthy=run(set(names[1:9]))
+    assert low["independent_attempted"]==12
+    assert low["total_recovered"]==12
+    assert healthy["independent_attempted"]==5
+
+
+def test_normalize_rejects_infinite_price_and_volume():
+    import numpy as np
+    bars=_bars().astype(float)
+    bars.iloc[-1,3]=np.inf
+    bars.iloc[-2,4]=np.inf
+    assert len(P.normalize(bars))==len(bars)-2

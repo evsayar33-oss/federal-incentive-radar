@@ -100,13 +100,62 @@ def _regular_bars(frame: pd.DataFrame) -> pd.DataFrame:
 LAST_PRICE_REPORT: dict = {}
 
 
-def download_daily_bars(tickers: list[str], period: str = "3y") -> dict[str, pd.DataFrame]:
-    """Bounded per-symbol OHLCV with provider audit; never stitches prices."""
-    from .price_resilience import download_bars
+def completed_nyse_session(now_utc: datetime, *, current_only: bool = False):
+    """Use the actual NYSE close (including early closes), plus publication buffer."""
+    import pandas_market_calendars as mcal
+    now = pd.Timestamp(now_utc).tz_convert("UTC")
+    today = now.tz_convert("America/New_York").date()
+    schedule = mcal.get_calendar("NYSE").schedule(
+        start_date=today - pd.Timedelta(days=10), end_date=today)
+    complete = schedule.loc[schedule.market_close + pd.Timedelta(minutes=45) <= now]
+    if complete.empty or (current_only and complete.index[-1].date() != today):
+        return None
+    return pd.Timestamp(complete.index[-1]).normalize()
+
+
+def download_daily_bars(tickers: list[str], period: str = "3y", *,
+                        asof: pd.Timestamp | None = None) -> dict[str, pd.DataFrame]:
+    """Persist only retry metadata; each recovered series is freshly downloaded."""
+    from .price_resilience import download_bars, MAX_INDEPENDENT_SYMBOLS
     global LAST_PRICE_REPORT
-    bars, report = download_bars(tickers, period)
+    LAST_PRICE_REPORT = {}
+    date = str(pd.Timestamp(asof).date()) if asof is not None else None
+    try:
+        state = store.load_json("h083_price_recovery_state") if date else {}
+    except (OSError, ValueError, TypeError):
+        state = {}
+    if not isinstance(state, dict) or state.get("session") != date:
+        state = {}
+    round_number = state.get("round", 0)
+    if type(round_number) is not int or not 0 <= round_number <= 10000:
+        round_number = 0
+    previous = state.get("independent_recovered", [])
+    if not isinstance(previous, list):
+        previous = []
+    bars, report = download_bars(tickers, period, required_asof=asof,
+        recovery_round=round_number, previous_independent_recovered=tuple(t for t in previous if isinstance(t,str)),
+        max_independent=MAX_INDEPENDENT_SYMBOLS)
     LAST_PRICE_REPORT = report
+    if date:
+        store.save_json("h083_price_recovery_state", {"session": date,
+            "round": (round_number+1)%10001,
+            "independent_recovered": report["independent_recovered_symbols"]})
     return bars
+
+
+def watch_failure(reason, eligible, now, asof):
+    """Complete fail-closed envelope for H122, even without a benchmark."""
+    return {
+        "ok": False, "watch_only": True, "validated_alpha": False,
+        "reason": reason, "feature_asof": str(pd.Timestamp(asof).date()) if asof is not None else "",
+        "generated_at_utc": pd.Timestamp(now).isoformat(),
+        "eligible_tickers": len(eligible), "priced_tickers": 0, "liquid_tickers": 0,
+        "excluded_tickers": len(eligible), "candidates": 0,
+        "data_coverage_pct": 0.0, "data_coverage_ok": False,
+        "decision": "WATCH_ONLY_NO_TRADE", "by_rule": {r: 0 for r in RULES},
+        "source_first_seen_forward_only": int(eligible["timestamp_quality"].eq("first_seen_utc").sum()) if len(eligible) else 0,
+        "exclusion_reasons": {reason: len(eligible)}, "exclusion_detail_reasons": {reason: len(eligible)},
+    }
 
 
 def features_asof(stock: pd.DataFrame, spy: pd.DataFrame, asof: pd.Timestamp) -> dict | None:
@@ -185,25 +234,20 @@ def evaluate_watch(
     eligible = eligible_events(feed, now_utc)
     empty = pd.DataFrame(columns=CANDIDATE_COLS)
     excluded = []
+    complete_cutoff = pd.Timestamp(asof).normalize() if asof is not None else completed_nyse_session(now_utc)
+    def unavailable(reason):
+        return empty, pd.DataFrame([{"ticker": "SPY", "reason": reason}], columns=EXCLUSION_COLS), watch_failure(reason, eligible, now_utc, complete_cutoff)
+    if complete_cutoff is None:
+        return unavailable("NO_COMPLETED_NYSE_SESSION")
     if "SPY" not in bars or bars["SPY"] is None or bars["SPY"].empty:
-        return empty, pd.DataFrame([{"ticker": "SPY", "reason": "NO_BENCHMARK"}], columns=EXCLUSION_COLS), {
-            "ok": False, "reason": "NO_BENCHMARK", "eligible_tickers": len(eligible),
-            "candidates": 0,
-        }
-    now = pd.Timestamp(now_utc).tz_convert("America/New_York")
-    # At Radar's usual 16:19 ET run, the same-day Yahoo bar may be incomplete.
-    complete_cutoff = pd.Timestamp(asof).normalize() if asof is not None else (
-        pd.Timestamp(now.date()) if now.time() >= time(16, 35)
-        else pd.Timestamp(now.date()) - pd.Timedelta(days=1)
-    )
+        return unavailable("NO_BENCHMARK")
     benchmark = _regular_bars(bars["SPY"])
     valid_sessions = benchmark.index[benchmark.index <= complete_cutoff]
+    if complete_cutoff not in valid_sessions or not np.isfinite(benchmark.loc[complete_cutoff,"Close"]) or benchmark.loc[complete_cutoff,"Close"] <= 0 or not np.isfinite(benchmark.loc[complete_cutoff,"Volume"]) or benchmark.loc[complete_cutoff,"Volume"] <= 0:
+        return unavailable("MISSING_REQUIRED_BENCHMARK_SESSION")
     if len(valid_sessions) < 215:
-        return empty, pd.DataFrame([{"ticker": "SPY", "reason": "INSUFFICIENT_BENCHMARK_HISTORY"}], columns=EXCLUSION_COLS), {
-            "ok": False, "reason": "INSUFFICIENT_BENCHMARK_HISTORY",
-            "eligible_tickers": len(eligible), "candidates": 0,
-        }
-    feature_at = valid_sessions[-1]
+        return unavailable("INSUFFICIENT_BENCHMARK_HISTORY")
+    feature_at = complete_cutoff
     qualified = {rule: [] for rule in RULES}
     feature_covered = 0
     liquid_count = 0
@@ -286,10 +330,13 @@ def run() -> int:
     """After-close job; publishes an empty table if unavailable, never stale signals."""
     now = datetime.now(timezone.utc)
     et = now.astimezone(ZoneInfo("America/New_York"))
-    # Scheduled workflows also run open/midday; no extra market-data load then.
-    if et.time() < time(16, 0):
-        print("[event-watch] pre-close skip; no update")
+    # Do not overwrite a valid daily snapshot before today's official close
+    # and publication buffer, or when the exchange is closed.
+    target = completed_nyse_session(now, current_only=True)
+    if target is None:
+        print("[event-watch] no finalized current NYSE session; no update")
         return 0
+    capped = pd.DataFrame()
     try:
         feed_path = store_dir() / "event_trade_feed.csv"
         if not feed_path.exists():
@@ -300,17 +347,16 @@ def run() -> int:
         eligible = eligible.sort_values(["event_date", "_known_sort", "ticker"], ascending=False) if not eligible.empty else eligible
         capped = eligible.head(MAX_TICKERS)
         universe = ["SPY"] + sorted(capped["ticker"].unique().tolist())
-        bars = download_daily_bars(universe)
-        result, audit, status = evaluate_watch(capped, bars, now)
+        bars = download_daily_bars(universe, asof=target)
+        result, audit, status = evaluate_watch(capped, bars, now, asof=target)
         status["universe_capped"] = int(max(0, len(eligible) - len(capped)))
         status["price_download"] = dict(LAST_PRICE_REPORT)
     except Exception as exc:
         log.exception("H083 watch research unavailable; publishing empty snapshot")
         result = pd.DataFrame(columns=CANDIDATE_COLS)
         audit = pd.DataFrame([{"ticker": "*", "reason": "RUNTIME_ERROR"}], columns=EXCLUSION_COLS)
-        status = {"ok": False, "watch_only": True, "candidates": 0,
-                  "error": type(exc).__name__, "validated_alpha": False,
-                  "decision": "NO_TRADE_AUTHORIZATION"}
+        status = watch_failure("RUNTIME_ERROR", capped, now, target)
+        status["error"] = type(exc).__name__
     # Preserve the research decision and its source-quality context before publishing.
     # If the audit chain cannot be trusted, publish NO candidates.
     try:
@@ -332,7 +378,7 @@ def run() -> int:
         result = pd.DataFrame(columns=CANDIDATE_COLS)
         status.update({"ok": False, "reason": "DECISION_AUDIT_UNAVAILABLE",
                        "candidates": 0, "decision_audit_ok": False,
-                       "decision": "NO_TRADE_AUTHORIZATION"})
+                       "data_coverage_ok": False, "by_rule": {r: 0 for r in RULES}})
     store.write("event_watch_candidates", result)
     store.write("event_watch_exclusions", audit)
     store.save_json("event_watch_status", status)
@@ -348,7 +394,7 @@ def run() -> int:
                  "provider": "loaded={loaded} missing={missing} recovered={recovered}".format(
                      loaded=status.get("price_download", {}).get("loaded", "?"),
                      missing=status.get("price_download", {}).get("missing", "?"),
-                     recovered=status.get("price_download", {}).get("fallback_recovered", "?"))},
+                     recovered=status.get("price_download", {}).get("total_recovered", "?"))},
             )
         except Exception as exc:
             log.warning("H083 research warning unavailable: %s", type(exc).__name__)
